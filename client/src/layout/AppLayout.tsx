@@ -56,6 +56,7 @@ export default function AppLayout({
   const location = useLocation();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [kits, setKits] = useState<KitSummary[] | null>(null);
   const [notifOpen, setNotifOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -86,6 +87,7 @@ export default function AppLayout({
 
   useEffect(() => {
     setSearchOpen(false);
+    setMobileNavOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -172,6 +174,8 @@ export default function AppLayout({
     setSearchOpen(true);
   };
 
+  const onNavItemClick = () => setMobileNavOpen(false);
+
   const toggleTheme = () => {
     const next = themeMode === "dark" ? "light" : "dark";
     setThemeMode(next);
@@ -194,7 +198,30 @@ export default function AppLayout({
         onQueryChange={setSearchQuery}
       />
 
-      <aside className="fixed start-0 top-0 z-50 flex h-screen w-64 flex-col border-e border-outline/25 bg-surface-container-low/70 px-4 py-8 shadow-[20px_0_40px_rgb(var(--c-on-surface)/0.2)] backdrop-blur-3xl dark:border-brand-muted/40 dark:bg-earth-darkCard/85">
+      {mobileNavOpen && (
+        <button
+          type="button"
+          aria-label="Close navigation"
+          onClick={() => setMobileNavOpen(false)}
+          className="fixed inset-0 z-40 bg-black/45 md:hidden"
+        />
+      )}
+
+      <aside
+        className={[
+          "fixed start-0 top-0 z-50 flex h-screen w-64 flex-col border-e border-outline/25 bg-surface-container-low/70 px-4 py-8 shadow-[20px_0_40px_rgb(var(--c-on-surface)/0.2)] backdrop-blur-3xl transition-transform duration-300 dark:border-brand-muted/40 dark:bg-earth-darkCard/85",
+          mobileNavOpen ? "translate-x-0" : "-translate-x-full",
+          "md:translate-x-0",
+        ].join(" ")}
+      >
+        <button
+          type="button"
+          onClick={() => setMobileNavOpen(false)}
+          className="mb-3 ms-auto rounded-lg p-2 text-on-surface-variant hover:bg-surface-container-high md:hidden"
+          aria-label="Close menu"
+        >
+          {icon("close")}
+        </button>
         <div className="mb-10 px-4">
           <h1 className="bg-gradient-to-r from-primary to-tertiary bg-clip-text font-headline text-2xl font-bold tracking-tighter text-transparent">
             Ethereal Engine
@@ -204,15 +231,15 @@ export default function AppLayout({
           </p>
         </div>
         <nav className="flex flex-grow flex-col gap-2" aria-label="Main">
-          <NavLink to="/" end className={({ isActive }) => navLinkClass(isActive)}>
+          <NavLink to="/" end className={({ isActive }) => navLinkClass(isActive)} onClick={onNavItemClick}>
             {icon("dashboard")}
             <span>Dashboard</span>
           </NavLink>
-          <NavLink to="/generated-kits" className={({ isActive }) => navLinkClass(isActive)}>
+          <NavLink to="/generated-kits" className={({ isActive }) => navLinkClass(isActive)} onClick={onNavItemClick}>
             {icon("inventory_2")}
             <span>Generated Kits</span>
           </NavLink>
-          <NavLink to="/wizard" className={({ isActive }) => navLinkClass(isActive)}>
+          <NavLink to="/wizard" className={({ isActive }) => navLinkClass(isActive)} onClick={onNavItemClick}>
             {icon("auto_awesome")}
             <span>Content Wizard</span>
           </NavLink>
@@ -227,8 +254,16 @@ export default function AppLayout({
         </div>
       </aside>
 
-      <header className="fixed end-0 top-0 z-40 flex h-16 w-[calc(100%-16rem)] items-center justify-between border-b border-outline/20 bg-surface/65 px-8 backdrop-blur-xl dark:border-brand-muted/35 dark:bg-earth-darkBg/80">
-        <div className="flex items-center gap-4">
+      <header className="fixed inset-x-0 top-0 z-40 flex h-16 items-center justify-between border-b border-outline/20 bg-surface/65 px-4 backdrop-blur-xl dark:border-brand-muted/35 dark:bg-earth-darkBg/80 md:start-64 md:w-[calc(100%-16rem)] md:px-8">
+        <div className="flex min-w-0 items-center gap-3 md:gap-4">
+          <button
+            type="button"
+            onClick={() => setMobileNavOpen(true)}
+            className="rounded-lg p-2 text-on-surface-variant transition-colors hover:bg-surface-container-high/70 focus-visible:ring-2 focus-visible:ring-primary/40 md:hidden"
+            aria-label="Open menu"
+          >
+            {icon("menu")}
+          </button>
           <div className="group relative">
             <span className="material-symbols-outlined pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-sm text-on-surface-variant">
               search
@@ -238,7 +273,7 @@ export default function AppLayout({
               readOnly
               onFocus={openSearch}
               onClick={openSearch}
-              className="w-64 cursor-pointer rounded-full border-none bg-surface-container-lowest py-1.5 ps-10 pe-4 text-sm text-on-surface placeholder:text-on-surface-variant/60 transition-all focus:ring-2 focus:ring-primary/45 dark:bg-earth-darkCard/80 dark:text-brand-darkText"
+              className="w-40 cursor-pointer rounded-full border-none bg-surface-container-lowest py-1.5 ps-10 pe-4 text-sm text-on-surface placeholder:text-on-surface-variant/60 transition-all focus:ring-2 focus:ring-primary/45 dark:bg-earth-darkCard/80 dark:text-brand-darkText sm:w-56 md:w-64"
               placeholder="Search kits…"
               aria-label="Open search"
               aria-haspopup="dialog"
@@ -258,12 +293,12 @@ export default function AppLayout({
           >
             API: {apiStatus === "active" ? "Active" : apiStatus === "offline" ? "Offline" : "Checking..."}
           </span>
-          <div className="hidden items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-[11px] font-bold text-primary md:flex">
+          <div className="hidden items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-[11px] font-bold text-primary lg:flex">
             <span className="material-symbols-outlined text-sm">north_east</span>
             Start from Content Wizard
           </div>
         </div>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-2 sm:gap-4 md:gap-6">
           <button
             type="button"
             onClick={toggleTheme}
@@ -425,7 +460,7 @@ export default function AppLayout({
       </header>
 
       <CompactTableProvider value={compactTable}>
-        <main className="ms-64 min-h-screen px-10 pb-12 pt-24">
+        <main className="min-h-screen px-4 pb-12 pt-20 sm:px-6 md:ms-64 md:px-10 md:pt-24">
           {demoBanner}
           {children}
         </main>

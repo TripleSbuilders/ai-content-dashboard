@@ -218,9 +218,9 @@ export default function WizardCore(props: WizardCoreProps) {
   const isFinalStep = step === maxStep;
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4">
-      <div className="mb-10">
-        <h2 className="font-headline text-3xl font-extrabold tracking-tight text-on-surface md:text-4xl">{props.title}</h2>
+    <div className="mx-auto w-full max-w-6xl px-2 sm:px-4">
+      <div className="mb-8 md:mb-10">
+        <h2 className="font-headline text-2xl font-extrabold tracking-tight text-on-surface sm:text-3xl md:text-4xl">{props.title}</h2>
         <p className="mt-2 max-w-3xl text-on-surface-variant">{props.subtitle}</p>
         <div className="mt-4 rounded-xl border border-primary/25 bg-primary/10 px-4 py-3 text-sm text-on-surface dark:border-brand-primary/40 dark:bg-brand-primary/15">
           <p className="font-semibold">Flow</p>
@@ -239,15 +239,15 @@ export default function WizardCore(props: WizardCoreProps) {
         </div>
       )}
 
-      <div className="wizard-root overflow-hidden rounded-3xl border border-outline/30 bg-surface-container-low dark:border-brand-muted/40 dark:bg-earth-darkCard/75" aria-busy={loading}>
+      <div className="wizard-root overflow-hidden rounded-2xl border border-outline/30 bg-surface-container-low sm:rounded-3xl dark:border-brand-muted/40 dark:bg-earth-darkCard/75" aria-busy={loading}>
         <div className={cn("wizard-body-wrap relative !rounded-3xl", loading && "wizard-body-wrap--loading")}>
-          <div className="wizard-body p-6 md:p-8">
-            <div className="mb-8 flex flex-wrap gap-2">
+          <div className="wizard-body p-4 sm:p-6 md:p-8">
+            <div className="mb-6 flex flex-nowrap gap-2 overflow-x-auto pb-1 sm:mb-8 sm:flex-wrap sm:overflow-visible">
               {props.stepOrder.map((id, i) => (
                 <span
                   key={id}
                   className={cn(
-                    "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
+                    "whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-semibold transition",
                     i === step
                       ? "border-primary/30 bg-primary/20 text-primary dark:border-brand-primary/45 dark:bg-brand-primary/15 dark:text-brand-darkText"
                       : "border-transparent bg-surface-container-lowest text-on-surface-variant dark:bg-earth-darkBg/55 dark:text-brand-darkText/70"
@@ -259,7 +259,7 @@ export default function WizardCore(props: WizardCoreProps) {
             </div>
 
             {currentStep === "brand" && (
-              <div className="grid gap-6 sm:grid-cols-2">
+                <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
                 <div>
                   <label htmlFor="brand_name" className={labelCls}>Brand name</label>
                   <div className={fieldShell}><input id="brand_name" className={inputCls} {...register("brand_name")} /></div>
@@ -311,7 +311,7 @@ export default function WizardCore(props: WizardCoreProps) {
                   </div>
                 )}
                 {(showField("channels", "brand_tone") || showField("channels", "brand_colors")) && (
-                  <div className="grid gap-6 sm:grid-cols-2">
+                  <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
                     {showField("channels", "brand_tone") && (
                       <div>
                         <label htmlFor="brand_tone" className={labelCls}>Brand tone</label>
@@ -358,7 +358,7 @@ export default function WizardCore(props: WizardCoreProps) {
                   </div>
                 )}
                 {(showField("creative", "campaign_duration") || showField("creative", "budget_level")) && (
-                  <div className="grid gap-6 sm:grid-cols-2">
+                  <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
                     {showField("creative", "campaign_duration") && (
                       <div>
                         <label htmlFor="campaign_duration" className={labelCls}>Campaign duration</label>
@@ -387,7 +387,7 @@ export default function WizardCore(props: WizardCoreProps) {
             {currentStep === "volume" && (
               <div className="space-y-6">
                 {(showField("volume", "num_posts") || showField("volume", "num_image_designs")) && (
-                  <div className="grid gap-6 sm:grid-cols-2">
+                  <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
                     {showField("volume", "num_posts") && (
                       <div>
                         <label htmlFor="num_posts" className={labelCls}>Number of posts ({LIMITS.num_posts.min}–{LIMITS.num_posts.max})</label>
@@ -464,13 +464,13 @@ export default function WizardCore(props: WizardCoreProps) {
                     <p className="text-sm text-on-surface">
                       We will submit your data now and open the result in <code>{props.routeHint}</code>.
                     </p>
-                    <div className="flex flex-wrap gap-3">
-                      <button type="button" className={btnSecondary + " py-2 text-sm"} onClick={() => setConfirmSubmit(false)}>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                      <button type="button" className={btnSecondary + " w-full py-2 text-sm sm:w-auto"} onClick={() => setConfirmSubmit(false)}>
                         Cancel and edit
                       </button>
                       <button
                         type="button"
-                        className={btnPrimary + " py-2 text-sm"}
+                        className={btnPrimary + " w-full py-2 text-sm sm:w-auto"}
                         onClick={handleSubmit(onValidSubmit)}
                         disabled={loading}
                       >
@@ -482,18 +482,18 @@ export default function WizardCore(props: WizardCoreProps) {
               </div>
             )}
 
-            <div className="mt-8 flex flex-wrap gap-3">
-              <button type="button" className={btnSecondary} onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0 || loading}>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <button type="button" className={btnSecondary + " w-full sm:w-auto"} onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0 || loading}>
                 Back
               </button>
               {step < maxStep ? (
-                <button type="button" className={btnPrimary} onClick={() => void next()} disabled={loading}>
+                <button type="button" className={btnPrimary + " w-full sm:w-auto"} onClick={() => void next()} disabled={loading}>
                   Next
                 </button>
               ) : (
                 <button
                   type="button"
-                  className={btnPrimary}
+                  className={btnPrimary + " w-full sm:w-auto"}
                   onClick={() => setConfirmSubmit((v) => !v)}
                   disabled={loading}
                 >

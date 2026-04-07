@@ -125,7 +125,7 @@ export default function KitDetail() {
         ))}
       </div>
 
-      <div className="mb-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+      <div className="mb-8 flex flex-col gap-5 md:mb-10 md:gap-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <nav className="mb-3 flex flex-wrap items-center gap-2 text-xs text-on-surface-variant dark:text-brand-darkText/75">
             <Link to="/generated-kits" className="hover:text-on-surface">
@@ -134,7 +134,7 @@ export default function KitDetail() {
             <span className="material-symbols-outlined text-[14px]">chevron_right</span>
             <span className="text-primary">Kit details</span>
           </nav>
-          <h1 className="font-headline text-3xl font-extrabold tracking-tight text-on-surface md:text-4xl lg:text-5xl">
+          <h1 className="font-headline text-2xl font-extrabold tracking-tight text-on-surface sm:text-3xl md:text-4xl lg:text-5xl">
             {title}{" "}
             <span className="text-tertiary">Kit</span>
           </h1>
@@ -154,15 +154,15 @@ export default function KitDetail() {
             ) : null}
           </div>
         </div>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex w-full flex-wrap gap-3 lg:w-auto">
           {kit.result_json ? (
-            <button type="button" className={btnSecondary} onClick={() => void copyResultJson()}>
+            <button type="button" className={btnSecondary + " w-full sm:w-auto"} onClick={() => void copyResultJson()}>
               <span className="material-symbols-outlined text-lg">content_copy</span>
               Copy JSON
             </button>
           ) : null}
           {failed && !retryInProgress ? (
-            <button type="button" className={btnPrimary} disabled={retrying} onClick={() => void doRetry()}>
+            <button type="button" className={btnPrimary + " w-full sm:w-auto"} disabled={retrying} onClick={() => void doRetry()}>
               <span className="material-symbols-outlined text-lg">refresh</span>
               {retrying ? "Regenerating…" : "Retry"}
             </button>
@@ -170,7 +170,7 @@ export default function KitDetail() {
         </div>
       </div>
 
-      <div className="glass-panel mb-8 space-y-6 rounded-3xl border border-outline/30 p-6 md:p-8 dark:border-brand-muted/45 dark:bg-earth-darkCard/80">
+      <div className="glass-panel mb-8 space-y-6 rounded-3xl border border-outline/30 p-4 sm:p-6 md:p-8 dark:border-brand-muted/45 dark:bg-earth-darkCard/80">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <Link to="/generated-kits" className={btnGhost + " inline-flex items-center gap-1"}>
             <span className="material-symbols-outlined text-lg">arrow_back</span>

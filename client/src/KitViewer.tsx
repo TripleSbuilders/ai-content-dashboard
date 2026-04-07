@@ -929,7 +929,7 @@ export default function KitViewer({ kit, onKitUpdate }: { kit: KitSummary; onKit
     <div className="relative space-y-6 pb-20">
       <nav
         id={TOC_ID}
-        className="sticky top-4 z-20 scroll-mt-24 rounded-2xl border border-brand-sand/30 bg-earth-card/95 p-4 shadow-lg shadow-surface/50 backdrop-blur-sm dark:border-primary/20 dark:bg-surface-container-low/95 md:p-5"
+        className="sticky top-20 z-20 scroll-mt-24 rounded-2xl border border-brand-sand/30 bg-earth-card/95 p-3 shadow-lg shadow-surface/50 backdrop-blur-sm dark:border-primary/20 dark:bg-surface-container-low/95 sm:p-4 md:top-4 md:p-5"
         style={{ scrollMarginTop: SCROLL_MARGIN }}
         aria-label="Plan sections"
       >

@@ -75,7 +75,7 @@ export default function PromptCatalogPage() {
   return (
     <section className="space-y-6">
       <header className="space-y-2">
-        <h1 className="headline text-4xl font-black tracking-tight text-on-surface md:text-5xl">Prompt Catalog</h1>
+        <h1 className="headline text-3xl font-black tracking-tight text-on-surface sm:text-4xl md:text-5xl">Prompt Catalog</h1>
         <p className="max-w-3xl text-brand-muted dark:text-on-surface-variant">
           Dynamic prompt management per industry with versioning and global fallback. Write the creative direction only —
           client data from the wizard is injected automatically before generation. Placeholder templates remain supported
@@ -97,8 +97,8 @@ export default function PromptCatalogPage() {
         </p>
       )}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="rounded-3xl border border-brand-sand/30 bg-earth-card p-6 lg:col-span-2 dark:border-outline/30 dark:bg-surface-container-low">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
+        <div className="rounded-3xl border border-brand-sand/30 bg-earth-card p-4 sm:p-6 lg:col-span-2 dark:border-outline/30 dark:bg-surface-container-low">
           <h2 className="headline mb-4 text-xl font-bold">Add industry</h2>
           <div className="grid grid-cols-1 gap-3">
             <label className="block text-xs font-bold uppercase tracking-wider text-on-surface-variant">
@@ -162,7 +162,7 @@ export default function PromptCatalogPage() {
           </div>
         </div>
 
-        <div className="rounded-3xl border border-brand-sand/30 bg-earth-card p-6 dark:border-outline/30 dark:bg-surface-container-low">
+        <div className="rounded-3xl border border-brand-sand/30 bg-earth-card p-4 sm:p-6 dark:border-outline/30 dark:bg-surface-container-low">
           <h2 className="headline mb-4 text-xl font-bold">Create new version</h2>
           <label className="mb-3 block text-xs font-bold uppercase tracking-wider text-on-surface-variant">
             Industry
@@ -243,11 +243,11 @@ export default function PromptCatalogPage() {
             </div>
           ) : null}
 
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <button
               type="button"
               disabled={saving}
-              className="rounded-xl border border-brand-sand/30 bg-earth-alt px-4 py-2 text-sm font-bold text-brand-text disabled:opacity-50 dark:border-outline/30 dark:bg-surface-container-high dark:text-on-surface"
+                className="rounded-xl border border-brand-sand/30 bg-earth-alt px-4 py-2 text-sm font-bold text-brand-text disabled:opacity-50 dark:border-outline/30 dark:bg-surface-container-high dark:text-on-surface sm:w-auto"
               onClick={() => {
                 validatePromptTemplate(template)
                   .then((r) => {
@@ -271,7 +271,7 @@ export default function PromptCatalogPage() {
             <button
               type="button"
               disabled={saving}
-              className="rounded-xl bg-brand-primary px-4 py-2 text-sm font-bold text-white disabled:opacity-50 hover:bg-brand-primary/90 dark:bg-primary dark:text-on-primary"
+                className="rounded-xl bg-brand-primary px-4 py-2 text-sm font-bold text-white disabled:opacity-50 hover:bg-brand-primary/90 dark:bg-primary dark:text-on-primary sm:w-auto"
               onClick={() => {
                 const trimmed = template.trim();
                 if (!trimmed) {
@@ -308,7 +308,7 @@ export default function PromptCatalogPage() {
           </div>
         </div>
 
-        <div className="rounded-3xl border border-brand-sand/30 bg-earth-card p-6 dark:border-outline/30 dark:bg-surface-container-low">
+        <div className="rounded-3xl border border-brand-sand/30 bg-earth-card p-4 sm:p-6 dark:border-outline/30 dark:bg-surface-container-low">
           <h2 className="headline mb-4 text-xl font-bold">Version history</h2>
           <div className="space-y-3">
             {versions.length === 0 ? (
@@ -316,55 +316,57 @@ export default function PromptCatalogPage() {
             ) : (
               versions.map((v) => (
                 <article key={v.id} className="rounded-xl border border-brand-sand/30 bg-earth-card p-3 dark:border-outline/30 dark:bg-surface-container-high">
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
                     <div>
                       <p className="text-sm font-bold text-on-surface">
                         v{v.version} · <span className="uppercase">{v.status}</span>
                       </p>
                       <p className="text-xs text-on-surface-variant">{v.notes || "No notes"}</p>
                     </div>
-                    <button
-                      type="button"
-                      disabled={v.status === "active"}
-                      className="rounded-lg bg-brand-primary px-3 py-1 text-xs font-bold text-white disabled:opacity-55 dark:bg-primary dark:text-on-primary"
-                      title={v.status === "active" ? "Already active" : `Activate version v${v.version}`}
-                      onClick={() => {
-                        activatePromptVersion(v.id)
-                          .then(async () => {
-                            setMessage(`Activated v${v.version}`);
-                            await refreshIndustries();
-                            await refreshVersions();
-                          })
-                          .catch(() => setMessage("Activation failed."));
-                      }}
-                    >
-                      Activate
-                    </button>
-                    <button
-                      type="button"
-                      disabled={v.status === "active"}
-                      className="rounded-lg bg-brand-accent px-3 py-1 text-xs font-bold text-white disabled:opacity-55 dark:bg-error dark:text-on-error"
-                      title={
-                        v.status === "active"
-                          ? "Cannot delete an active version. Activate another version first."
-                          : `Delete version v${v.version}`
-                      }
-                      onClick={() => {
-                        const ok = window.confirm(
-                          `Delete prompt version v${v.version}? This cannot be undone.`
-                        );
-                        if (!ok) return;
-                        deletePromptVersion(v.id)
-                          .then(async () => {
-                            setMessage(`Deleted v${v.version}`);
-                            await refreshIndustries();
-                            await refreshVersions();
-                          })
-                          .catch((e) => setMessage(e instanceof Error ? e.message : "Delete failed."));
-                      }}
-                    >
-                      Delete
-                    </button>
+                    <div className="flex w-full gap-2 sm:w-auto">
+                      <button
+                        type="button"
+                        disabled={v.status === "active"}
+                        className="rounded-lg bg-brand-primary px-3 py-1 text-xs font-bold text-white disabled:opacity-55 dark:bg-primary dark:text-on-primary"
+                        title={v.status === "active" ? "Already active" : `Activate version v${v.version}`}
+                        onClick={() => {
+                          activatePromptVersion(v.id)
+                            .then(async () => {
+                              setMessage(`Activated v${v.version}`);
+                              await refreshIndustries();
+                              await refreshVersions();
+                            })
+                            .catch(() => setMessage("Activation failed."));
+                        }}
+                      >
+                        Activate
+                      </button>
+                      <button
+                        type="button"
+                        disabled={v.status === "active"}
+                        className="rounded-lg bg-brand-accent px-3 py-1 text-xs font-bold text-white disabled:opacity-55 dark:bg-error dark:text-on-error"
+                        title={
+                          v.status === "active"
+                            ? "Cannot delete an active version. Activate another version first."
+                            : `Delete version v${v.version}`
+                        }
+                        onClick={() => {
+                          const ok = window.confirm(
+                            `Delete prompt version v${v.version}? This cannot be undone.`
+                          );
+                          if (!ok) return;
+                          deletePromptVersion(v.id)
+                            .then(async () => {
+                              setMessage(`Deleted v${v.version}`);
+                              await refreshIndustries();
+                              await refreshVersions();
+                            })
+                            .catch((e) => setMessage(e instanceof Error ? e.message : "Delete failed."));
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
                   <pre className="mt-3 max-h-44 overflow-auto rounded-lg bg-earth-alt p-2 text-[11px] text-brand-muted dark:bg-surface-container-low dark:text-on-surface-variant">
                     {v.prompt_template}

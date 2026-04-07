@@ -40,8 +40,8 @@ export default function GeneratedKitsPage() {
   const compactTable = useCompactTable();
   const [kits, setKits] = useState<KitSummary[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const thPad = compactTable ? "px-6 py-2" : "px-8 py-4";
-  const tdPad = compactTable ? "px-6 py-3" : "px-8 py-6";
+  const thPad = compactTable ? "px-3 py-2 sm:px-6" : "px-4 py-3 sm:px-8 sm:py-4";
+  const tdPad = compactTable ? "px-3 py-2.5 sm:px-6 sm:py-3" : "px-4 py-4 sm:px-8 sm:py-6";
   const avSize = compactTable ? "h-8 w-8 text-[10px]" : "h-10 w-10 text-sm";
 
   useEffect(() => {
@@ -54,16 +54,16 @@ export default function GeneratedKitsPage() {
 
   return (
     <>
-      <section className="mb-10 flex flex-wrap items-end justify-between gap-6">
+      <section className="mb-8 flex flex-wrap items-end justify-between gap-4 sm:mb-10 sm:gap-6">
         <div>
-          <h2 className="headline mb-2 text-4xl font-extrabold tracking-tight text-on-surface md:text-5xl">
+          <h2 className="headline mb-2 text-3xl font-extrabold tracking-tight text-on-surface sm:text-4xl md:text-5xl">
             Generated kits
           </h2>
-          <p className="text-lg text-brand-muted dark:text-on-surface-variant">Browse and open your previously generated content kits.</p>
+          <p className="text-base text-brand-muted dark:text-on-surface-variant sm:text-lg">Browse and open your previously generated content kits.</p>
         </div>
         <Link
           to="/wizard"
-          className="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-6 py-3 text-sm font-bold uppercase tracking-wider text-white shadow-sm transition hover:scale-[1.02] hover:bg-brand-primary/90 dark:bg-primary dark:text-on-primary"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-primary px-5 py-3 text-xs font-bold uppercase tracking-wider text-white shadow-sm transition hover:scale-[1.02] hover:bg-brand-primary/90 sm:w-auto sm:px-6 sm:text-sm dark:bg-primary dark:text-on-primary"
         >
           <span className="material-symbols-outlined text-base">add</span>
           New kit
@@ -77,7 +77,7 @@ export default function GeneratedKitsPage() {
               Latest kits
             </h3>
           </div>
-          <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <ul className="grid gap-3 sm:gap-4 sm:grid-cols-2 xl:grid-cols-5">
             {latestKits.map((k) => {
               const brand = briefBrand(k.brief_json);
               const ind = briefIndustry(k.brief_json);
@@ -110,18 +110,18 @@ export default function GeneratedKitsPage() {
       )}
 
       <section className="overflow-hidden rounded-3xl border border-brand-sand/30 bg-earth-card p-1 dark:border-outline/30 dark:bg-surface-container-low">
-        <div className="flex flex-wrap items-center justify-between gap-4 bg-earth-alt px-8 py-6 dark:bg-surface-container-high/30">
-          <h3 className="font-manrope text-xl font-bold">All generated kits</h3>
+        <div className="flex flex-wrap items-center justify-between gap-4 bg-earth-alt px-4 py-4 sm:px-8 sm:py-6 dark:bg-surface-container-high/30">
+          <h3 className="font-manrope text-lg font-bold sm:text-xl">All generated kits</h3>
         </div>
         <div className="overflow-x-auto">
           {err && (
-            <p className="px-8 py-6 text-error" role="alert">
+            <p className="px-4 py-6 text-error sm:px-8" role="alert">
               {err}
             </p>
           )}
-          {!kits && !err && <p className="px-8 py-6 text-on-surface-variant">Loading…</p>}
+          {!kits && !err && <p className="px-4 py-6 text-on-surface-variant sm:px-8">Loading…</p>}
           {kits && kits.length === 0 && !err && (
-            <p className="px-8 py-10 text-sm text-on-surface-variant">No kits yet. Start from the wizard.</p>
+            <p className="px-4 py-10 text-sm text-on-surface-variant sm:px-8">No kits yet. Start from the wizard.</p>
           )}
           {kits && kits.length > 0 && (
             <table className="w-full border-collapse text-start">

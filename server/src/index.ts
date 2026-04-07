@@ -27,6 +27,19 @@ app.use(
   })
 );
 
+app.get("/", (c) =>
+  c.json({
+    service: "ai-content-dashboard-api",
+    ok: true,
+    endpoints: {
+      health: "/health",
+      kits: "/api/kits",
+      features: "/api/profile",
+      promptCatalog: "/api/prompt-catalog/industries",
+    },
+  })
+);
+
 app.get("/health", (c) => c.json({ ok: true, db: Boolean(db) }));
 
 async function kitsGuard(c: Context, next: Next) {

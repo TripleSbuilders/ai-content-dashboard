@@ -26,6 +26,9 @@ export default function AdminLayout() {
             <NavLink to="/admin/analytics" className={({ isActive }) => navClass(isActive)}>
               Analytics
             </NavLink>
+            <NavLink to="/admin/generated-kits" className={({ isActive }) => navClass(isActive)}>
+              Kits Review
+            </NavLink>
             <Link
               to="/wizard"
               className="rounded-lg border border-outline/30 px-3 py-2 text-sm font-semibold text-on-surface-variant transition hover:bg-surface-container-high hover:text-on-surface"

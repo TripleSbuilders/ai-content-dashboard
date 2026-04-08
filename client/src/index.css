@@ -122,28 +122,33 @@
     @apply min-h-screen bg-surface text-on-surface font-body;
   }
 
-  input,
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
   textarea,
   select {
     color: rgb(var(--c-on-surface) / 0.98);
     caret-color: rgb(var(--c-on-surface) / 0.98);
+    background-color: rgb(var(--c-surface-container-lowest) / 1);
+    border: 1px solid rgb(var(--c-outline) / 0.35);
+    border-radius: 0.75rem;
   }
 
-  input::placeholder,
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"])::placeholder,
   textarea::placeholder {
-    color: rgb(var(--c-on-surface-variant) / 0.88);
+    color: rgb(var(--c-on-surface-variant) / 0.92);
   }
 
-  html.dark input,
+  html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
   html.dark textarea,
   html.dark select {
     color: rgb(var(--c-on-surface) / 1);
     caret-color: rgb(var(--c-on-surface) / 1);
+    background-color: rgb(var(--c-surface-container-high) / 0.7);
+    border-color: rgb(var(--c-outline) / 0.55);
   }
 
-  html.dark input::placeholder,
+  html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"])::placeholder,
   html.dark textarea::placeholder {
-    color: rgb(var(--c-on-surface-variant) / 0.95);
+    color: rgb(var(--c-on-surface-variant) / 1);
   }
 
   input:-webkit-autofill,

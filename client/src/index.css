@@ -151,6 +151,18 @@
     color: rgb(var(--c-on-surface-variant) / 1);
   }
 
+  /* Prevent native dark select paint from forcing a darker background */
+  select {
+    color-scheme: normal;
+    background-color: rgb(var(--c-surface-container-lowest) / 1) !important;
+  }
+
+  html.dark select {
+    color-scheme: normal;
+    background-color: rgb(var(--c-surface-container-high) / 0.7) !important;
+    color: rgb(var(--c-on-surface) / 1) !important;
+  }
+
   /* Keep native select dropdown options visually aligned with input palette */
   select option {
     color: rgb(var(--c-on-surface) / 0.98);

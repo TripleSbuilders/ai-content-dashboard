@@ -7,12 +7,13 @@ import { db } from "../db/index.js";
 import { kits, idempotencyKeys, type KitRow } from "../db/schema.js";
 import { buildSubmissionSnapshot, briefFingerprint, isPlainObject, parseSubmissionSnapshotJson } from "../logic/parse.js";
 import { resolvePrompt } from "../logic/promptResolver.js";
-import { callGeminiAPI, loadGeminiSettingsFromEnv } from "../logic/geminiClient.js";
+import { callGeminiAPI, loadGeminiSettingsFromEnv, type GeminiSettings } from "../logic/geminiClient.js";
 import { validateGeminiResponse } from "../logic/validate.js";
 import { getStatusBadgeLabel, getStatusBadgePalette, normalizeDeliveryStatus } from "../logic/status.js";
 import { buildDemoKitContent } from "../logic/demoKit.js";
 import { resolveDeliveryStatus, sendAdminFailureAlert, sendClientDelayEmail, sendKitEmail } from "../email/send.js";
 import { recordKitNotification } from "../logic/notifyKit.js";
+import type { SubmissionSnapshot } from "../logic/constants.js";
 import type { Next } from "hono";
 
 const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000;
@@ -286,6 +287,61 @@ async function updateKit(
   return updated[0]!;
 }
 
+function buildJsonCorrectionPrompt(basePrompt: string, validationErrors: string[]): string {
+  return [
+    basePrompt,
+    "",
+    "STRICT CORRECTION:",
+    "Your previous output violated the JSON contract.",
+    "Return ONLY valid JSON that strictly matches the required schema.",
+    "Do not include markdown, code fences, or explanation text.",
+    validationErrors.length ? `Fix these errors exactly: ${validationErrors.join(" | ")}` : "Fix structural JSON issues and return valid object JSON.",
+  ].join("\n");
+}
+
+async function generateWithGuardrails(
+  basePrompt: string,
+  snapshot: SubmissionSnapshot,
+  settings: GeminiSettings
+): Promise<{ aiContent: Record<string, unknown>; jsonValid: boolean; retryCount: number }> {
+  let retryCount = 0;
+  let promptText = basePrompt;
+  let lastErrors: string[] = [];
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const raw = await callGeminiAPI(promptText, settings);
+    if (!isPlainObject(raw)) {
+      lastErrors = ["Gemini returned non-object JSON."];
+    } else {
+      const validationErrors = validateGeminiResponse(raw, snapshot);
+      if (validationErrors.length === 0) {
+        return { aiContent: raw as Record<string, unknown>, jsonValid: true, retryCount };
+      }
+      lastErrors = validationErrors;
+    }
+
+    if (attempt === 0) {
+      retryCount += 1;
+      promptText = buildJsonCorrectionPrompt(basePrompt, lastErrors);
+      continue;
+    }
+  }
+
+  throw new Error("Gemini validation failed after corrective retry: " + lastErrors.join(" | "));
+}
+
+function logGenerationTelemetry(meta: {
+  phase: "generate" | "retry";
+  promptMode: "meta" | "catalog";
+  industrySource: "brief" | "fallback";
+  jsonValid: boolean;
+  retryCount: number;
+  correlationId: string;
+  kitId?: string;
+}) {
+  console.info("[prompt_telemetry]", JSON.stringify(meta));
+}
+
 export function createKitsRouter(mw: (c: import("hono").Context, next: Next) => Promise<void | Response>) {
   const app = new Hono();
 
@@ -323,7 +379,6 @@ export function createKitsRouter(mw: (c: import("hono").Context, next: Next) => 
     const demoMode = String(process.env.DEMO_MODE ?? "").toLowerCase() === "true";
     const settings = loadGeminiSettingsFromEnv();
     const correlationId = nanoid();
-    // Source of truth: prompt text is resolved from DB catalog only.
     const resolved = await resolvePrompt(snapshot.industry, snapshot);
 
     if (demoMode) {
@@ -365,15 +420,7 @@ export function createKitsRouter(mw: (c: import("hono").Context, next: Next) => 
 
     try {
       const promptText = resolved.renderedPrompt;
-      const raw = await callGeminiAPI(promptText, settings);
-      if (!isPlainObject(raw)) {
-        throw new Error("Gemini returned non-object JSON.");
-      }
-      const validationErrors = validateGeminiResponse(raw, snapshot);
-      if (validationErrors.length > 0) {
-        throw new Error("Gemini validation failed: " + validationErrors.join(" | "));
-      }
-      const aiContent = raw as Record<string, unknown>;
+      const { aiContent, jsonValid, retryCount } = await generateWithGuardrails(promptText, snapshot, settings);
       const emailResult = await sendKitEmail(snapshot, aiContent);
       const delivery = resolveDeliveryStatus(emailResult);
       const row = await persistKit(snapshot, aiContent, {
@@ -383,6 +430,15 @@ export function createKitsRouter(mw: (c: import("hono").Context, next: Next) => 
         correlationId,
         promptVersionId: resolved.promptVersionId,
         isFallback: resolved.isFallback,
+      });
+      logGenerationTelemetry({
+        phase: "generate",
+        promptMode: resolved.promptMode,
+        industrySource: resolved.industrySource,
+        jsonValid,
+        retryCount,
+        correlationId,
+        kitId: row.id,
       });
       recordKitNotification(row);
       await db
@@ -399,6 +455,15 @@ export function createKitsRouter(mw: (c: import("hono").Context, next: Next) => 
         correlationId,
         promptVersionId: resolved.promptVersionId,
         isFallback: resolved.isFallback,
+      });
+      logGenerationTelemetry({
+        phase: "generate",
+        promptMode: resolved.promptMode,
+        industrySource: resolved.industrySource,
+        jsonValid: false,
+        retryCount: 1,
+        correlationId,
+        kitId: row.id,
       });
       recordKitNotification(row);
       const clientDelay = await sendClientDelayEmail(snapshot, correlationId);
@@ -520,13 +585,7 @@ export function createKitsRouter(mw: (c: import("hono").Context, next: Next) => 
 
     try {
       const promptText = resolved.renderedPrompt;
-      const raw = await callGeminiAPI(promptText, settings);
-      if (!isPlainObject(raw)) throw new Error("Gemini returned non-object JSON.");
-      const validationErrors = validateGeminiResponse(raw, snapshot);
-      if (validationErrors.length > 0) {
-        throw new Error("Gemini validation failed: " + validationErrors.join(" | "));
-      }
-      const aiContent = raw as Record<string, unknown>;
+      const { aiContent, jsonValid, retryCount } = await generateWithGuardrails(promptText, snapshot, settings);
       const emailResult = await sendKitEmail(snapshot, aiContent);
       const delivery = resolveDeliveryStatus(emailResult);
       const finalRow = await db
@@ -545,6 +604,15 @@ export function createKitsRouter(mw: (c: import("hono").Context, next: Next) => 
         .where(eq(kits.id, id))
         .returning();
       const ok = finalRow[0]!;
+      logGenerationTelemetry({
+        phase: "retry",
+        promptMode: resolved.promptMode,
+        industrySource: resolved.industrySource,
+        jsonValid,
+        retryCount,
+        correlationId,
+        kitId: ok.id,
+      });
       recordKitNotification(ok);
       return c.json(serializeKit(ok));
     } catch (err) {
@@ -565,6 +633,15 @@ export function createKitsRouter(mw: (c: import("hono").Context, next: Next) => 
         .where(eq(kits.id, id))
         .returning();
       const fr = fail[0]!;
+      logGenerationTelemetry({
+        phase: "retry",
+        promptMode: resolved.promptMode,
+        industrySource: resolved.industrySource,
+        jsonValid: false,
+        retryCount: 1,
+        correlationId,
+        kitId: fr.id,
+      });
       recordKitNotification(fr);
       return c.json(serializeKit(fr));
     }

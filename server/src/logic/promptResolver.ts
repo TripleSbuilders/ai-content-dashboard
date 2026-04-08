@@ -4,6 +4,7 @@ import { industries, industryPrompts } from "../db/schema.js";
 import { campaignModeInstructionBlock } from "./campaignMode.js";
 import { composePrompt } from "./promptComposer.js";
 import type { SubmissionSnapshot } from "./constants.js";
+import { isUseMetaPrompt } from "./promptModeEnv.js";
 import { isStrictPromptTemplates } from "./promptStrictEnv.js";
 import { validatePromptTemplateContract } from "./promptTemplateValidation.js";
 
@@ -14,6 +15,8 @@ export type ResolvedPrompt = {
   isFallback: boolean;
   renderedPrompt: string;
   rawTemplate: string;
+  promptMode: "meta" | "catalog";
+  industrySource: "brief" | "fallback";
 };
 
 export function normalizeIndustrySlug(value: string): string {
@@ -62,6 +65,33 @@ export function renderPromptTemplate(template: string, snapshot: SubmissionSnaps
 
 export async function resolvePrompt(industryInput: string, snapshot: SubmissionSnapshot): Promise<ResolvedPrompt> {
   const targetSlug = normalizeIndustrySlug(industryInput);
+  const useMetaPrompt = isUseMetaPrompt();
+  const hasCoreContext =
+    Boolean(String(snapshot.industry ?? "").trim()) &&
+    Boolean(String(snapshot.target_audience ?? "").trim()) &&
+    (Boolean(String(snapshot.main_goal ?? "").trim()) || Boolean(String(snapshot.offer ?? "").trim()));
+
+  if (useMetaPrompt && hasCoreContext) {
+    const prefix = campaignModeInstructionBlock(snapshot.campaign_mode);
+    const composed = composePrompt({
+      campaignPrefix: prefix,
+      creativeDirection:
+        "Use the client context to produce high-conversion assets with platform-native execution and strict bilingual parity.",
+      snapshot,
+      mode: snapshot.campaign_mode,
+      useMetaPrompt: true,
+    });
+    return {
+      industrySlugUsed: targetSlug,
+      promptVersionId: "meta-prompt:v1",
+      promptVersionUsed: 1,
+      isFallback: false,
+      renderedPrompt: composed,
+      rawTemplate: "meta-prompt:v1",
+      promptMode: "meta",
+      industrySource: "brief",
+    };
+  }
 
   const industry = await db.select().from(industries).where(eq(industries.slug, targetSlug)).get();
   let selected =
@@ -105,6 +135,7 @@ export async function resolvePrompt(industryInput: string, snapshot: SubmissionS
     creativeDirection: industryPrompt,
     snapshot,
     mode: snapshot.campaign_mode,
+    useMetaPrompt: false,
   });
 
   return {
@@ -114,5 +145,7 @@ export async function resolvePrompt(industryInput: string, snapshot: SubmissionS
     isFallback,
     renderedPrompt: composed,
     rawTemplate: selected.promptTemplate,
+    promptMode: "catalog",
+    industrySource: isFallback ? "fallback" : "brief",
   };
 }

@@ -47,14 +47,41 @@ export function buildOutputPolicyBlock(mode: CampaignMode): string {
   ].join("\n");
 }
 
+export function buildMetaPromptBlock(snapshot: SubmissionSnapshot): string {
+  const industry = cleanText(snapshot.industry) || "General";
+  const audience = cleanText(snapshot.target_audience) || "General audience";
+  const goal = cleanText(snapshot.main_goal) || "Drive measurable marketing outcomes";
+  const offer = cleanText(snapshot.offer) || "Not specified";
+  const platforms = cleanText(snapshot.platforms) || "Not specified";
+  return [
+    "You are a Creative Director and strategic marketer.",
+    "Use a meta-prompting workflow internally before producing output.",
+    "Internal-only sequence (never expose chain-of-thought):",
+    "1) Deduce psychological triggers for this audience and buying context.",
+    "2) Deduce an effective tone/style that fits trust level and goal urgency.",
+    "3) Deduce visual identity direction that can convert on the requested platforms.",
+    "",
+    `Client industry: ${industry}`,
+    `Client audience: ${audience}`,
+    `Primary goal: ${goal}`,
+    `Offer context: ${offer}`,
+    `Target platforms: ${platforms}`,
+    "",
+    "Apply the deduced strategy directly in the generated assets.",
+    "Do not output reasoning, hidden analysis, or planning notes.",
+  ].join("\n");
+}
+
 export function composePrompt(input: {
   campaignPrefix: string;
   creativeDirection: string;
   snapshot: SubmissionSnapshot;
   mode: CampaignMode;
+  useMetaPrompt?: boolean;
 }): string {
   const parts = [
     cleanText(input.campaignPrefix),
+    input.useMetaPrompt ? section("Meta Strategy Core", buildMetaPromptBlock(input.snapshot)) : "",
     section("Creative Direction", input.creativeDirection),
     section("Client Context (auto-injected)", buildClientContextBlock(input.snapshot)),
     section("Output Rules", buildOutputPolicyBlock(input.mode)),

@@ -151,6 +151,17 @@
     color: rgb(var(--c-on-surface-variant) / 1);
   }
 
+  /* Keep native select dropdown options visually aligned with input palette */
+  select option {
+    color: rgb(var(--c-on-surface) / 0.98);
+    background-color: rgb(var(--c-surface-container-lowest) / 1);
+  }
+
+  html.dark select option {
+    color: rgb(var(--c-on-surface) / 1);
+    background-color: rgb(var(--c-surface-container-high) / 1);
+  }
+
   input:-webkit-autofill,
   input:-webkit-autofill:hover,
   input:-webkit-autofill:focus,

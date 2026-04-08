@@ -380,12 +380,6 @@ export default function WizardCore(props: WizardCoreProps) {
       <div className="mb-8 md:mb-10">
         <h2 className="font-headline text-2xl font-extrabold tracking-tight text-on-surface sm:text-3xl md:text-4xl">{props.title}</h2>
         <p className="mt-2 max-w-3xl text-on-surface-variant">{props.subtitle}</p>
-        <div className="mt-4 rounded-xl border border-primary/25 bg-primary/10 px-4 py-3 text-sm text-on-surface dark:border-brand-primary/40 dark:bg-brand-primary/15">
-          <p className="font-semibold">Flow</p>
-          <p className="mt-1 text-on-surface-variant">
-            Fill this path then click <strong>Generate kit</strong>. Output opens at <code>{props.routeHint}</code>.
-          </p>
-        </div>
       </div>
 
       {showDraftBanner && (

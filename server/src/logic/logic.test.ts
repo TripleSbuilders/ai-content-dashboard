@@ -5,8 +5,9 @@ import { normalizeDeliveryStatus, getStatusBadgeLabel, getStatusBadgePalette } f
 import { validateGeminiResponse } from "./validate.js";
 import { validatePromptTemplateContract } from "./promptTemplateValidation.js";
 import { isStrictPromptTemplates } from "./promptStrictEnv.js";
+import { isUseMetaPrompt } from "./promptModeEnv.js";
 import { campaignModeInstructionBlock } from "./campaignMode.js";
-import { buildClientContextBlock, buildOutputPolicyBlock, composePrompt } from "./promptComposer.js";
+import { buildClientContextBlock, buildMetaPromptBlock, buildOutputPolicyBlock, composePrompt } from "./promptComposer.js";
 import { getGeminiResponseSchema } from "./responseSchema.js";
 import { getRegenerateItemSchema, getSectionArray } from "../routes/kits.js";
 
@@ -129,6 +130,18 @@ describe("promptComposer", () => {
     expect(block).toContain("Requested image designs count: 5");
     expect(block).toContain("Requested video prompts count: 3");
   });
+
+  it("meta prompt block includes deduction instructions", () => {
+    const snapshot = buildSubmissionSnapshot({
+      industry: "SaaS",
+      target_audience: "Startup founders",
+      main_goal: "Book demos",
+      platforms: "LinkedIn",
+    });
+    const block = buildMetaPromptBlock(snapshot);
+    expect(block).toContain("Deduce psychological triggers");
+    expect(block).toContain("Client industry: SaaS");
+  });
 });
 
 describe("responseSchema", () => {
@@ -162,6 +175,22 @@ describe("promptStrictEnv", () => {
   it("is strict when STRICT_PROMPT_TEMPLATES is true", () => {
     vi.stubEnv("STRICT_PROMPT_TEMPLATES", "true");
     expect(isStrictPromptTemplates()).toBe(true);
+  });
+});
+
+describe("promptModeEnv", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("defaults to false when USE_META_PROMPT unset", () => {
+    vi.stubEnv("USE_META_PROMPT", "");
+    expect(isUseMetaPrompt()).toBe(false);
+  });
+
+  it("is true when USE_META_PROMPT is true", () => {
+    vi.stubEnv("USE_META_PROMPT", "true");
+    expect(isUseMetaPrompt()).toBe(true);
   });
 });
 

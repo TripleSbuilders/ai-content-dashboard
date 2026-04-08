@@ -5,6 +5,7 @@ import Dashboard from "./Dashboard";
 import GeneratedKitsPage from "./GeneratedKitsPage";
 import AppLayout from "./layout/AppLayout";
 import PromptCatalogPage from "./pages/PromptCatalogPage";
+import WizardAnalyticsPage from "./pages/WizardAnalyticsPage";
 import SocialCampaignWizard from "./pages/wizards/SocialCampaignWizard";
 import OfferProductWizard from "./pages/wizards/OfferProductWizard";
 import DeepContentWizard from "./pages/wizards/DeepContentWizard";
@@ -35,7 +36,7 @@ export default function App() {
         <Route path="/kits/:id" element={<KitDetail />} />
         <Route path="/help" element={<Navigate to="/wizard" replace />} />
         <Route path="/integrations" element={<Navigate to="/wizard" replace />} />
-        <Route path="/analytics" element={<Navigate to="/wizard" replace />} />
+        <Route path="/analytics" element={<WizardAnalyticsPage />} />
         <Route path="/extras" element={<Navigate to="/wizard" replace />} />
         <Route path="/brand-voice" element={<Navigate to="/wizard" replace />} />
         <Route path="/prompt-catalog" element={<PromptCatalogPage />} />

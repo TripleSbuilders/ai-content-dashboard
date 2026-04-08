@@ -22,7 +22,7 @@ const btnSecondary =
 const btnGhost =
   "rounded-lg px-1 text-sm font-semibold text-primary hover:underline focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface dark:text-brand-sand";
 
-export default function KitDetail() {
+export default function KitDetail({ showTechnical = false }: { showTechnical?: boolean }) {
   const { id } = useParams<{ id: string }>();
   const [kit, setKit] = useState<KitSummary | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -149,13 +149,13 @@ export default function KitDetail() {
             >
               {kit.status_badge}
             </span>
-            {kit.model_used ? (
+            {showTechnical && kit.model_used ? (
               <span className="text-sm text-on-surface-variant">Model: {kit.model_used}</span>
             ) : null}
           </div>
         </div>
         <div className="flex w-full flex-wrap gap-3 lg:w-auto">
-          {kit.result_json ? (
+          {showTechnical && kit.result_json ? (
             <button type="button" className={btnSecondary + " w-full sm:w-auto"} onClick={() => void copyResultJson()}>
               <span className="material-symbols-outlined text-lg">content_copy</span>
               Copy JSON
@@ -184,7 +184,7 @@ export default function KitDetail() {
           </p>
         )}
 
-        {kit.correlation_id && (
+        {showTechnical && kit.correlation_id ? (
           <p className="text-sm text-on-surface-variant">
             <span className="font-semibold text-on-surface">Correlation ID:</span>{" "}
             <code dir="ltr" className="rounded bg-surface-container-lowest px-2 py-0.5 text-xs text-tertiary">
@@ -194,7 +194,7 @@ export default function KitDetail() {
               Copy
             </button>
           </p>
-        )}
+        ) : null}
 
         {kit.last_error && (
           <div className="rounded-2xl border border-error/30 bg-error/10 p-4">
@@ -267,7 +267,7 @@ export default function KitDetail() {
             </div>
           }
         >
-          <LazyViewer kit={kit} onKitUpdate={setKit} />
+          <LazyViewer kit={kit} onKitUpdate={setKit} showTechnical={showTechnical} />
         </Suspense>
       )}
     </>

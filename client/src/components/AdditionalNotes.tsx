@@ -37,6 +37,6 @@ const AdditionalNotes = forwardRef<HTMLTextAreaElement, AdditionalNotesProps>(fu
       {error ? <p className={errCls}>{error}</p> : null}
     </div>
   );
-});
+})
 
 export default AdditionalNotes;

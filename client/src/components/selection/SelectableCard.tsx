@@ -14,7 +14,7 @@ export default function SelectableCard({ label, icon, selected, onClick, disable
       onClick={onClick}
       aria-pressed={selected}
       className={[
-        "group w-full rounded-2xl border px-4 py-3 text-start transition",
+        "group w-full rounded-uniform border px-4 py-3 text-start transition",
         "focus-visible:ring-2 focus-visible:ring-primary/45",
         selected
           ? "border-primary bg-primary/10 text-on-surface shadow-[0_0_0_1px_rgb(var(--c-primary)/0.35)] dark:border-brand-primary dark:bg-brand-primary/15"

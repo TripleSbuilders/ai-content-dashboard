@@ -16,11 +16,11 @@ function briefBrand(json: string): string {
 }
 
 const btnPrimary =
-  "inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 font-semibold text-on-primary shadow-lg transition hover:shadow-[0_0_20px_rgb(var(--c-primary)/0.35)] focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex items-center gap-2 rounded-uniform bg-primary px-5 py-3 font-semibold text-on-primary shadow-lg transition hover:shadow-[0_0_20px_rgb(var(--c-primary)/0.35)] focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-50";
 const btnSecondary =
-  "inline-flex items-center gap-2 rounded-xl border border-outline/30 bg-surface-container-high px-5 py-3 font-semibold text-on-surface transition hover:bg-surface-container-highest focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-50 dark:border-brand-muted/45 dark:bg-earth-darkCard dark:text-brand-darkText";
+  "inline-flex items-center gap-2 rounded-uniform border border-outline/30 bg-surface-container-high px-5 py-3 font-semibold text-on-surface transition hover:bg-surface-container-highest focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-50 dark:border-brand-muted/45 dark:bg-earth-darkCard dark:text-brand-darkText";
 const btnGhost =
-  "rounded-lg px-1 text-sm font-semibold text-primary hover:underline focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface dark:text-brand-sand";
+  "rounded-uniform px-1 text-sm font-semibold text-primary hover:underline focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface dark:text-brand-sand";
 
 export default function KitDetail({ showTechnical = false }: { showTechnical?: boolean }) {
   const { id } = useParams<{ id: string }>();
@@ -85,7 +85,7 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
 
   if (err || !id) {
     return (
-      <div className="glass-panel rounded-3xl border border-outline/30 p-8 text-on-surface">
+      <div className="glass-panel rounded-uniform border border-outline/30 p-8 text-on-surface">
         <p className="mb-4">{err ?? "—"}</p>
         <Link to="/generated-kits" className={btnGhost + " inline-flex items-center gap-1"}>
           <span className="material-symbols-outlined text-lg">arrow_back</span>
@@ -97,7 +97,7 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
 
   if (!kit) {
     return (
-      <div className="glass-panel flex min-h-[40vh] items-center justify-center rounded-3xl border border-outline/30 p-12 text-on-surface-variant">
+      <div className="glass-panel flex min-h-[40vh] items-center justify-center rounded-uniform border border-outline/30 p-12 text-on-surface-variant">
         <div className="flex flex-col items-center gap-3 text-center">
           <span className="material-symbols-outlined animate-pulse text-4xl text-primary">hourglass_empty</span>
           Loading…
@@ -170,7 +170,7 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
         </div>
       </div>
 
-      <div className="glass-panel mb-8 space-y-6 rounded-3xl border border-outline/30 p-4 sm:p-6 md:p-8 dark:border-brand-muted/45 dark:bg-earth-darkCard/80">
+      <div className="glass-panel mb-8 space-y-6 rounded-uniform border border-outline/30 p-4 sm:p-6 md:p-8 dark:border-brand-muted/45 dark:bg-earth-darkCard/80">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <Link to="/generated-kits" className={btnGhost + " inline-flex items-center gap-1"}>
             <span className="material-symbols-outlined text-lg">arrow_back</span>
@@ -197,7 +197,7 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
         ) : null}
 
         {kit.last_error && (
-          <div className="rounded-2xl border border-error/30 bg-error/10 p-4">
+          <div className="rounded-uniform border border-error/30 bg-error/10 p-4">
             <div className="mb-2 text-xs font-bold uppercase tracking-wider text-error">Error details</div>
             <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-surface-container-lowest p-4 text-xs text-on-surface" dir="ltr">
               {kit.last_error}
@@ -206,7 +206,7 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
         )}
 
         {conflict && (
-          <div className="rounded-2xl border border-secondary/40 bg-secondary/10 p-4" role="alert">
+          <div className="rounded-uniform border border-secondary/40 bg-secondary/10 p-4" role="alert">
             <p className="mb-3 text-sm text-on-surface">
               The record version changed (row_version). Refresh to load the latest state, then retry if needed.
             </p>
@@ -218,7 +218,7 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
       </div>
 
       {kit.result_json && (
-        <section className="mb-8 rounded-3xl border border-secondary/25 bg-secondary/10 p-4 sm:p-6">
+        <section className="mb-8 rounded-uniform border border-secondary/25 bg-secondary/10 p-4 sm:p-6">
           <p className="text-xs font-bold uppercase tracking-wide text-secondary">Next best action</p>
           <h2 className="mt-1 font-headline text-xl font-extrabold text-on-surface sm:text-2xl">Choose your next move</h2>
           <p className="mt-2 text-sm text-on-surface-variant">
@@ -226,17 +226,17 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
           </p>
 
           <div className="mt-4 grid gap-3 md:grid-cols-3">
-            <div className="rounded-2xl border border-outline/25 bg-surface-container-low p-4">
+            <div className="rounded-uniform border border-outline/25 bg-surface-container-low p-4">
               <p className="text-xs font-bold uppercase tracking-wide text-on-surface-variant">Quick win</p>
               <p className="mt-1 text-sm font-semibold text-on-surface">Use this kit immediately</p>
               <p className="mt-1 text-xs text-on-surface-variant">Copy your best post/video prompt and publish today.</p>
             </div>
-            <div className="rounded-2xl border border-outline/25 bg-surface-container-low p-4">
+            <div className="rounded-uniform border border-outline/25 bg-surface-container-low p-4">
               <p className="text-xs font-bold uppercase tracking-wide text-on-surface-variant">Optimization</p>
               <p className="mt-1 text-sm font-semibold text-on-surface">Regenerate weak items</p>
               <p className="mt-1 text-xs text-on-surface-variant">Use targeted feedback to improve individual outputs.</p>
             </div>
-            <div className="rounded-2xl border border-outline/25 bg-surface-container-low p-4">
+            <div className="rounded-uniform border border-outline/25 bg-surface-container-low p-4">
               <p className="text-xs font-bold uppercase tracking-wide text-on-surface-variant">Scale</p>
               <p className="mt-1 text-sm font-semibold text-on-surface">Create another kit</p>
               <p className="mt-1 text-xs text-on-surface-variant">Run a new angle for a second audience or offer.</p>
@@ -262,7 +262,7 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
       {kit.result_json && (
         <Suspense
           fallback={
-            <div className="glass-panel flex min-h-[200px] items-center justify-center rounded-3xl border border-outline/30 p-8 text-on-surface-variant">
+            <div className="glass-panel flex min-h-[200px] items-center justify-center rounded-uniform border border-outline/30 p-8 text-on-surface-variant">
               Loading viewer…
             </div>
           }

@@ -82,7 +82,7 @@ export default function GlobalSearchOverlay({
               type="search"
               value={query}
               onChange={(e) => onQueryChange(e.target.value)}
-              className="font-headline w-full rounded-lg border-none bg-transparent text-xl font-medium text-on-surface placeholder:text-on-surface-variant/40 focus:ring-0 focus-visible:ring-2 focus-visible:ring-primary/45"
+              className="font-headline w-full rounded-uniform border-none bg-transparent text-xl font-medium text-on-surface placeholder:text-on-surface-variant/40 focus:ring-0 focus-visible:ring-2 focus-visible:ring-primary/45"
               placeholder="Search kits, brands, or status…"
               aria-label="Search query"
             />
@@ -92,7 +92,7 @@ export default function GlobalSearchOverlay({
           </div>
         </div>
 
-        <div className="glass-panel mb-12 overflow-hidden rounded-3xl border border-outline-variant/30 shadow-2xl dark:border-brand-muted/45 dark:bg-earth-darkCard/90">
+        <div className="glass-panel mb-12 overflow-hidden rounded-uniform border border-outline-variant/30 shadow-2xl dark:border-brand-muted/45 dark:bg-earth-darkCard/90">
           <div className="grid grid-cols-1 lg:grid-cols-12">
             <div className="space-y-8 border-outline-variant/25 p-8 lg:col-span-4 lg:border-e">
               <section>

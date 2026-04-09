@@ -338,8 +338,8 @@ export default function WizardCore(props: WizardCoreProps) {
         </div>
       )}
 
-      <div className="wizard-root overflow-hidden rounded-2xl border border-outline/30 bg-surface-container-low sm:rounded-3xl dark:border-brand-muted/40 dark:bg-earth-darkCard/75" aria-busy={loading}>
-        <div className={cn("wizard-body-wrap relative !rounded-3xl", loading && "wizard-body-wrap--loading")}>
+      <div className="wizard-root overflow-hidden rounded-uniform border border-outline/30 bg-surface-container-low dark:border-brand-muted/40 dark:bg-earth-darkCard/75" aria-busy={loading}>
+        <div className={cn("wizard-body-wrap relative !rounded-uniform", loading && "wizard-body-wrap--loading")}>
           <div className="wizard-body p-4 sm:p-6 md:p-8">
             {canShowValuePreview && (
               <WizardValuePreview

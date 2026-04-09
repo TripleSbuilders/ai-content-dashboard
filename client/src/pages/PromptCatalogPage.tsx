@@ -98,7 +98,7 @@ export default function PromptCatalogPage() {
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
-        <div className="rounded-3xl border border-brand-sand/30 bg-earth-card p-4 sm:p-6 lg:col-span-2 dark:border-outline/30 dark:bg-surface-container-low">
+        <div className="rounded-uniform border border-brand-sand/30 bg-earth-card p-4 sm:p-6 lg:col-span-2 dark:border-outline/30 dark:bg-surface-container-low">
           <h2 className="headline mb-4 text-xl font-bold">Add industry</h2>
           <div className="grid grid-cols-1 gap-3">
             <label className="block text-xs font-bold uppercase tracking-wider text-on-surface-variant">
@@ -162,7 +162,7 @@ export default function PromptCatalogPage() {
           </div>
         </div>
 
-        <div className="rounded-3xl border border-brand-sand/30 bg-earth-card p-4 sm:p-6 dark:border-outline/30 dark:bg-surface-container-low">
+        <div className="rounded-uniform border border-brand-sand/30 bg-earth-card p-4 sm:p-6 dark:border-outline/30 dark:bg-surface-container-low">
           <h2 className="headline mb-4 text-xl font-bold">Create new version</h2>
           <label className="mb-3 block text-xs font-bold uppercase tracking-wider text-on-surface-variant">
             Industry
@@ -308,7 +308,7 @@ export default function PromptCatalogPage() {
           </div>
         </div>
 
-        <div className="rounded-3xl border border-brand-sand/30 bg-earth-card p-4 sm:p-6 dark:border-outline/30 dark:bg-surface-container-low">
+        <div className="rounded-uniform border border-brand-sand/30 bg-earth-card p-4 sm:p-6 dark:border-outline/30 dark:bg-surface-container-low">
           <h2 className="headline mb-4 text-xl font-bold">Version history</h2>
           <div className="space-y-3">
             {versions.length === 0 ? (

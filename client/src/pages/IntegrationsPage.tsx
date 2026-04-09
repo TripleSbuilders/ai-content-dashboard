@@ -13,7 +13,7 @@ export default function IntegrationsPage() {
   return (
     <>
       <PrimaryFlowBanner />
-      <p className="mb-6 rounded-xl border border-tertiary/25 bg-tertiary/10 px-4 py-3 text-sm text-on-surface">
+      <p className="mb-6 rounded-uniform border border-tertiary/25 bg-tertiary/10 px-4 py-3 text-sm text-on-surface">
         <strong className="text-tertiary">UI only:</strong> Integrations stay as design placeholders — no backend sync. The rest
         of the studio (kits, profile, notifications, brand voice, extras waitlist, help) uses the real API.
       </p>
@@ -26,7 +26,7 @@ export default function IntegrationsPage() {
         </div>
         <button
           type="button"
-          className="rounded-xl bg-primary px-6 py-3 font-bold text-on-primary shadow-lg shadow-primary/20 transition-opacity hover:opacity-90"
+          className="rounded-uniform bg-primary px-6 py-3 font-bold text-on-primary shadow-lg shadow-primary/20 transition-opacity hover:opacity-90"
         >
           Request integration
         </button>
@@ -36,9 +36,9 @@ export default function IntegrationsPage() {
         {integrations.map((it) => (
           <div
             key={it.name}
-            className="glass-panel group relative overflow-hidden rounded-2xl border border-outline-variant/25 p-6 transition-all hover:border-primary/30"
+            className="glass-panel group relative overflow-hidden rounded-uniform border border-outline-variant/25 p-6 transition-all hover:border-primary/30"
           >
-            <div className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary`}>
+            <div className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary`}>
               <span className="material-symbols-outlined text-2xl text-on-primary">{it.icon}</span>
             </div>
             <div className="mb-1 flex items-center justify-between gap-2">
@@ -49,10 +49,10 @@ export default function IntegrationsPage() {
             </div>
             <p className="text-sm text-on-surface-variant">{it.desc}</p>
             <div className="mt-4 flex gap-2">
-              <button type="button" className="rounded-lg bg-primary/15 px-3 py-1.5 text-xs font-bold text-primary">
+              <button type="button" className="rounded-uniform bg-primary/15 px-3 py-1.5 text-xs font-bold text-primary">
                 Configure
               </button>
-              <button type="button" className="rounded-lg border border-outline-variant/30 px-3 py-1.5 text-xs font-semibold text-on-surface-variant">
+              <button type="button" className="rounded-uniform border border-outline-variant/30 px-3 py-1.5 text-xs font-semibold text-on-surface-variant">
                 Docs
               </button>
             </div>
@@ -60,16 +60,16 @@ export default function IntegrationsPage() {
         ))}
       </div>
 
-      <section className="glass-panel rounded-3xl border border-outline-variant/25 p-8">
+      <section className="glass-panel rounded-uniform border border-outline-variant/25 p-8">
         <h2 className="headline mb-2 text-xl font-bold">Webhooks & API keys</h2>
         <p className="mb-6 text-sm text-on-surface-variant">
           Manage signing secrets and callback URLs for server-to-server integrations (mock UI).
         </p>
         <div className="flex flex-wrap gap-3">
-          <button type="button" className="rounded-xl border border-dashed border-outline-variant/40 px-4 py-2 text-sm font-semibold text-on-surface-variant hover:border-tertiary/50">
+          <button type="button" className="rounded-uniform border border-dashed border-outline-variant/40 px-4 py-2 text-sm font-semibold text-on-surface-variant hover:border-tertiary/50">
             + Add webhook endpoint
           </button>
-          <button type="button" className="rounded-xl border border-dashed border-outline-variant/40 px-4 py-2 text-sm font-semibold text-on-surface-variant hover:border-tertiary/50">
+          <button type="button" className="rounded-uniform border border-dashed border-outline-variant/40 px-4 py-2 text-sm font-semibold text-on-surface-variant hover:border-tertiary/50">
             Rotate API key
           </button>
         </div>

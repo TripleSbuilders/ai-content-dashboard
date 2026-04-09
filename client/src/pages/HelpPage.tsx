@@ -79,7 +79,7 @@ export default function HelpPage() {
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="glow-focus w-full rounded-2xl border-none bg-surface-container-lowest py-4 ps-14 pe-6 text-sm text-on-surface placeholder:text-outline transition-all focus:ring-2 focus:ring-primary/35 md:py-5 md:text-base dark:bg-earth-darkCard dark:text-brand-darkText dark:placeholder:text-brand-darkText/45"
+            className="glow-focus w-full rounded-uniform border-none bg-surface-container-lowest py-4 ps-14 pe-6 text-sm text-on-surface placeholder:text-outline transition-all focus:ring-2 focus:ring-primary/35 md:py-5 md:text-base dark:bg-earth-darkCard dark:text-brand-darkText dark:placeholder:text-brand-darkText/45"
             placeholder="Search guides and FAQ (API)…"
             aria-label="Filter help topics"
           />
@@ -142,7 +142,7 @@ export default function HelpPage() {
         </div>
         <div className="space-y-4">
           {filteredFaq.map((item, i) => (
-            <div key={i} className="overflow-hidden rounded-2xl bg-surface-container-low dark:bg-earth-darkCard/85">
+            <div key={i} className="overflow-hidden rounded-uniform bg-surface-container-low dark:bg-earth-darkCard/85">
               <button
                 type="button"
                 className="flex w-full items-center justify-between px-4 py-4 text-start transition-colors hover:bg-surface-container sm:px-8 sm:py-6 dark:hover:bg-earth-darkBg/65"

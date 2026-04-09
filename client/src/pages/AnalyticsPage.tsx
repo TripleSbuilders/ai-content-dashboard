@@ -66,7 +66,7 @@ export default function AnalyticsPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="glass-panel lg:col-span-2 rounded-3xl border border-outline-variant/25 p-8">
+        <div className="glass-panel lg:col-span-2 rounded-uniform border border-outline-variant/25 p-8">
           <h2 className="headline mb-6 text-xl font-bold">Engagement pulse</h2>
           <div className="flex h-48 items-end gap-2">
             {[40, 65, 45, 80, 55, 90, 70].map((h, i) => (
@@ -75,7 +75,7 @@ export default function AnalyticsPage() {
           </div>
           <p className="mt-4 text-sm text-on-surface-variant">Decorative chart — connect metrics when available.</p>
         </div>
-        <div className="glass-panel rounded-3xl border border-outline-variant/25 p-8">
+        <div className="glass-panel rounded-uniform border border-outline-variant/25 p-8">
           <h2 className="headline mb-4 text-xl font-bold">Model mix</h2>
           <p className="text-sm text-on-surface-variant">
             Distinct <code className="text-primary">model_used</code> values:{" "}

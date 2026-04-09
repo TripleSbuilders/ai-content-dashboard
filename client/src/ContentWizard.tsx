@@ -27,7 +27,7 @@ export default function ContentWizard() {
           </p>
         </div>
 
-        <div className="mb-8 rounded-2xl border border-primary/20 bg-primary/10 p-4 md:p-5">
+        <div className="mb-8 rounded-uniform border border-primary/20 bg-primary/10 p-4 md:p-5">
           <p className="text-sm font-semibold uppercase tracking-wide text-primary">Quick start</p>
           <h3 className="mt-1 text-xl font-extrabold text-on-surface md:text-2xl">Start in under 20 seconds</h3>
           <p className="mt-1 text-sm text-on-surface-variant">
@@ -37,14 +37,14 @@ export default function ContentWizard() {
             <button
               type="button"
               onClick={() => nav("/wizard/social")}
-              className="rounded-xl bg-primary px-5 py-3 text-sm font-bold text-on-primary transition hover:opacity-95"
+              className="rounded-uniform bg-primary px-5 py-3 text-sm font-bold text-on-primary transition hover:opacity-95"
             >
               Start now (recommended)
             </button>
             <button
               type="button"
               onClick={() => nav("/wizard/offer")}
-              className="rounded-xl border border-outline/30 bg-surface-container-high px-5 py-3 text-sm font-semibold text-on-surface transition hover:bg-surface-container-highest"
+              className="rounded-uniform border border-outline/30 bg-surface-container-high px-5 py-3 text-sm font-semibold text-on-surface transition hover:bg-surface-container-highest"
             >
               I need offer-focused flow
             </button>
@@ -65,7 +65,7 @@ export default function ContentWizard() {
               icon: "shopping_bag",
               title: "Offer & product",
               desc: "Conversion-focused flow for offer positioning, CTA strength, and sales messaging.",
-              accent: "tertiary" as const,
+              accent: "primary" as const,
               path: "/wizard/offer",
               cta: "Start offer wizard",
             },
@@ -73,7 +73,7 @@ export default function ContentWizard() {
               icon: "article",
               title: "Deep content",
               desc: "Depth-focused flow for richer editorial/video directions and structured narrative output.",
-              accent: "secondary" as const,
+              accent: "primary" as const,
               path: "/wizard/deep",
               cta: "Start deep wizard",
             },
@@ -81,27 +81,27 @@ export default function ContentWizard() {
             <div
               key={c.title}
               className={cn(
-                "group relative flex h-full flex-col overflow-hidden rounded-[2rem] border border-outline-variant/25 bg-surface-container-low p-8 transition duration-500 glow-hover hover:-translate-y-2",
+                "group relative flex h-full flex-col overflow-hidden rounded-uniform border border-outline-variant/25 bg-surface-container-low p-8 transition duration-500 glow-hover hover:-translate-y-2",
                 c.accent === "primary" && "hover:border-primary/20",
-                c.accent === "tertiary" && "hover:border-tertiary/20",
-                c.accent === "secondary" && "hover:border-secondary/20"
+                c.accent === "primary" && "hover:border-tertiary/20",
+                c.accent === "primary" && "hover:border-secondary/20"
               )}
             >
               <div
                 className={cn(
                   "absolute -end-24 -top-24 h-48 w-48 blur-[80px] transition-all",
                   c.accent === "primary" && "bg-primary/10 group-hover:bg-primary/20",
-                  c.accent === "tertiary" && "bg-tertiary/10 group-hover:bg-tertiary/20",
-                  c.accent === "secondary" && "bg-secondary/10 group-hover:bg-secondary/20"
+                  c.accent === "primary" && "bg-tertiary/10 group-hover:bg-tertiary/20",
+                  c.accent === "primary" && "bg-secondary/10 group-hover:bg-secondary/20"
                 )}
               />
               <div
                 className={cn(
-                  "mb-8 flex h-16 w-16 items-center justify-center rounded-2xl bg-surface-container-highest transition duration-500 group-hover:scale-110",
+                  "mb-8 flex h-16 w-16 items-center justify-center rounded-uniform bg-surface-container-highest transition duration-500 group-hover:scale-110",
                   c.accent === "primary" && "bg-primary/15 text-primary group-hover:bg-primary/20",
-                  c.accent === "tertiary" &&
+                  c.accent === "primary" &&
                     "bg-brand-sand/70 text-brand-accent group-hover:bg-brand-sand dark:bg-brand-sand/75 dark:text-brand-accent",
-                  c.accent === "secondary" && "bg-secondary/15 text-secondary group-hover:bg-secondary/20"
+                  c.accent === "primary" && "bg-secondary/15 text-secondary group-hover:bg-secondary/20"
                 )}
               >
                 <span className="material-symbols-outlined text-4xl">{c.icon}</span>
@@ -112,13 +112,13 @@ export default function ContentWizard() {
                 type="button"
                 onClick={() => nav(c.path)}
                 className={cn(
-                  "group/btn flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold transition duration-300",
+                  "group/btn flex w-full items-center justify-center gap-2 rounded-uniform py-4 font-bold transition duration-300",
                   "focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
                   c.accent === "primary" &&
                     "bg-surface-container-highest text-on-surface hover:bg-primary hover:text-on-primary",
-                  c.accent === "tertiary" &&
+                  c.accent === "primary" &&
                     "bg-surface-container-highest text-on-surface hover:bg-tertiary hover:text-on-tertiary",
-                  c.accent === "secondary" &&
+                  c.accent === "primary" &&
                     "bg-surface-container-highest text-on-surface hover:bg-secondary hover:text-on-secondary"
                 )}
               >

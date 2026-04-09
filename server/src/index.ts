@@ -19,6 +19,10 @@ async function main() {
   app.use("*", secureHeaders());
 
   const origin = String(process.env.CORS_ORIGIN ?? "*").trim() || "*";
+  const isProd = String(process.env.NODE_ENV ?? "").toLowerCase() === "production";
+  if (isProd && origin === "*") {
+    console.warn("[SECURITY] CORS_ORIGIN is '*' in production. Restrict it to trusted domains.");
+  }
   app.use(
     "*",
     cors({

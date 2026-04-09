@@ -130,7 +130,6 @@ export default function WizardCore(props: WizardCoreProps) {
   const [isOtherIndustry, setIsOtherIndustry] = useState(false);
   const [tipIndex, setTipIndex] = useState(0);
   const [reduceMotion, setReduceMotion] = useState(false);
-  const idempotencyKey = useMemo(() => crypto.randomUUID(), []);
 
   const {
     register,
@@ -181,9 +180,6 @@ export default function WizardCore(props: WizardCoreProps) {
   });
 
   function showField(step: StepId, key: keyof BriefForm): boolean {
-    if (step === "volume") {
-      return (["num_posts", "num_image_designs", "num_video_prompts", "email"] as const).some((k) => k === key);
-    }
     const keys = stepFieldMap[step] ?? STEP_FIELDS[step];
     if (!keys.length) return true;
     return keys.includes(key);
@@ -292,7 +288,7 @@ export default function WizardCore(props: WizardCoreProps) {
     wizardType,
     step,
     stepOrder: props.stepOrder,
-    idempotencyKey,
+    createIdempotencyKey: () => crypto.randomUUID(),
     clearDraft: () => localStorage.removeItem(props.draftKey),
     navigateToKit: (kitId) => nav(`/kits/${kitId}`),
     clampCounts: (form) => ({

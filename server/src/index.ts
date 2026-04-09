@@ -9,10 +9,13 @@ import { createFeaturesRouter } from "./routes/features.js";
 import { createPromptCatalogRouter } from "./routes/promptCatalog.js";
 import { bearerAuth } from "./middleware/auth.js";
 import { rateLimit } from "./middleware/rateLimit.js";
+import { startIdempotencyCleanupJob } from "./services/kitGenerationService.js";
 import type { Context, Next } from "hono";
 
 async function main() {
   await runMigrations();
+  const cleanupTimer = startIdempotencyCleanupJob();
+  cleanupTimer.unref();
 
   const app = new Hono();
 

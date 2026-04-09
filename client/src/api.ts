@@ -30,22 +30,10 @@ import type { KitSummary } from "./types";
 
 export async function regenerateKitItem(
   id: string,
-  payload:
-    | {
-        item_type: "post" | "image" | "video";
-        index: number;
-        row_version: number;
-        feedback?: string;
-      }
-    | "post"
-    | "image"
-    | "video",
-  index?: number,
-  row_version?: number,
+  item_type: "post" | "image" | "video",
+  index: number,
+  row_version: number,
   feedback?: string
 ): Promise<KitSummary> {
-  if (typeof payload === "string") {
-    return regenerateKitItemCore(id, payload, index ?? 0, row_version ?? 0, feedback);
-  }
-  return regenerateKitItemCore(id, payload.item_type, payload.index, payload.row_version, payload.feedback);
+  return regenerateKitItemCore(id, item_type, index, row_version, feedback);
 }

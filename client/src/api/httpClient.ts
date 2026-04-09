@@ -8,12 +8,10 @@ export class ApiError extends Error {
 }
 
 const base = import.meta.env.VITE_API_URL ?? "";
-const secret = import.meta.env.VITE_API_SECRET ?? "";
 
 export function buildHeaders(extra?: Record<string, string>): HeadersInit {
   return {
     "Content-Type": "application/json",
-    Authorization: "Bearer " + secret,
     ...extra,
   };
 }

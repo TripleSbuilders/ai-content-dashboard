@@ -1,4 +1,4 @@
-import { apiUrl, buildHeaders } from "./httpClient";
+import { apiUrl, ApiError, buildHeaders, parseErrorMessage } from "./httpClient";
 
 export type StudioProfile = { display_name: string; email: string; updated_at: string };
 export type StudioPreferences = { compact_table: boolean; updated_at: string };
@@ -12,7 +12,7 @@ export type BrandVoicePayload = {
 
 export async function getProfile(): Promise<StudioProfile> {
   const res = await fetch(apiUrl("/api/profile"), { headers: buildHeaders() });
-  if (!res.ok) throw new Error("Failed to load profile");
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res, "Failed to load profile"), res.status);
   return res.json() as Promise<StudioProfile>;
 }
 
@@ -22,13 +22,13 @@ export async function updateProfile(partial: { display_name?: string; email?: st
     headers: buildHeaders(),
     body: JSON.stringify(partial),
   });
-  if (!res.ok) throw new Error("Failed to save profile");
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res, "Failed to save profile"), res.status);
   return res.json() as Promise<StudioProfile>;
 }
 
 export async function getPreferences(): Promise<StudioPreferences> {
   const res = await fetch(apiUrl("/api/preferences"), { headers: buildHeaders() });
-  if (!res.ok) throw new Error("Failed to load preferences");
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res, "Failed to load preferences"), res.status);
   return res.json() as Promise<StudioPreferences>;
 }
 
@@ -38,13 +38,13 @@ export async function updatePreferences(compact_table: boolean): Promise<StudioP
     headers: buildHeaders(),
     body: JSON.stringify({ compact_table }),
   });
-  if (!res.ok) throw new Error("Failed to save preferences");
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res, "Failed to save preferences"), res.status);
   return res.json() as Promise<StudioPreferences>;
 }
 
 export async function getBrandVoice(): Promise<BrandVoicePayload> {
   const res = await fetch(apiUrl("/api/brand-voice"), { headers: buildHeaders() });
-  if (!res.ok) throw new Error("Failed to load brand voice");
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res, "Failed to load brand voice"), res.status);
   return res.json() as Promise<BrandVoicePayload>;
 }
 
@@ -58,6 +58,6 @@ export async function updateBrandVoice(payload: {
     headers: buildHeaders(),
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error("Failed to save brand voice");
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res, "Failed to save brand voice"), res.status);
   return res.json() as Promise<BrandVoicePayload>;
 }

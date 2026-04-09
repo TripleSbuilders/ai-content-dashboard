@@ -7,19 +7,19 @@ export async function generateKit(brief: BriefForm, idempotencyKey: string): Pro
     headers: buildHeaders({ "Idempotency-Key": idempotencyKey }),
     body: JSON.stringify({ ...brief, submitted_at: new Date().toISOString() }),
   });
-  if (!res.ok) throw new Error(await parseErrorMessage(res, res.statusText));
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res, res.statusText), res.status);
   return res.json() as Promise<KitSummary>;
 }
 
 export async function listKits(): Promise<KitSummary[]> {
   const res = await fetch(apiUrl("/api/kits"), { headers: buildHeaders() });
-  if (!res.ok) throw new Error("Failed to list kits");
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res, "Failed to list kits"), res.status);
   return res.json() as Promise<KitSummary[]>;
 }
 
 export async function getKit(id: string): Promise<KitSummary> {
   const res = await fetch(apiUrl(`/api/kits/${id}`), { headers: buildHeaders() });
-  if (!res.ok) throw new Error("Not found");
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res, "Not found"), res.status);
   return res.json() as Promise<KitSummary>;
 }
 

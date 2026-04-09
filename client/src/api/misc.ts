@@ -1,4 +1,4 @@
-import { apiUrl, buildHeaders } from "./httpClient";
+import { apiUrl, ApiError, buildHeaders, parseErrorMessage } from "./httpClient";
 
 export type HelpTopicsResponse = {
   resources: Array<{
@@ -18,7 +18,7 @@ export async function getHelpTopics(q: string): Promise<HelpTopicsResponse> {
   if (q.trim()) params.set("q", q.trim());
   const qs = params.toString();
   const res = await fetch(apiUrl(`/api/help/topics${qs ? `?${qs}` : ""}`), { headers: buildHeaders() });
-  if (!res.ok) throw new Error("Failed to load help topics");
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res, "Failed to load help topics"), res.status);
   return res.json() as Promise<HelpTopicsResponse>;
 }
 
@@ -28,11 +28,11 @@ export async function postExtrasWaitlist(tool_id: string, email?: string): Promi
     headers: buildHeaders(),
     body: JSON.stringify({ tool_id, email: email ?? "" }),
   });
-  if (!res.ok) throw new Error("Failed to join waitlist");
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res, "Failed to join waitlist"), res.status);
 }
 
 export async function getHealth(): Promise<{ ok: boolean; db?: boolean }> {
   const res = await fetch(apiUrl("/health"));
-  if (!res.ok) throw new Error("Health check failed");
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res, "Health check failed"), res.status);
   return res.json() as Promise<{ ok: boolean; db?: boolean }>;
 }

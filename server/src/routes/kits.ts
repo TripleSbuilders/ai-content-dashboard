@@ -4,15 +4,11 @@ import type { Next } from "hono";
 import {
   generateKitService,
   getKitByIdService,
-  getRegenerateItemSchema,
-  getSectionArray,
   HttpError,
   listKitsService,
   regenerateKitItemService,
   retryKitService,
 } from "../services/kitGenerationService.js";
-
-export { getRegenerateItemSchema, getSectionArray };
 
 const generateBodySchema = z
   .object({

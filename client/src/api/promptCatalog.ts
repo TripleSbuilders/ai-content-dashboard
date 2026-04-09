@@ -1,4 +1,4 @@
-import { apiUrl, buildHeaders, parseErrorMessage } from "./httpClient";
+import { apiUrl, ApiError, buildHeaders, parseErrorMessage } from "./httpClient";
 
 export type PromptCatalogIndustry = {
   id: string;
@@ -22,7 +22,7 @@ export type PromptCatalogPrompt = {
 
 export async function listPromptCatalogIndustries(): Promise<{ items: PromptCatalogIndustry[] }> {
   const res = await fetch(apiUrl("/api/prompt-catalog/industries"), { headers: buildHeaders() });
-  if (!res.ok) throw new Error("Failed to load industries");
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res, "Failed to load industries"), res.status);
   return res.json() as Promise<{ items: PromptCatalogIndustry[] }>;
 }
 
@@ -36,7 +36,7 @@ export async function createPromptCatalogIndustry(payload: {
     headers: buildHeaders(),
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(await parseErrorMessage(res, "Failed to create industry"));
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res, "Failed to create industry"), res.status);
   return res.json() as Promise<PromptCatalogIndustry>;
 }
 
@@ -46,7 +46,7 @@ export async function listPromptVersions(industrySlug?: string): Promise<{
 }> {
   const qs = industrySlug ? `?industry_slug=${encodeURIComponent(industrySlug)}` : "";
   const res = await fetch(apiUrl(`/api/prompt-catalog/prompts${qs}`), { headers: buildHeaders() });
-  if (!res.ok) throw new Error("Failed to load prompt versions");
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res, "Failed to load prompt versions"), res.status);
   return res.json() as Promise<{ items: PromptCatalogPrompt[]; required_variables: readonly string[] }>;
 }
 
@@ -70,7 +70,7 @@ export async function createPromptVersion(payload: {
     if (j.missing_variables?.length) {
       msg += ` — Missing placeholders: ${j.missing_variables.map((v) => `{{${v}}}`).join(", ")}`;
     }
-    throw new Error(msg);
+    throw new ApiError(msg, res.status);
   }
   return res.json() as Promise<{ item: PromptCatalogPrompt; template_warnings?: { missing_variables: string[] } }>;
 }
@@ -80,7 +80,7 @@ export async function activatePromptVersion(id: string): Promise<{ item: PromptC
     method: "POST",
     headers: buildHeaders(),
   });
-  if (!res.ok) throw new Error("Failed to activate prompt version");
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res, "Failed to activate prompt version"), res.status);
   return res.json() as Promise<{ item: PromptCatalogPrompt }>;
 }
 
@@ -89,13 +89,13 @@ export async function deletePromptVersion(id: string): Promise<{ ok: true }> {
     method: "DELETE",
     headers: buildHeaders(),
   });
-  if (!res.ok) throw new Error(await parseErrorMessage(res, "Failed to delete prompt version"));
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res, "Failed to delete prompt version"), res.status);
   return res.json() as Promise<{ ok: true }>;
 }
 
 export async function getFallbackPrompt(): Promise<{ item: PromptCatalogPrompt }> {
   const res = await fetch(apiUrl("/api/prompt-catalog/fallback"), { headers: buildHeaders() });
-  if (!res.ok) throw new Error("No active fallback prompt");
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res, "No active fallback prompt"), res.status);
   return res.json() as Promise<{ item: PromptCatalogPrompt }>;
 }
 
@@ -112,7 +112,7 @@ export async function validatePromptTemplate(prompt_template: string): Promise<{
     headers: buildHeaders(),
     body: JSON.stringify({ prompt_template }),
   });
-  if (!res.ok) throw new Error("Prompt validation failed");
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res, "Prompt validation failed"), res.status);
   return res.json() as Promise<{
     ok: boolean;
     missing_variables: string[];

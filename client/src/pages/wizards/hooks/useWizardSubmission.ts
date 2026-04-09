@@ -1,17 +1,19 @@
 import { useState } from "react";
+import { ApiError } from "../../../api";
 import { generateKit } from "../../../api";
+import type { WizardEventPayload, WizardType } from "../../../lib/wizardAnalytics";
 import type { BriefForm } from "../../../types";
 
 export function useWizardSubmission(params: {
   draftKey: string;
-  wizardType: string;
+  wizardType: WizardType;
   step: number;
   stepOrder: string[];
-  idempotencyKey: string;
+  createIdempotencyKey: () => string;
   clearDraft: () => void;
   navigateToKit: (kitId: string) => void;
   clampCounts: (form: BriefForm) => BriefForm;
-  emit: (event: any) => void;
+  emit: (event: Omit<WizardEventPayload, "ts">) => void;
   getElapsedMs: () => number;
 }) {
   const [loading, setLoading] = useState(false);
@@ -30,7 +32,7 @@ export function useWizardSubmission(params: {
     });
     try {
       const payload = params.clampCounts(form);
-      const kit = await generateKit(payload, params.idempotencyKey);
+      const kit = await generateKit(payload, params.createIdempotencyKey());
       params.clearDraft();
       params.emit({
         name: "kit_created_success",
@@ -41,12 +43,13 @@ export function useWizardSubmission(params: {
       });
       params.navigateToKit(kit.id);
     } catch (e) {
-      setError(String(e));
+      const safeMessage = e instanceof ApiError ? e.message : "Failed to generate kit. Please try again.";
+      setError(safeMessage);
       params.emit({
         name: "kit_created_failed",
         wizard_type: params.wizardType,
         draft_key: params.draftKey,
-        error: String(e),
+        error: safeMessage,
         elapsed_time_ms: params.getElapsedMs(),
       });
     } finally {

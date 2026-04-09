@@ -14,6 +14,7 @@ import { getStatusBadgeLabel, getStatusBadgePalette, normalizeDeliveryStatus } f
 import { validateGeminiResponse } from "../logic/validate.js";
 
 const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000;
+const IDEMPOTENCY_PENDING_KIT = "__pending__";
 const MAX_REFERENCE_IMAGE_BYTES = 2 * 1024 * 1024;
 const ALLOWED_REFERENCE_IMAGE_MIME = new Set(["image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif"]);
 
@@ -256,13 +257,41 @@ async function pruneExpiredIdempotency() {
   await db.delete(idempotencyKeys).where(lt(idempotencyKeys.expiresAt, now));
 }
 
-async function saveIdempotencyKey(params: { keyHash: string; briefHash: string; kitId: string }) {
-  await db.insert(idempotencyKeys).values({
-    keyHash: params.keyHash,
-    briefHash: params.briefHash,
-    kitId: params.kitId,
-    expiresAt: Date.now() + IDEMPOTENCY_TTL_MS,
-  });
+async function reserveIdempotencyKey(params: { keyHash: string; briefHash: string }) {
+  const inserted = await db
+    .insert(idempotencyKeys)
+    .values({
+      keyHash: params.keyHash,
+      briefHash: params.briefHash,
+      kitId: IDEMPOTENCY_PENDING_KIT,
+      expiresAt: Date.now() + IDEMPOTENCY_TTL_MS,
+    })
+    .onConflictDoNothing({ target: idempotencyKeys.keyHash })
+    .returning();
+  return inserted[0] ?? null;
+}
+
+async function finalizeIdempotencyKey(params: { keyHash: string; briefHash: string; kitId: string }) {
+  await db
+    .update(idempotencyKeys)
+    .set({
+      kitId: params.kitId,
+      expiresAt: Date.now() + IDEMPOTENCY_TTL_MS,
+    })
+    .where(and(eq(idempotencyKeys.keyHash, params.keyHash), eq(idempotencyKeys.briefHash, params.briefHash)));
+}
+
+function safeClientError(err: unknown, fallback = "Generation failed. Please retry."): string {
+  if (err instanceof HttpError) return err.message;
+  return fallback;
+}
+
+export function startIdempotencyCleanupJob(intervalMs = 10 * 60 * 1000): NodeJS.Timeout {
+  return setInterval(() => {
+    void pruneExpiredIdempotency().catch((err) => {
+      console.warn("[idempotency_cleanup_failed]", String(err));
+    });
+  }, intervalMs);
 }
 
 async function persistKit(
@@ -367,14 +396,17 @@ export async function generateKitService(input: {
   const referenceImage = parseReferenceImageFromDataUrl(snapshot.reference_image);
   const fp = briefFingerprint(snapshot);
   const keyHash = hashIdempotencyKey(idemHeader);
-  await pruneExpiredIdempotency();
-
-  const existingKey = (await db.select().from(idempotencyKeys).where(eq(idempotencyKeys.keyHash, keyHash)).limit(1))[0];
-  if (existingKey) {
-    if (existingKey.briefHash !== fp) throw new HttpError(409, "Idempotency-Key already used with a different brief.");
-    const kit = (await db.select().from(kits).where(eq(kits.id, existingKey.kitId)).limit(1))[0];
-    if (kit) return { status: 200, body: serializeKit(kit) };
-    await db.delete(idempotencyKeys).where(eq(idempotencyKeys.keyHash, keyHash));
+  const reserved = await reserveIdempotencyKey({ keyHash, briefHash: fp });
+  if (!reserved) {
+    const existingKey = (await db.select().from(idempotencyKeys).where(eq(idempotencyKeys.keyHash, keyHash)).limit(1))[0];
+    if (existingKey) {
+      if (existingKey.briefHash !== fp) throw new HttpError(409, "Idempotency-Key already used with a different brief.");
+      if (existingKey.kitId !== IDEMPOTENCY_PENDING_KIT) {
+        const kit = (await db.select().from(kits).where(eq(kits.id, existingKey.kitId)).limit(1))[0];
+        if (kit) return { status: 200, body: serializeKit(kit) };
+      }
+      throw new HttpError(409, "A request with the same Idempotency-Key is already in progress.");
+    }
   }
 
   const demoMode = String(process.env.DEMO_MODE ?? "").toLowerCase() === "true";
@@ -394,7 +426,7 @@ export async function generateKitService(input: {
       isFallback: resolved.isFallback,
     });
     await recordKitNotification(row);
-    await saveIdempotencyKey({ keyHash, briefHash: fp, kitId: row.id });
+    await finalizeIdempotencyKey({ keyHash, briefHash: fp, kitId: row.id });
     return { status: 200, body: serializeKit(row) };
   }
 
@@ -408,7 +440,7 @@ export async function generateKitService(input: {
       isFallback: resolved.isFallback,
     });
     await recordKitNotification(row);
-    await saveIdempotencyKey({ keyHash, briefHash: fp, kitId: row.id });
+    await finalizeIdempotencyKey({ keyHash, briefHash: fp, kitId: row.id });
     return { status: 201, body: serializeKit(row) };
   }
 
@@ -434,10 +466,10 @@ export async function generateKitService(input: {
       kitId: row.id,
     });
     await recordKitNotification(row);
-    await saveIdempotencyKey({ keyHash, briefHash: fp, kitId: row.id });
+    await finalizeIdempotencyKey({ keyHash, briefHash: fp, kitId: row.id });
     return { status: 201, body: serializeKit(row) };
   } catch (err) {
-    const reason = String(err);
+    const reason = safeClientError(err);
     const row = await persistGenerationFailure({
       snapshot,
       settingsModel: settings.model,
@@ -459,7 +491,7 @@ export async function generateKitService(input: {
     await recordKitNotification(row);
     const clientDelay = await sendClientDelayEmail(snapshot, correlationId);
     await sendAdminFailureAlert(snapshot, reason, correlationId, row.id, settings.model, clientDelay);
-    await saveIdempotencyKey({ keyHash, briefHash: fp, kitId: row.id });
+    await finalizeIdempotencyKey({ keyHash, briefHash: fp, kitId: row.id });
     return { status: 201, body: serializeKit(row) };
   }
 }
@@ -507,7 +539,8 @@ export async function retryKitService(input: { id: string; brief_json: string; r
       isFallback: resolved.isFallback,
       rowVersion: nextVersion + 1,
       updatedAt: new Date(),
-    }).where(eq(kits.id, id)).returning())[0]!;
+    }).where(and(eq(kits.id, id), eq(kits.rowVersion, nextVersion))).returning())[0];
+    if (!done) throw new HttpError(409, "Concurrent update; refresh and try again.");
     await recordKitNotification(done);
     return { status: 200, body: serializeKit(done) };
   }
@@ -521,7 +554,8 @@ export async function retryKitService(input: { id: string; brief_json: string; r
       isFallback: resolved.isFallback,
       rowVersion: nextVersion + 1,
       updatedAt: new Date(),
-    }).where(eq(kits.id, id)).returning())[0]!;
+    }).where(and(eq(kits.id, id), eq(kits.rowVersion, nextVersion))).returning())[0];
+    if (!fr) throw new HttpError(409, "Concurrent update; refresh and try again.");
     await recordKitNotification(fr);
     return { status: 200, body: serializeKit(fr) };
   }
@@ -539,7 +573,8 @@ export async function retryKitService(input: { id: string; brief_json: string; r
       isFallback: resolved.isFallback,
       rowVersion: nextVersion + 1,
       updatedAt: new Date(),
-    }).where(eq(kits.id, id)).returning())[0]!;
+    }).where(and(eq(kits.id, id), eq(kits.rowVersion, nextVersion))).returning())[0];
+    if (!ok) throw new HttpError(409, "Concurrent update; refresh and try again.");
     logGenerationTelemetry({
       phase: "retry",
       promptMode: resolved.promptMode,
@@ -553,7 +588,7 @@ export async function retryKitService(input: { id: string; brief_json: string; r
     await recordKitNotification(ok);
     return { status: 200, body: serializeKit(ok) };
   } catch (err) {
-    const reason = String(err);
+    const reason = safeClientError(err, "Retry generation failed. Please retry.");
     const clientDelay = await sendClientDelayEmail(snapshot, correlationId);
     await sendAdminFailureAlert(snapshot, reason, correlationId, id, settings.model, clientDelay);
     const fr = (await db.update(kits).set({
@@ -564,7 +599,8 @@ export async function retryKitService(input: { id: string; brief_json: string; r
       isFallback: resolved.isFallback,
       rowVersion: nextVersion + 1,
       updatedAt: new Date(),
-    }).where(eq(kits.id, id)).returning())[0]!;
+    }).where(and(eq(kits.id, id), eq(kits.rowVersion, nextVersion))).returning())[0];
+    if (!fr) throw new HttpError(409, "Concurrent update; refresh and try again.");
     logGenerationTelemetry({
       phase: "retry",
       promptMode: resolved.promptMode,

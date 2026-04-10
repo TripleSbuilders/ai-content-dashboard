@@ -9,14 +9,15 @@ export default function OfferProductWizard() {
       title="Offer & Product Wizard"
       subtitle="Designed for commercial clarity: offer framing, competitive position, and conversion intent."
       routeHint="/kits/:id"
-      stepOrder={["brand", "offer", "audience", "volume"]}
+      stepOrder={["diagnosis", "brand", "offer", "audience", "volume"]}
       stepTitles={{
+        diagnosis: "Quick diagnosis",
         brand: "Brand & industry",
         offer: "Offer & positioning",
-        audience: "Buyer persona",
+        audience: "Audience & goals",
         volume: "Output volumes",
-        channels: "Channels & voice",
-        creative: "Creative packaging",
+        channels: "Channels & tone",
+        creative: "Creative direction",
       }}
       stepFields={{
         offer: ["offer", "competitors"],

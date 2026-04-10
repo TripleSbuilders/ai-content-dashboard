@@ -9,14 +9,15 @@ export default function DeepContentWizard() {
       title="Deep Content Wizard"
       subtitle="For long-form and depth-driven output: strong creative brief, content structure, and production detail."
       routeHint="/kits/:id"
-      stepOrder={["brand", "audience", "creative", "volume"]}
+      stepOrder={["diagnosis", "brand", "audience", "creative", "volume"]}
       stepTitles={{
+        diagnosis: "Quick diagnosis",
         brand: "Brand & industry",
-        audience: "Audience intent",
-        creative: "Creative framework",
+        audience: "Audience & goals",
+        creative: "Creative direction",
         volume: "Output volumes",
-        offer: "Offer narrative",
-        channels: "Distribution channels",
+        offer: "Offer & positioning",
+        channels: "Channels & tone",
       }}
       stepFields={{
         audience: ["target_audience", "main_goal"],

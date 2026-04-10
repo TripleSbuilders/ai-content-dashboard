@@ -9,8 +9,9 @@ export default function SocialCampaignWizard() {
       title="Social Campaign Wizard"
       subtitle="Built for social-first campaigns: audience, channels, tone, and posting output."
       routeHint="/kits/:id"
-      stepOrder={["brand", "audience", "channels", "creative", "volume"]}
+      stepOrder={["diagnosis", "brand", "audience", "channels", "creative", "volume"]}
       stepTitles={{
+        diagnosis: "Quick diagnosis",
         brand: "Brand & industry",
         audience: "Audience & goals",
         channels: "Channels & tone",

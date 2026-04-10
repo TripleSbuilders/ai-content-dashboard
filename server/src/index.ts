@@ -7,6 +7,7 @@ import { runMigrations, db } from "./db/index.js";
 import { createKitsRouter } from "./routes/kits.js";
 import { createFeaturesRouter } from "./routes/features.js";
 import { createPromptCatalogRouter } from "./routes/promptCatalog.js";
+import { createAnalyticsRouter } from "./routes/analytics.js";
 import { bearerAuth } from "./middleware/auth.js";
 import { rateLimit } from "./middleware/rateLimit.js";
 import { startIdempotencyCleanupJob } from "./services/kitGenerationService.js";
@@ -44,6 +45,7 @@ async function main() {
         kits: "/api/kits",
         features: "/api/profile",
         promptCatalog: "/api/prompt-catalog/industries",
+        wizardAnalytics: "/api/analytics/wizard-events",
       },
     })
   );
@@ -59,10 +61,12 @@ async function main() {
   const kitsApp = createKitsRouter(kitsGuard);
   const featuresApp = createFeaturesRouter(kitsGuard);
   const promptCatalogApp = createPromptCatalogRouter(kitsGuard);
+  const analyticsApp = createAnalyticsRouter();
 
   app.route("/", kitsApp);
   app.route("/api", featuresApp);
   app.route("/api", promptCatalogApp);
+  app.route("/api", analyticsApp);
 
   const port = parseInt(process.env.PORT ?? "8787", 10);
   const server = serve({ fetch: app.fetch, port }, () => {

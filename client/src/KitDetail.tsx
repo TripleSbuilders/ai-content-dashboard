@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { getKit, retryKit, ApiError } from "./api";
 import type { KitSummary } from "./types";
 import { useToast } from "./useToast";
+import { emitWizardEvent } from "./lib/wizardAnalytics";
 
 const LazyViewer = lazy(() => import("./KitViewer"));
 
@@ -12,6 +13,14 @@ function briefBrand(json: string): string {
     return o.brand_name ?? "";
   } catch {
     return "";
+  }
+}
+
+function parseBriefJson(json: string): Record<string, unknown> {
+  try {
+    return JSON.parse(json) as Record<string, unknown>;
+  } catch {
+    return {};
   }
 }
 
@@ -110,6 +119,27 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
   const failed = statusLower.includes("failed_generation");
   const retryInProgress = statusLower.includes("retry_in_progress");
   const title = briefBrand(kit.brief_json) || kit.id;
+  const brief = parseBriefJson(kit.brief_json);
+  const wizardType =
+    brief.campaign_mode === "social" || brief.campaign_mode === "offer" || brief.campaign_mode === "deep"
+      ? brief.campaign_mode
+      : "unknown";
+  const blocker = String(brief.diagnostic_primary_blocker ?? "").trim();
+  const target = String(brief.diagnostic_revenue_goal ?? "").trim();
+  const recommendation =
+    blocker === "inconsistent-execution"
+      ? "Start with Quick win and publish one output today to rebuild momentum."
+      : blocker === "no-conversion"
+      ? "Start with Optimization and regenerate conversion-focused outputs first."
+      : blocker === "low-reach"
+      ? "Start with Optimization and test new hooks/angles this week."
+      : "Start with Scale and produce a second kit for another audience segment.";
+  const twentyFourHourPlan =
+    target && target.includes("10000")
+      ? "Next 24h: publish one hero piece and one authority support post."
+      : "Next 24h: publish one quick-win item from this kit and collect response signals.";
+  const sevenDayPlan =
+    "Next 7d: run 2-3 outputs, capture performance, then regenerate weak items using targeted feedback.";
 
   return (
     <>
@@ -244,14 +274,52 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
           </div>
 
           <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <Link to="/wizard" className={btnPrimary + " w-full justify-center sm:w-auto"}>
+            <Link
+              to="/wizard"
+              className={btnPrimary + " w-full justify-center sm:w-auto"}
+              onClick={() =>
+                emitWizardEvent({
+                  name: "wizard_step_next_clicked",
+                  wizard_type: wizardType,
+                  draft_key: `kit:${kit.id}`,
+                  step_id: "kit_handoff_create_another_kit",
+                  validation_state: "passed",
+                })
+              }
+            >
               <span className="material-symbols-outlined text-lg">auto_awesome</span>
               Create another kit
             </Link>
-            <Link to="/generated-kits" className={btnSecondary + " w-full justify-center sm:w-auto"}>
+            <Link
+              to="/generated-kits"
+              className={btnSecondary + " w-full justify-center sm:w-auto"}
+              onClick={() =>
+                emitWizardEvent({
+                  name: "wizard_step_next_clicked",
+                  wizard_type: wizardType,
+                  draft_key: `kit:${kit.id}`,
+                  step_id: "kit_handoff_open_generated_kits",
+                  validation_state: "passed",
+                })
+              }
+            >
               <span className="material-symbols-outlined text-lg">inventory_2</span>
               Open generated kits
             </Link>
+          </div>
+          <div className="mt-4 rounded-xl border border-outline/25 bg-surface-container-low p-4">
+            <p className="text-xs font-bold uppercase tracking-wide text-on-surface-variant">Recommended next move</p>
+            <p className="mt-1 text-sm font-semibold text-on-surface">{recommendation}</p>
+          </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-outline/25 bg-surface-container-low p-4">
+              <p className="text-xs font-bold uppercase tracking-wide text-on-surface-variant">24-hour plan</p>
+              <p className="mt-1 text-xs text-on-surface-variant">{twentyFourHourPlan}</p>
+            </div>
+            <div className="rounded-xl border border-outline/25 bg-surface-container-low p-4">
+              <p className="text-xs font-bold uppercase tracking-wide text-on-surface-variant">7-day plan</p>
+              <p className="mt-1 text-xs text-on-surface-variant">{sevenDayPlan}</p>
+            </div>
           </div>
           <p className="mt-3 text-xs text-on-surface-variant">
             Trust cue: Your current kit is saved and can be revisited anytime from Generated kits.

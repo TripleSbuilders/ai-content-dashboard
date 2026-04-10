@@ -62,9 +62,25 @@ export default function ContentWizard() {
           <p className="mt-1 text-sm text-on-surface-variant">
             اختار كارت واحد فقط، وبعدها اضغط زرار واحد للبدء.
           </p>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              className="rounded-xl bg-gradient-to-r from-primary to-primary-container px-4 py-3 text-sm font-bold text-on-primary-container transition hover:opacity-95"
+              onClick={() => nav("/wizard/social")}
+            >
+              Start now (recommended)
+            </button>
+            <button
+              type="button"
+              className="rounded-xl border border-outline/30 bg-surface-container-high px-4 py-3 text-sm font-semibold text-on-surface transition hover:bg-surface-container-highest"
+              onClick={() => nav("/wizard/offer")}
+            >
+              I need offer-focused flow
+            </button>
+          </div>
           <div className="mt-4 flex items-center gap-2 text-xs text-on-surface-variant">
             <span className="material-symbols-outlined text-sm">touch_app</span>
-            Pick a card below, then press <span className="font-bold text-on-surface">Start now</span>.
+            Use quick actions above, or pick any card below then press <span className="font-bold text-on-surface">Start now</span>.
           </div>
         </div>
 

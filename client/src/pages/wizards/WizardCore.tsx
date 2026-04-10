@@ -31,7 +31,7 @@ import { useWizardOrchestrator } from "./hooks/useWizardOrchestrator";
 import WizardStepChips from "./components/WizardStepChips";
 import WizardValuePreview from "./components/WizardValuePreview";
 
-type StepId = "brand" | "audience" | "channels" | "offer" | "creative" | "volume";
+type StepId = "diagnosis" | "brand" | "audience" | "channels" | "offer" | "creative" | "volume";
 
 type SelectionState = {
   mainGoalSelected: string;
@@ -77,6 +77,13 @@ const WAITING_STAGES = [
 ] as const;
 
 const STEP_FIELDS: Record<StepId, (keyof BriefForm)[]> = {
+  diagnosis: [
+    "diagnostic_role",
+    "diagnostic_account_stage",
+    "diagnostic_followers_band",
+    "diagnostic_primary_blocker",
+    "diagnostic_revenue_goal",
+  ],
   brand: ["brand_name", "industry"],
   audience: ["target_audience", "main_goal"],
   channels: ["platforms", "brand_tone", "brand_colors"],
@@ -384,6 +391,80 @@ export default function WizardCore(props: WizardCoreProps) {
             )}
 
             <WizardStepChips stepOrder={props.stepOrder} currentStep={step} stepTitles={props.stepTitles} />
+
+            {currentStep === "diagnosis" && (
+              <div className="space-y-6">
+                <div>
+                  <label htmlFor="diagnostic_role" className={labelCls}>Who are you?</label>
+                  <div className={fieldShell}>
+                    <select id="diagnostic_role" className={selectCls} {...register("diagnostic_role")}>
+                      <option value="">Select role…</option>
+                      <option value="entrepreneur-founder">Entrepreneur / Founder</option>
+                      <option value="coach-consultant">Coach or Consultant</option>
+                      <option value="doctor-expert-professional">Doctor / Expert / Professional</option>
+                      <option value="freelancer-creative">Freelancer or Creative</option>
+                    </select>
+                  </div>
+                  {errors.diagnostic_role && <p className={errCls}>{errors.diagnostic_role.message}</p>}
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="diagnostic_account_stage" className={labelCls}>Account stage</label>
+                    <div className={fieldShell}>
+                      <select id="diagnostic_account_stage" className={selectCls} {...register("diagnostic_account_stage")}>
+                        <option value="">Select stage…</option>
+                        <option value="under-6-months">Just starting — under 6 months</option>
+                        <option value="6-12-months">6 months to 1 year</option>
+                        <option value="1-3-years">1–3 years, inconsistent results</option>
+                        <option value="3-plus-years">3+ years, want to scale</option>
+                      </select>
+                    </div>
+                    {errors.diagnostic_account_stage && <p className={errCls}>{errors.diagnostic_account_stage.message}</p>}
+                  </div>
+                  <div>
+                    <label htmlFor="diagnostic_followers_band" className={labelCls}>Followers range</label>
+                    <div className={fieldShell}>
+                      <select id="diagnostic_followers_band" className={selectCls} {...register("diagnostic_followers_band")}>
+                        <option value="">Select range…</option>
+                        <option value="under-1k">Under 1,000</option>
+                        <option value="1k-5k">1,000 – 5,000</option>
+                        <option value="5k-20k">5,000 – 20,000</option>
+                        <option value="20k-plus">20,000+</option>
+                      </select>
+                    </div>
+                    {errors.diagnostic_followers_band && <p className={errCls}>{errors.diagnostic_followers_band.message}</p>}
+                  </div>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="diagnostic_primary_blocker" className={labelCls}>Primary blocker</label>
+                    <div className={fieldShell}>
+                      <select id="diagnostic_primary_blocker" className={selectCls} {...register("diagnostic_primary_blocker")}>
+                        <option value="">Select blocker…</option>
+                        <option value="low-reach">I post but nobody sees my content</option>
+                        <option value="no-content-system">I don't know what to post consistently</option>
+                        <option value="no-conversion">Followers exist but no sales or clients</option>
+                        <option value="inconsistent-execution">No time — totally inconsistent</option>
+                      </select>
+                    </div>
+                    {errors.diagnostic_primary_blocker && <p className={errCls}>{errors.diagnostic_primary_blocker.message}</p>}
+                  </div>
+                  <div>
+                    <label htmlFor="diagnostic_revenue_goal" className={labelCls}>Target monthly revenue</label>
+                    <div className={fieldShell}>
+                      <select id="diagnostic_revenue_goal" className={selectCls} {...register("diagnostic_revenue_goal")}>
+                        <option value="">Select target…</option>
+                        <option value="500-1000">$500 – $1,000/month</option>
+                        <option value="1000-3000">$1,000 – $3,000/month</option>
+                        <option value="3000-10000">$3,000 – $10,000/month</option>
+                        <option value="10000-plus">$10,000+/month</option>
+                      </select>
+                    </div>
+                    {errors.diagnostic_revenue_goal && <p className={errCls}>{errors.diagnostic_revenue_goal.message}</p>}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {currentStep === "brand" && (
                 <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
@@ -773,11 +854,39 @@ export default function WizardCore(props: WizardCoreProps) {
             {isFinalStep && !loading && (
               <div className="mb-5 rounded-xl border border-primary/30 bg-primary/10 p-4 dark:border-brand-primary/40 dark:bg-brand-primary/15">
                 <div className="space-y-2">
-                  <p className="text-sm font-semibold text-on-surface">Ready to generate your kit</p>
+                  <p className="text-sm font-semibold text-on-surface">Ready to reveal your diagnosis and action plan</p>
                   <p className="text-xs text-on-surface-variant">
-                    Takes around 10-30 seconds. Your draft stays saved, and you can edit after generation.
+                    Takes around 10-30 seconds. Your diagnosis snapshot is saved with the kit, and you can edit outputs after generation.
                   </p>
                 </div>
+              </div>
+            )}
+
+            {isFinalStep && !loading && (
+              <div className="mb-5 grid gap-3 md:grid-cols-3">
+                <div className="rounded-xl border border-outline/25 bg-surface-container-low p-3">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Role</p>
+                  <p className="mt-1 text-sm font-semibold text-on-surface">{watch("diagnostic_role") || "Not set"}</p>
+                </div>
+                <div className="rounded-xl border border-outline/25 bg-surface-container-low p-3">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Primary blocker</p>
+                  <p className="mt-1 text-sm font-semibold text-on-surface">{watch("diagnostic_primary_blocker") || "Not set"}</p>
+                </div>
+                <div className="rounded-xl border border-outline/25 bg-surface-container-low p-3">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Revenue target</p>
+                  <p className="mt-1 text-sm font-semibold text-on-surface">{watch("diagnostic_revenue_goal") || "Not set"}</p>
+                </div>
+              </div>
+            )}
+
+            {isFinalStep && !loading && (
+              <div className="mb-5 rounded-xl border border-tertiary/25 bg-tertiary/10 p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-tertiary">Proof and objections</p>
+                <ul className="mt-2 space-y-1 text-sm text-on-surface-variant">
+                  <li>- Built for repeatable execution, not one-time suggestions.</li>
+                  <li>- You can regenerate, edit, and iterate every output after creation.</li>
+                  <li>- Draft-safe flow: nothing gets lost if you return later.</li>
+                </ul>
               </div>
             )}
 
@@ -796,7 +905,7 @@ export default function WizardCore(props: WizardCoreProps) {
                   onClick={handleSubmit(onValidSubmit)}
                   disabled={loading}
                 >
-                  {loading ? "Generating..." : "Generate my kit now"}
+                  {loading ? "Building your diagnosis..." : "Show my diagnosis and plan"}
                 </button>
               )}
             </div>

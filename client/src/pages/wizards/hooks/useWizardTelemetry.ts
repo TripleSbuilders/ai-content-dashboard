@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { emitWizardEvent, type WizardType } from "../../../lib/wizardAnalytics";
 
-type StepId = "brand" | "audience" | "channels" | "offer" | "creative" | "volume";
+type StepId = "diagnosis" | "brand" | "audience" | "channels" | "offer" | "creative" | "volume";
 
 export function useWizardTelemetry(params: {
   wizardType: WizardType;

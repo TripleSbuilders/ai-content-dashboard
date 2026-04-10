@@ -39,12 +39,31 @@ function getBackoffMs(attempt: number): number {
   return Math.min(max, base * Math.pow(2, attempt));
 }
 
-function parseJsonFromModelText(text: string): unknown {
+export function parseJsonFromModelText(text: string): unknown {
   let normalized = String(text ?? "").trim();
   if (normalized.startsWith("```")) {
     normalized = normalized.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
   }
-  return JSON.parse(normalized);
+  try {
+    return JSON.parse(normalized);
+  } catch {
+    const objectStart = normalized.indexOf("{");
+    const arrayStart = normalized.indexOf("[");
+    const start =
+      objectStart === -1
+        ? arrayStart
+        : arrayStart === -1
+        ? objectStart
+        : Math.min(objectStart, arrayStart);
+    if (start === -1) throw new Error("No JSON payload found in model text.");
+
+    const objectEnd = normalized.lastIndexOf("}");
+    const arrayEnd = normalized.lastIndexOf("]");
+    const end = Math.max(objectEnd, arrayEnd);
+    if (end === -1 || end <= start) throw new Error("Incomplete JSON payload in model text.");
+    const candidate = normalized.slice(start, end + 1);
+    return JSON.parse(candidate);
+  }
 }
 
 function truncate(value: string, maxLen: number): string {

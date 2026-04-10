@@ -32,4 +32,9 @@ export type SubmissionSnapshot = {
   num_posts: number;
   num_image_designs: number;
   num_video_prompts: number;
+  diagnostic_role: string;
+  diagnostic_account_stage: string;
+  diagnostic_followers_band: string;
+  diagnostic_primary_blocker: string;
+  diagnostic_revenue_goal: string;
 };

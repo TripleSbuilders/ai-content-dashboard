@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { getKit, retryKit, ApiError } from "./api";
 import type { KitSummary } from "./types";
 import { useToast } from "./useToast";
+import { emitWizardEvent } from "./lib/wizardAnalytics";
 
 const LazyViewer = lazy(() => import("./KitViewer"));
 
@@ -15,12 +16,25 @@ function briefBrand(json: string): string {
   }
 }
 
+function parseBriefJson(json: string): Record<string, unknown> {
+  try {
+    return JSON.parse(json) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+}
+
+function parseResultJson(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return value as Record<string, unknown>;
+}
+
 const btnPrimary =
-  "inline-flex items-center gap-2 rounded-uniform bg-primary px-5 py-3 font-semibold text-on-primary shadow-lg transition hover:shadow-[0_0_20px_rgb(var(--c-primary)/0.35)] focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-primary-container px-5 py-3 font-semibold text-on-primary-container shadow-lg transition hover:shadow-[0_0_20px_rgb(var(--c-primary)/0.35)] focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-50 dark:from-brand-primary dark:to-brand-accent dark:text-brand-darkText";
 const btnSecondary =
-  "inline-flex items-center gap-2 rounded-uniform border border-outline/30 bg-surface-container-high px-5 py-3 font-semibold text-on-surface transition hover:bg-surface-container-highest focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-50 dark:border-muted/45 dark:bg-surface-container-high dark:text-secondary";
+  "inline-flex items-center gap-2 rounded-xl border border-outline/30 bg-surface-container-high px-5 py-3 font-semibold text-on-surface transition hover:bg-surface-container-highest focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-50 dark:border-brand-muted/45 dark:bg-earth-darkCard dark:text-brand-darkText";
 const btnGhost =
-  "rounded-uniform px-1 text-sm font-semibold text-primary hover:underline focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface dark:text-secondary";
+  "rounded-lg px-1 text-sm font-semibold text-primary hover:underline focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface dark:text-brand-sand";
 
 export default function KitDetail({ showTechnical = false }: { showTechnical?: boolean }) {
   const { id } = useParams<{ id: string }>();
@@ -85,7 +99,7 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
 
   if (err || !id) {
     return (
-      <div className="glass-panel rounded-uniform border border-outline/30 p-8 text-on-surface">
+      <div className="glass-panel rounded-3xl border border-outline/30 p-8 text-on-surface">
         <p className="mb-4">{err ?? "—"}</p>
         <Link to="/generated-kits" className={btnGhost + " inline-flex items-center gap-1"}>
           <span className="material-symbols-outlined text-lg">arrow_back</span>
@@ -97,7 +111,7 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
 
   if (!kit) {
     return (
-      <div className="glass-panel flex min-h-[40vh] items-center justify-center rounded-uniform border border-outline/30 p-12 text-on-surface-variant">
+      <div className="glass-panel flex min-h-[40vh] items-center justify-center rounded-3xl border border-outline/30 p-12 text-on-surface-variant">
         <div className="flex flex-col items-center gap-3 text-center">
           <span className="material-symbols-outlined animate-pulse text-4xl text-primary">hourglass_empty</span>
           Loading…
@@ -110,6 +124,38 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
   const failed = statusLower.includes("failed_generation");
   const retryInProgress = statusLower.includes("retry_in_progress");
   const title = briefBrand(kit.brief_json) || kit.id;
+  const brief = parseBriefJson(kit.brief_json);
+  const result = parseResultJson(kit.result_json);
+  const diagnosisPlan =
+    result.diagnosis_plan && typeof result.diagnosis_plan === "object" && !Array.isArray(result.diagnosis_plan)
+      ? (result.diagnosis_plan as Record<string, unknown>)
+      : null;
+  const narrativeSummary =
+    typeof result.narrative_summary === "string" ? String(result.narrative_summary).trim() : "";
+  const wizardType =
+    brief.campaign_mode === "social" || brief.campaign_mode === "offer" || brief.campaign_mode === "deep"
+      ? brief.campaign_mode
+      : "unknown";
+  const blocker = String(brief.diagnostic_primary_blocker ?? "").trim();
+  const target = String(brief.diagnostic_revenue_goal ?? "").trim();
+  const recommendation =
+    blocker === "inconsistent-execution"
+      ? "Start with Quick win and publish one output today to rebuild momentum."
+      : blocker === "no-conversion"
+      ? "Start with Optimization and regenerate conversion-focused outputs first."
+      : blocker === "low-reach"
+      ? "Start with Optimization and test new hooks/angles this week."
+      : "Start with Scale and produce a second kit for another audience segment.";
+  const twentyFourHourPlan =
+    typeof diagnosisPlan?.quickWin24h === "string" && diagnosisPlan.quickWin24h.trim()
+      ? diagnosisPlan.quickWin24h.trim()
+      : target && target.includes("10000")
+      ? "Next 24h: publish one hero piece and one authority support post."
+      : "Next 24h: publish one quick-win item from this kit and collect response signals.";
+  const sevenDayPlan =
+    typeof diagnosisPlan?.focus7d === "string" && diagnosisPlan.focus7d.trim()
+      ? diagnosisPlan.focus7d.trim()
+      : "Next 7d: run 2-3 outputs, capture performance, then regenerate weak items using targeted feedback.";
 
   return (
     <>
@@ -117,7 +163,7 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
         {toasts.map((t) => (
           <div
             key={t.id}
-            className="rounded-xl border border-outline/30 bg-surface-container-high px-4 py-2 text-sm text-on-surface shadow-lg dark:border-muted/45 dark:bg-surface-container-high dark:text-secondary"
+            className="rounded-xl border border-outline/30 bg-surface-container-high px-4 py-2 text-sm text-on-surface shadow-lg dark:border-brand-muted/45 dark:bg-earth-darkCard dark:text-brand-darkText"
             role="status"
           >
             {t.message}
@@ -127,7 +173,7 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
 
       <div className="mb-8 flex flex-col gap-5 md:mb-10 md:gap-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <nav className="mb-3 flex flex-wrap items-center gap-2 text-xs text-on-surface-variant dark:text-secondary/75">
+          <nav className="mb-3 flex flex-wrap items-center gap-2 text-xs text-on-surface-variant dark:text-brand-darkText/75">
             <Link to="/generated-kits" className="hover:text-on-surface">
               Generated kits
             </Link>
@@ -170,7 +216,7 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
         </div>
       </div>
 
-      <div className="glass-panel mb-8 space-y-6 rounded-uniform border border-outline/30 p-4 sm:p-6 md:p-8 dark:border-muted/45 dark:bg-surface-container-high/80">
+      <div className="glass-panel mb-8 space-y-6 rounded-3xl border border-outline/30 p-4 sm:p-6 md:p-8 dark:border-brand-muted/45 dark:bg-earth-darkCard/80">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <Link to="/generated-kits" className={btnGhost + " inline-flex items-center gap-1"}>
             <span className="material-symbols-outlined text-lg">arrow_back</span>
@@ -197,7 +243,7 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
         ) : null}
 
         {kit.last_error && (
-          <div className="rounded-uniform border border-error/30 bg-error/10 p-4">
+          <div className="rounded-2xl border border-error/30 bg-error/10 p-4">
             <div className="mb-2 text-xs font-bold uppercase tracking-wider text-error">Error details</div>
             <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-surface-container-lowest p-4 text-xs text-on-surface" dir="ltr">
               {kit.last_error}
@@ -206,7 +252,7 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
         )}
 
         {conflict && (
-          <div className="rounded-uniform border border-secondary/40 bg-secondary/10 p-4" role="alert">
+          <div className="rounded-2xl border border-secondary/40 bg-secondary/10 p-4" role="alert">
             <p className="mb-3 text-sm text-on-surface">
               The record version changed (row_version). Refresh to load the latest state, then retry if needed.
             </p>
@@ -218,51 +264,9 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
       </div>
 
       {kit.result_json && (
-        <section className="mb-8 rounded-uniform border border-secondary/25 bg-secondary/10 p-4 sm:p-6">
-          <p className="text-xs font-bold uppercase tracking-wide text-secondary">Next best action</p>
-          <h2 className="mt-1 font-headline text-xl font-extrabold text-on-surface sm:text-2xl">Choose your next move</h2>
-          <p className="mt-2 text-sm text-on-surface-variant">
-            Your kit is ready. Pick the action that matches your readiness level and keep momentum.
-          </p>
-
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
-            <div className="rounded-uniform border border-outline/25 bg-surface-container-low p-4">
-              <p className="text-xs font-bold uppercase tracking-wide text-on-surface-variant">Quick win</p>
-              <p className="mt-1 text-sm font-semibold text-on-surface">Use this kit immediately</p>
-              <p className="mt-1 text-xs text-on-surface-variant">Copy your best post/video prompt and publish today.</p>
-            </div>
-            <div className="rounded-uniform border border-outline/25 bg-surface-container-low p-4">
-              <p className="text-xs font-bold uppercase tracking-wide text-on-surface-variant">Optimization</p>
-              <p className="mt-1 text-sm font-semibold text-on-surface">Regenerate weak items</p>
-              <p className="mt-1 text-xs text-on-surface-variant">Use targeted feedback to improve individual outputs.</p>
-            </div>
-            <div className="rounded-uniform border border-outline/25 bg-surface-container-low p-4">
-              <p className="text-xs font-bold uppercase tracking-wide text-on-surface-variant">Scale</p>
-              <p className="mt-1 text-sm font-semibold text-on-surface">Create another kit</p>
-              <p className="mt-1 text-xs text-on-surface-variant">Run a new angle for a second audience or offer.</p>
-            </div>
-          </div>
-
-          <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <Link to="/wizard" className={btnPrimary + " w-full justify-center sm:w-auto"}>
-              <span className="material-symbols-outlined text-lg">auto_awesome</span>
-              Create another kit
-            </Link>
-            <Link to="/generated-kits" className={btnSecondary + " w-full justify-center sm:w-auto"}>
-              <span className="material-symbols-outlined text-lg">inventory_2</span>
-              Open generated kits
-            </Link>
-          </div>
-          <p className="mt-3 text-xs text-on-surface-variant">
-            Trust cue: Your current kit is saved and can be revisited anytime from Generated kits.
-          </p>
-        </section>
-      )}
-
-      {kit.result_json && (
         <Suspense
           fallback={
-            <div className="glass-panel flex min-h-[200px] items-center justify-center rounded-uniform border border-outline/30 p-8 text-on-surface-variant">
+            <div className="glass-panel flex min-h-[200px] items-center justify-center rounded-3xl border border-outline/30 p-8 text-on-surface-variant">
               Loading viewer…
             </div>
           }
@@ -270,7 +274,119 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
           <LazyViewer kit={kit} onKitUpdate={setKit} showTechnical={showTechnical} />
         </Suspense>
       )}
+
+      {kit.result_json && (
+        <section className="mt-8 rounded-3xl border border-secondary/25 bg-secondary/10 p-4 sm:p-6">
+          <p className="text-xs font-bold uppercase tracking-wide text-secondary">Next best action</p>
+          <h2 className="mt-1 font-headline text-xl font-extrabold text-on-surface sm:text-2xl">Choose your next move</h2>
+          <p className="mt-2 text-sm text-on-surface-variant">
+            Your kit is ready. Pick the action that matches your readiness level and keep momentum.
+          </p>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <div className="rounded-2xl border border-outline/25 bg-surface-container-low p-4">
+              <p className="text-xs font-bold uppercase tracking-wide text-on-surface-variant">Quick win</p>
+              <p className="mt-1 text-sm font-semibold text-on-surface">Use this kit immediately</p>
+              <p className="mt-1 text-xs text-on-surface-variant">Copy your best post/video prompt and publish today.</p>
+            </div>
+            <div className="rounded-2xl border border-outline/25 bg-surface-container-low p-4">
+              <p className="text-xs font-bold uppercase tracking-wide text-on-surface-variant">Optimization</p>
+              <p className="mt-1 text-sm font-semibold text-on-surface">Regenerate weak items</p>
+              <p className="mt-1 text-xs text-on-surface-variant">Use targeted feedback to improve individual outputs.</p>
+            </div>
+            <div className="rounded-2xl border border-outline/25 bg-surface-container-low p-4">
+              <p className="text-xs font-bold uppercase tracking-wide text-on-surface-variant">Scale</p>
+              <p className="mt-1 text-sm font-semibold text-on-surface">Create another kit</p>
+              <p className="mt-1 text-xs text-on-surface-variant">Run a new angle for a second audience or offer.</p>
+            </div>
+          </div>
+
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <Link
+              to="/wizard"
+              className={btnPrimary + " w-full justify-center sm:w-auto"}
+              onClick={() =>
+                emitWizardEvent({
+                  name: "wizard_step_next_clicked",
+                  wizard_type: wizardType,
+                  draft_key: `kit:${kit.id}`,
+                  step_id: "kit_handoff_create_another_kit",
+                  validation_state: "passed",
+                })
+              }
+            >
+              <span className="material-symbols-outlined text-lg">auto_awesome</span>
+              Create another kit
+            </Link>
+            <Link
+              to="/generated-kits"
+              className={btnSecondary + " w-full justify-center sm:w-auto"}
+              onClick={() =>
+                emitWizardEvent({
+                  name: "wizard_step_next_clicked",
+                  wizard_type: wizardType,
+                  draft_key: `kit:${kit.id}`,
+                  step_id: "kit_handoff_open_generated_kits",
+                  validation_state: "passed",
+                })
+              }
+            >
+              <span className="material-symbols-outlined text-lg">inventory_2</span>
+              Open generated kits
+            </Link>
+            <Link
+              to="/wizard/offer"
+              className={btnSecondary + " w-full justify-center sm:w-auto"}
+              onClick={() =>
+                emitWizardEvent({
+                  name: "wizard_step_next_clicked",
+                  wizard_type: wizardType,
+                  draft_key: `kit:${kit.id}`,
+                  step_id: "kit_handoff_start_offer_campaign",
+                  validation_state: "passed",
+                })
+              }
+            >
+              <span className="material-symbols-outlined text-lg">trending_up</span>
+              Start Offer Campaign
+            </Link>
+            <Link
+              to="/wizard/deep"
+              className={btnSecondary + " w-full justify-center sm:w-auto"}
+              onClick={() =>
+                emitWizardEvent({
+                  name: "wizard_step_next_clicked",
+                  wizard_type: wizardType,
+                  draft_key: `kit:${kit.id}`,
+                  step_id: "kit_handoff_start_deep_content",
+                  validation_state: "passed",
+                })
+              }
+            >
+              <span className="material-symbols-outlined text-lg">article</span>
+              Deep Content
+            </Link>
+          </div>
+          <div className="mt-4 rounded-xl border border-outline/25 bg-surface-container-low p-4">
+            <p className="text-xs font-bold uppercase tracking-wide text-on-surface-variant">Recommended next move</p>
+            <p className="mt-1 text-sm font-semibold text-on-surface">{recommendation}</p>
+            {narrativeSummary ? <p className="mt-2 text-xs text-on-surface-variant">{narrativeSummary}</p> : null}
+          </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-outline/25 bg-surface-container-low p-4">
+              <p className="text-xs font-bold uppercase tracking-wide text-on-surface-variant">24-hour plan</p>
+              <p className="mt-1 text-xs text-on-surface-variant">{twentyFourHourPlan}</p>
+            </div>
+            <div className="rounded-xl border border-outline/25 bg-surface-container-low p-4">
+              <p className="text-xs font-bold uppercase tracking-wide text-on-surface-variant">7-day plan</p>
+              <p className="mt-1 text-xs text-on-surface-variant">{sevenDayPlan}</p>
+            </div>
+          </div>
+          <p className="mt-3 text-xs text-on-surface-variant">
+            Trust cue: Your current kit is saved and can be revisited anytime from Generated kits.
+          </p>
+        </section>
+      )}
     </>
   );
 }
-

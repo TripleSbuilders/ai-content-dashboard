@@ -1,4 +1,4 @@
-type StepId = "brand" | "audience" | "channels" | "offer" | "creative" | "volume";
+type StepId = "diagnosis" | "brand" | "audience" | "channels" | "offer" | "creative" | "volume";
 
 function cn(...parts: (string | false | undefined | null)[]) {
   return parts.filter(Boolean).join(" ");

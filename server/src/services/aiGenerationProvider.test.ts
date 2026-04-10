@@ -61,6 +61,13 @@ describe("aiGenerationProvider", () => {
         urgency_or_scarcity: "urgency",
         alternative_offers: ["alt"],
       },
+      diagnosis_plan: {
+        quickWin24h: "Post one short proof piece now.",
+        focus7d: "Run a 7-day consistency sprint with measurable CTA.",
+        priority: "consistency",
+        rationale: "Execution speed is the current growth bottleneck.",
+      },
+      narrative_summary: "Start with simple consistent publishing to unlock reliable growth signals.",
     };
 
     const result = await generateWithGuardrails(

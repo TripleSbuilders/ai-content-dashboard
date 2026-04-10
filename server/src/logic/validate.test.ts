@@ -62,6 +62,13 @@ describe("validateGeminiResponse", () => {
         urgency_or_scarcity: "urgency",
         alternative_offers: ["alt"],
       },
+      diagnosis_plan: {
+        quickWin24h: "Post one authority reel today.",
+        focus7d: "Test 3 hooks and one lead magnet.",
+        priority: "conversion",
+        rationale: "Audience size can support offer activation.",
+      },
+      narrative_summary: "Focus this week on conversion-focused content with clearer CTA.",
     };
 
     const errors = validateGeminiResponse(payload, snapshot);

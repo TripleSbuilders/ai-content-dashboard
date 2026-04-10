@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import type React from "react";
 import type { BriefForm } from "../../../types";
 
-type StepId = "brand" | "audience" | "channels" | "offer" | "creative" | "volume";
+type StepId = "diagnosis" | "brand" | "audience" | "channels" | "offer" | "creative" | "volume";
 
 type Params = {
   step: number;

@@ -12,6 +12,7 @@ export const socialGeni = pgSchema("social_geni");
 
 export const kits = socialGeni.table("kits", {
   id: text("id").primaryKey(),
+  deviceId: text("device_id").notNull().default(""),
   briefJson: text("brief_json").notNull(),
   resultJson: text("result_json"),
   deliveryStatus: text("delivery_status").notNull(),

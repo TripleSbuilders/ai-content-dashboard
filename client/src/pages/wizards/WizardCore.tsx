@@ -30,8 +30,9 @@ import { useWizardDraft } from "./hooks/useWizardDraft";
 import { useWizardOrchestrator } from "./hooks/useWizardOrchestrator";
 import WizardStepChips from "./components/WizardStepChips";
 import WizardValuePreview from "./components/WizardValuePreview";
+import { isWizardVariantB } from "../../lib/wizardExperiment";
 
-type StepId = "brand" | "audience" | "channels" | "offer" | "creative" | "volume";
+type StepId = "diagnosis" | "brand" | "audience" | "channels" | "offer" | "creative" | "volume";
 
 type SelectionState = {
   mainGoalSelected: string;
@@ -77,6 +78,13 @@ const WAITING_STAGES = [
 ] as const;
 
 const STEP_FIELDS: Record<StepId, (keyof BriefForm)[]> = {
+  diagnosis: [
+    "diagnostic_role",
+    "diagnostic_account_stage",
+    "diagnostic_followers_band",
+    "diagnostic_primary_blocker",
+    "diagnostic_revenue_goal",
+  ],
   brand: ["brand_name", "industry"],
   audience: ["target_audience", "main_goal"],
   channels: ["platforms", "brand_tone", "brand_colors"],
@@ -94,17 +102,17 @@ function clamp(n: number, min: number, max: number) {
 }
 
 const labelCls = "mb-2 ms-1 block text-xs font-semibold uppercase tracking-widest text-on-surface-variant";
-const fieldShell = "glow-focus rounded-xl bg-surface-container-lowest p-0.5";
+const fieldShell = "glow-focus overflow-hidden rounded-xl bg-surface-container-lowest p-0.5";
 const inputCls =
-  "w-full rounded-lg border-none bg-transparent px-4 py-3 text-on-surface placeholder:text-on-surface-variant/50 focus:ring-0 focus-visible:ring-2 focus-visible:ring-primary/45";
+  "box-border w-full rounded-lg border-none bg-transparent px-4 py-3 text-on-surface placeholder:text-on-surface-variant/50 focus:ring-0 focus-visible:ring-2 focus-visible:ring-primary/45";
 const selectCls =
-  "w-full rounded-lg border-none bg-surface-container-lowest px-4 py-3 text-on-surface focus:ring-0 focus-visible:ring-0 dark:bg-surface-container-high/70";
+  "box-border w-full appearance-none rounded-lg border-none bg-surface-container-lowest px-4 py-3 text-on-surface focus:ring-0 focus-visible:ring-2 focus-visible:ring-primary/45 dark:bg-surface-container-high/70";
 const textareaCls = cn(inputCls, "min-h-[100px] resize-y");
 const errCls = "mt-1 text-sm text-error";
 const btnPrimary =
-  "rounded-xl bg-primary px-5 py-3 font-bold text-on-primary shadow-lg shadow-primary/15 transition active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-50";
+  "rounded-xl bg-gradient-to-r from-primary to-primary-container px-5 py-3 font-bold text-on-primary-container shadow-lg shadow-primary/15 transition active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-50 dark:from-brand-primary dark:to-brand-accent dark:text-brand-darkText";
 const btnSecondary =
-  "rounded-xl border border-outline/30 bg-surface-container-high px-5 py-3 font-semibold text-on-surface transition hover:bg-surface-container-highest focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-50 dark:border-outline/30 dark:bg-surface-container-high dark:text-secondary";
+  "rounded-xl border border-outline/30 bg-surface-container-high px-5 py-3 font-semibold text-on-surface transition hover:bg-surface-container-highest focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-50 dark:border-brand-muted/40 dark:bg-earth-darkCard dark:text-brand-darkText";
 
 export default function WizardCore(props: WizardCoreProps) {
   const nav = useNavigate();
@@ -115,6 +123,7 @@ export default function WizardCore(props: WizardCoreProps) {
   const zodSchema = props.formSchema ?? briefSchema;
   const zodResolverMemo = useMemo(() => zodResolver(zodSchema), [zodSchema]);
   const [industryOptions, setIndustryOptions] = useState<{ slug: string; name: string }[]>(FALLBACK_INDUSTRY_OPTIONS);
+  const variantB = isWizardVariantB();
 
   useEffect(() => {
     listPromptCatalogIndustries()
@@ -147,6 +156,14 @@ export default function WizardCore(props: WizardCoreProps) {
     defaultValues: mergedDefaults,
     mode: "onTouched",
   });
+  const [wizardData, setWizardData] = useState<BriefForm>(mergedDefaults);
+
+  const updateWizardData = (newData: Partial<BriefForm>) => {
+    setWizardData((prev) => ({ ...prev, ...newData }));
+    for (const [key, value] of Object.entries(newData)) {
+      setValue(key as keyof BriefForm, value as BriefForm[keyof BriefForm], { shouldDirty: true });
+    }
+  };
 
   const {
     initialState,
@@ -196,7 +213,15 @@ export default function WizardCore(props: WizardCoreProps) {
 
   useEffect(() => {
     reset(initialState.form);
+    setWizardData(initialState.form);
   }, [initialState.form, reset]);
+
+  useEffect(() => {
+    const subscription = watch((value) => {
+      setWizardData((prev) => ({ ...prev, ...(value as Partial<BriefForm>) }));
+    });
+    return () => subscription.unsubscribe();
+  }, [watch]);
 
   const telemetry = useWizardTelemetry({
     wizardType,
@@ -209,6 +234,7 @@ export default function WizardCore(props: WizardCoreProps) {
 
   const clearDraft = () => {
     reset(mergedDefaults);
+    setWizardData(mergedDefaults);
     setSelectionState({
       mainGoalSelected: "",
       mainGoalOther: "",
@@ -333,7 +359,7 @@ export default function WizardCore(props: WizardCoreProps) {
       </div>
 
       {showDraftBanner && (
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-tertiary/25 bg-tertiary/10 px-4 py-3 text-sm text-on-surface dark:border-secondary/40 dark:bg-secondary/10 dark:text-secondary">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-tertiary/25 bg-tertiary/10 px-4 py-3 text-sm text-on-surface dark:border-brand-sand/40 dark:bg-brand-sand/10 dark:text-brand-darkText">
           <span>Restored a saved draft for this path.</span>
           <button type="button" className={btnSecondary + " py-2 text-sm"} onClick={clearDraft}>
             Clear draft
@@ -341,9 +367,22 @@ export default function WizardCore(props: WizardCoreProps) {
         </div>
       )}
 
-      <div className="wizard-root overflow-hidden rounded-uniform border border-outline/30 bg-surface-container-low dark:border-outline/30 dark:bg-surface-container-high/75" aria-busy={loading}>
-        <div className={cn("wizard-body-wrap relative !rounded-uniform", loading && "wizard-body-wrap--loading")}>
+      <div className="wizard-root overflow-hidden rounded-2xl border border-outline/30 bg-surface-container-low sm:rounded-3xl dark:border-brand-muted/40 dark:bg-earth-darkCard/75" aria-busy={loading}>
+        <div className={cn("wizard-body-wrap relative !rounded-3xl", loading && "wizard-body-wrap--loading")}>
           <div className="wizard-body p-4 sm:p-6 md:p-8">
+            <div className="mb-5 rounded-xl border border-outline/30 bg-surface-container-lowest/70 p-3 dark:border-brand-muted/40 dark:bg-earth-darkCard/70">
+              <div className="mb-2 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+                <span>Step {step + 1} of {maxStep + 1}</span>
+                <span>{props.stepTitles[currentStep]}</span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-surface-container-high dark:bg-surface-container-highest">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-primary to-primary-container transition-all duration-300"
+                  style={{ width: `${Math.max(8, Math.round(((step + 1) / (maxStep + 1)) * 100))}%` }}
+                />
+              </div>
+            </div>
+
             {canShowValuePreview && (
               <WizardValuePreview
                 wizardType={wizardType}
@@ -354,6 +393,80 @@ export default function WizardCore(props: WizardCoreProps) {
             )}
 
             <WizardStepChips stepOrder={props.stepOrder} currentStep={step} stepTitles={props.stepTitles} />
+
+            {variantB && currentStep === "diagnosis" && (
+              <div className="space-y-6">
+                <div>
+                  <label htmlFor="diagnostic_role" className={labelCls}>Who are you?</label>
+                  <div className={fieldShell}>
+                    <select id="diagnostic_role" className={selectCls} {...register("diagnostic_role")}>
+                      <option value="">Select role…</option>
+                      <option value="entrepreneur-founder">Entrepreneur / Founder</option>
+                      <option value="coach-consultant">Coach or Consultant</option>
+                      <option value="doctor-expert-professional">Doctor / Expert / Professional</option>
+                      <option value="freelancer-creative">Freelancer or Creative</option>
+                    </select>
+                  </div>
+                  {errors.diagnostic_role && <p className={errCls}>{errors.diagnostic_role.message}</p>}
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="diagnostic_account_stage" className={labelCls}>Account stage</label>
+                    <div className={fieldShell}>
+                      <select id="diagnostic_account_stage" className={selectCls} {...register("diagnostic_account_stage")}>
+                        <option value="">Select stage…</option>
+                        <option value="under-6-months">Just starting — under 6 months</option>
+                        <option value="6-12-months">6 months to 1 year</option>
+                        <option value="1-3-years">1–3 years, inconsistent results</option>
+                        <option value="3-plus-years">3+ years, want to scale</option>
+                      </select>
+                    </div>
+                    {errors.diagnostic_account_stage && <p className={errCls}>{errors.diagnostic_account_stage.message}</p>}
+                  </div>
+                  <div>
+                    <label htmlFor="diagnostic_followers_band" className={labelCls}>Followers range</label>
+                    <div className={fieldShell}>
+                      <select id="diagnostic_followers_band" className={selectCls} {...register("diagnostic_followers_band")}>
+                        <option value="">Select range…</option>
+                        <option value="under-1k">Under 1,000</option>
+                        <option value="1k-5k">1,000 – 5,000</option>
+                        <option value="5k-20k">5,000 – 20,000</option>
+                        <option value="20k-plus">20,000+</option>
+                      </select>
+                    </div>
+                    {errors.diagnostic_followers_band && <p className={errCls}>{errors.diagnostic_followers_band.message}</p>}
+                  </div>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="diagnostic_primary_blocker" className={labelCls}>Primary blocker</label>
+                    <div className={fieldShell}>
+                      <select id="diagnostic_primary_blocker" className={selectCls} {...register("diagnostic_primary_blocker")}>
+                        <option value="">Select blocker…</option>
+                        <option value="low-reach">I post but nobody sees my content</option>
+                        <option value="no-content-system">I don't know what to post consistently</option>
+                        <option value="no-conversion">Followers exist but no sales or clients</option>
+                        <option value="inconsistent-execution">No time — totally inconsistent</option>
+                      </select>
+                    </div>
+                    {errors.diagnostic_primary_blocker && <p className={errCls}>{errors.diagnostic_primary_blocker.message}</p>}
+                  </div>
+                  <div>
+                    <label htmlFor="diagnostic_revenue_goal" className={labelCls}>Target monthly revenue</label>
+                    <div className={fieldShell}>
+                      <select id="diagnostic_revenue_goal" className={selectCls} {...register("diagnostic_revenue_goal")}>
+                        <option value="">Select target…</option>
+                        <option value="500-1000">$500 – $1,000/month</option>
+                        <option value="1000-3000">$1,000 – $3,000/month</option>
+                        <option value="3000-10000">$3,000 – $10,000/month</option>
+                        <option value="10000-plus">$10,000+/month</option>
+                      </select>
+                    </div>
+                    {errors.diagnostic_revenue_goal && <p className={errCls}>{errors.diagnostic_revenue_goal.message}</p>}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {currentStep === "brand" && (
                 <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
@@ -643,8 +756,8 @@ export default function WizardCore(props: WizardCoreProps) {
                 {showField("creative", "reference_image") && (
                   <div>
                     <ReferenceImageUploader
-                      value={watch("reference_image") || ""}
-                      onChange={(nextValue) => setValue("reference_image", nextValue, { shouldDirty: true })}
+                      value={wizardData.reference_image || ""}
+                      onChange={(nextValue) => updateWizardData({ reference_image: nextValue })}
                       disabled={loading}
                     />
                     {errors.reference_image && <p className={errCls}>{errors.reference_image.message}</p>}
@@ -738,16 +851,48 @@ export default function WizardCore(props: WizardCoreProps) {
               </div>
             )}
 
-            {err && <p className="mt-4 text-error dark:text-tertiary">{err}</p>}
+            {err && <p className="mt-4 text-error dark:text-brand-accent">{err}</p>}
 
             {isFinalStep && !loading && (
-              <div className="mb-5 rounded-xl border border-primary/30 bg-primary/10 p-4 dark:border-primary/40 dark:bg-primary/15">
+              <div className="mb-5 rounded-xl border border-primary/30 bg-primary/10 p-4 dark:border-brand-primary/40 dark:bg-brand-primary/15">
                 <div className="space-y-2">
-                  <p className="text-sm font-semibold text-on-surface">Ready to generate your kit</p>
+                  <p className="text-sm font-semibold text-on-surface">
+                    {variantB ? "Ready to reveal your diagnosis and action plan" : "Ready to generate your kit"}
+                  </p>
                   <p className="text-xs text-on-surface-variant">
-                    Takes around 10-30 seconds. Your draft stays saved, and you can edit after generation.
+                    {variantB
+                      ? "Takes around 10-30 seconds. Your diagnosis snapshot is saved with the kit, and you can edit outputs after generation."
+                      : "Takes around 10-30 seconds. Your draft stays saved, and you can edit after generation."}
                   </p>
                 </div>
+              </div>
+            )}
+
+            {variantB && isFinalStep && !loading && (
+              <div className="mb-5 grid gap-3 md:grid-cols-3">
+                <div className="rounded-xl border border-outline/25 bg-surface-container-low p-3">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Role</p>
+                  <p className="mt-1 text-sm font-semibold text-on-surface">{watch("diagnostic_role") || "Not set"}</p>
+                </div>
+                <div className="rounded-xl border border-outline/25 bg-surface-container-low p-3">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Primary blocker</p>
+                  <p className="mt-1 text-sm font-semibold text-on-surface">{watch("diagnostic_primary_blocker") || "Not set"}</p>
+                </div>
+                <div className="rounded-xl border border-outline/25 bg-surface-container-low p-3">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Revenue target</p>
+                  <p className="mt-1 text-sm font-semibold text-on-surface">{watch("diagnostic_revenue_goal") || "Not set"}</p>
+                </div>
+              </div>
+            )}
+
+            {variantB && isFinalStep && !loading && (
+              <div className="mb-5 rounded-xl border border-tertiary/25 bg-tertiary/10 p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-tertiary">Proof and objections</p>
+                <ul className="mt-2 space-y-1 text-sm text-on-surface-variant">
+                  <li>- Built for repeatable execution, not one-time suggestions.</li>
+                  <li>- You can regenerate, edit, and iterate every output after creation.</li>
+                  <li>- Draft-safe flow: nothing gets lost if you return later.</li>
+                </ul>
               </div>
             )}
 
@@ -766,7 +911,7 @@ export default function WizardCore(props: WizardCoreProps) {
                   onClick={handleSubmit(onValidSubmit)}
                   disabled={loading}
                 >
-                  {loading ? "Generating..." : "Generate my kit now"}
+                  {loading ? (variantB ? "Building your diagnosis..." : "Generating...") : variantB ? "Show my diagnosis and plan" : "Generate my kit now"}
                 </button>
               )}
             </div>

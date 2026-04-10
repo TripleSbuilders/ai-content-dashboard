@@ -24,6 +24,11 @@ function parseBriefJson(json: string): Record<string, unknown> {
   }
 }
 
+function parseResultJson(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return value as Record<string, unknown>;
+}
+
 const btnPrimary =
   "inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-primary-container px-5 py-3 font-semibold text-on-primary-container shadow-lg transition hover:shadow-[0_0_20px_rgb(var(--c-primary)/0.35)] focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-50 dark:from-brand-primary dark:to-brand-accent dark:text-brand-darkText";
 const btnSecondary =
@@ -120,6 +125,13 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
   const retryInProgress = statusLower.includes("retry_in_progress");
   const title = briefBrand(kit.brief_json) || kit.id;
   const brief = parseBriefJson(kit.brief_json);
+  const result = parseResultJson(kit.result_json);
+  const diagnosisPlan =
+    result.diagnosis_plan && typeof result.diagnosis_plan === "object" && !Array.isArray(result.diagnosis_plan)
+      ? (result.diagnosis_plan as Record<string, unknown>)
+      : null;
+  const narrativeSummary =
+    typeof result.narrative_summary === "string" ? String(result.narrative_summary).trim() : "";
   const wizardType =
     brief.campaign_mode === "social" || brief.campaign_mode === "offer" || brief.campaign_mode === "deep"
       ? brief.campaign_mode
@@ -135,11 +147,15 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
       ? "Start with Optimization and test new hooks/angles this week."
       : "Start with Scale and produce a second kit for another audience segment.";
   const twentyFourHourPlan =
-    target && target.includes("10000")
+    typeof diagnosisPlan?.quickWin24h === "string" && diagnosisPlan.quickWin24h.trim()
+      ? diagnosisPlan.quickWin24h.trim()
+      : target && target.includes("10000")
       ? "Next 24h: publish one hero piece and one authority support post."
       : "Next 24h: publish one quick-win item from this kit and collect response signals.";
   const sevenDayPlan =
-    "Next 7d: run 2-3 outputs, capture performance, then regenerate weak items using targeted feedback.";
+    typeof diagnosisPlan?.focus7d === "string" && diagnosisPlan.focus7d.trim()
+      ? diagnosisPlan.focus7d.trim()
+      : "Next 7d: run 2-3 outputs, capture performance, then regenerate weak items using targeted feedback.";
 
   return (
     <>
@@ -310,6 +326,9 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
           <div className="mt-4 rounded-xl border border-outline/25 bg-surface-container-low p-4">
             <p className="text-xs font-bold uppercase tracking-wide text-on-surface-variant">Recommended next move</p>
             <p className="mt-1 text-sm font-semibold text-on-surface">{recommendation}</p>
+            {narrativeSummary ? (
+              <p className="mt-2 text-xs text-on-surface-variant">{narrativeSummary}</p>
+            ) : null}
           </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-outline/25 bg-surface-container-low p-4">

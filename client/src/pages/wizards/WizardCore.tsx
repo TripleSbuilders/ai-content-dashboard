@@ -411,7 +411,7 @@ export default function WizardCore(props: WizardCoreProps) {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label htmlFor="diagnostic_account_stage" className={labelCls}>Account stage</label>
+                    <label htmlFor="diagnostic_account_stage" className={labelCls}>Account Stage</label>
                     <div className={fieldShell}>
                       <select id="diagnostic_account_stage" className={selectCls} {...register("diagnostic_account_stage")}>
                         <option value="">Select stage…</option>
@@ -424,7 +424,7 @@ export default function WizardCore(props: WizardCoreProps) {
                     {errors.diagnostic_account_stage && <p className={errCls}>{errors.diagnostic_account_stage.message}</p>}
                   </div>
                   <div>
-                    <label htmlFor="diagnostic_followers_band" className={labelCls}>Followers range</label>
+                    <label htmlFor="diagnostic_followers_band" className={labelCls}>Follower Range</label>
                     <div className={fieldShell}>
                       <select id="diagnostic_followers_band" className={selectCls} {...register("diagnostic_followers_band")}>
                         <option value="">Select range…</option>
@@ -439,7 +439,7 @@ export default function WizardCore(props: WizardCoreProps) {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label htmlFor="diagnostic_primary_blocker" className={labelCls}>Primary blocker</label>
+                    <label htmlFor="diagnostic_primary_blocker" className={labelCls}>Primary Blocker</label>
                     <div className={fieldShell}>
                       <select id="diagnostic_primary_blocker" className={selectCls} {...register("diagnostic_primary_blocker")}>
                         <option value="">Select blocker…</option>
@@ -875,7 +875,7 @@ export default function WizardCore(props: WizardCoreProps) {
                   <p className="mt-1 text-sm font-semibold text-on-surface">{watch("diagnostic_role") || "Not set"}</p>
                 </div>
                 <div className="rounded-xl border border-outline/25 bg-surface-container-low p-3">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Primary blocker</p>
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Primary Blocker</p>
                   <p className="mt-1 text-sm font-semibold text-on-surface">{watch("diagnostic_primary_blocker") || "Not set"}</p>
                 </div>
                 <div className="rounded-xl border border-outline/25 bg-surface-container-low p-3">

@@ -9,7 +9,7 @@ export default function OfferProductWizard() {
       formSchema={variantB ? offerBriefSchemaWithDiagnosis : offerBriefSchema}
       draftKey="ai-content-dashboard:wizard-draft:offer:v1"
       title="Offer & Product Wizard"
-      subtitle="Designed for commercial clarity: offer framing, competitive position, and conversion intent."
+      subtitle="Designed for commercial execution: focused offer framing, clear buyer intent, and stronger conversion outcomes."
       routeHint="/kits/:id"
       stepOrder={variantB ? ["diagnosis", "brand", "offer", "audience", "volume"] : ["brand", "offer", "audience", "volume"]}
       stepTitles={{

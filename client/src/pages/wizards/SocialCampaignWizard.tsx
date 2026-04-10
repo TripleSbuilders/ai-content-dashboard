@@ -9,7 +9,7 @@ export default function SocialCampaignWizard() {
       formSchema={variantB ? socialBriefSchemaWithDiagnosis : socialBriefSchema}
       draftKey="ai-content-dashboard:wizard-draft:social:v1"
       title="Social Campaign Wizard"
-      subtitle="Built for social-first campaigns: audience, channels, tone, and posting output."
+      subtitle="Designed for social-first execution: clear audience intent, sharp channel mix, and strong posting output."
       routeHint="/kits/:id"
       stepOrder={variantB ? ["diagnosis", "brand", "audience", "channels", "creative", "volume"] : ["brand", "audience", "channels", "creative", "volume"]}
       stepTitles={{

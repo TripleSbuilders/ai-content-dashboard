@@ -9,7 +9,7 @@ export default function DeepContentWizard() {
       formSchema={variantB ? deepBriefSchemaWithDiagnosis : deepBriefSchema}
       draftKey="ai-content-dashboard:wizard-draft:deep:v1"
       title="Deep Content Wizard"
-      subtitle="For long-form and depth-driven output: strong creative brief, content structure, and production detail."
+      subtitle="Designed for depth-first execution: stronger narrative structure, richer creative briefs, and production-ready detail."
       routeHint="/kits/:id"
       stepOrder={variantB ? ["diagnosis", "brand", "audience", "creative", "volume"] : ["brand", "audience", "creative", "volume"]}
       stepTitles={{

@@ -1,15 +1,17 @@
-import { offerBriefSchema } from "../../briefSchema";
+import { offerBriefSchema, offerBriefSchemaWithDiagnosis } from "../../briefSchema";
 import WizardCore from "./WizardCore";
+import { isWizardVariantB } from "../../lib/wizardExperiment";
 
 export default function OfferProductWizard() {
+  const variantB = isWizardVariantB();
   return (
     <WizardCore
-      formSchema={offerBriefSchema}
+      formSchema={variantB ? offerBriefSchemaWithDiagnosis : offerBriefSchema}
       draftKey="ai-content-dashboard:wizard-draft:offer:v1"
       title="Offer & Product Wizard"
       subtitle="Designed for commercial clarity: offer framing, competitive position, and conversion intent."
       routeHint="/kits/:id"
-      stepOrder={["diagnosis", "brand", "offer", "audience", "volume"]}
+      stepOrder={variantB ? ["diagnosis", "brand", "offer", "audience", "volume"] : ["brand", "offer", "audience", "volume"]}
       stepTitles={{
         diagnosis: "Quick diagnosis",
         brand: "Brand & industry",

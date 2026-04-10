@@ -1,3 +1,5 @@
+import { getWizardExperimentVariant, type WizardExperimentVariant } from "./wizardExperiment";
+
 export type WizardEventName =
   | "wizard_started"
   | "wizard_step_viewed"
@@ -22,6 +24,7 @@ export type WizardEventPayload = {
   kit_id?: string;
   error?: string;
   restored_draft?: boolean;
+  experiment_variant?: WizardExperimentVariant;
 };
 
 const STORAGE_KEY = "ai-content-dashboard:wizard-analytics-buffer:v1";
@@ -116,7 +119,11 @@ function scheduleFlush() {
 }
 
 export function emitWizardEvent(payload: Omit<WizardEventPayload, "ts">) {
-  const eventPayload: WizardEventPayload = { ...payload, ts: Date.now() };
+  const eventPayload: WizardEventPayload = {
+    ...payload,
+    experiment_variant: payload.experiment_variant ?? getWizardExperimentVariant(),
+    ts: Date.now(),
+  };
   appendToLocalBuffer(eventPayload);
   queuePending(eventPayload);
   scheduleFlush();

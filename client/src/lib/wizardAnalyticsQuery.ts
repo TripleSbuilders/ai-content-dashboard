@@ -43,6 +43,7 @@ export type WizardAnalyticsSummary = {
   diagnosisToGenerateRate: number;
   avgTimeToFirstPerceivedValueMs: number;
   byWizardType: Record<WizardType, number>;
+  byVariant: Record<"A" | "B" | "unknown", number>;
   byStep: StepStat[];
 };
 
@@ -54,6 +55,7 @@ export function summarizeWizardEvents(events: WizardEventPayload[]): WizardAnaly
     unknown: 0,
   };
   const stepMap = new Map<string, { stepViews: number; nextClicks: number; validationFails: number }>();
+  const byVariant: Record<"A" | "B" | "unknown", number> = { A: 0, B: 0, unknown: 0 };
 
   let started = 0;
   let diagnosisCompleted = 0;
@@ -65,6 +67,9 @@ export function summarizeWizardEvents(events: WizardEventPayload[]): WizardAnaly
 
   for (const e of events) {
     byWizardType[e.wizard_type] += 1;
+    const v = e.experiment_variant;
+    if (v === "A" || v === "B") byVariant[v] += 1;
+    else byVariant.unknown += 1;
     if (e.name === "wizard_started") started += 1;
     if (e.name === "wizard_generate_clicked") generateClicks += 1;
     if (e.name === "kit_created_success") success += 1;
@@ -107,6 +112,7 @@ export function summarizeWizardEvents(events: WizardEventPayload[]): WizardAnaly
     diagnosisToGenerateRate: pct(generateClicks, diagnosisCompleted),
     avgTimeToFirstPerceivedValueMs: ttfpvSamples ? ttfpvTotal / ttfpvSamples : 0,
     byWizardType,
+    byVariant,
     byStep,
   };
 }

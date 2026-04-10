@@ -30,6 +30,7 @@ import { useWizardDraft } from "./hooks/useWizardDraft";
 import { useWizardOrchestrator } from "./hooks/useWizardOrchestrator";
 import WizardStepChips from "./components/WizardStepChips";
 import WizardValuePreview from "./components/WizardValuePreview";
+import { isWizardVariantB } from "../../lib/wizardExperiment";
 
 type StepId = "diagnosis" | "brand" | "audience" | "channels" | "offer" | "creative" | "volume";
 
@@ -122,6 +123,7 @@ export default function WizardCore(props: WizardCoreProps) {
   const zodSchema = props.formSchema ?? briefSchema;
   const zodResolverMemo = useMemo(() => zodResolver(zodSchema), [zodSchema]);
   const [industryOptions, setIndustryOptions] = useState<{ slug: string; name: string }[]>(FALLBACK_INDUSTRY_OPTIONS);
+  const variantB = isWizardVariantB();
 
   useEffect(() => {
     listPromptCatalogIndustries()
@@ -392,7 +394,7 @@ export default function WizardCore(props: WizardCoreProps) {
 
             <WizardStepChips stepOrder={props.stepOrder} currentStep={step} stepTitles={props.stepTitles} />
 
-            {currentStep === "diagnosis" && (
+            {variantB && currentStep === "diagnosis" && (
               <div className="space-y-6">
                 <div>
                   <label htmlFor="diagnostic_role" className={labelCls}>Who are you?</label>
@@ -854,15 +856,19 @@ export default function WizardCore(props: WizardCoreProps) {
             {isFinalStep && !loading && (
               <div className="mb-5 rounded-xl border border-primary/30 bg-primary/10 p-4 dark:border-brand-primary/40 dark:bg-brand-primary/15">
                 <div className="space-y-2">
-                  <p className="text-sm font-semibold text-on-surface">Ready to reveal your diagnosis and action plan</p>
+                  <p className="text-sm font-semibold text-on-surface">
+                    {variantB ? "Ready to reveal your diagnosis and action plan" : "Ready to generate your kit"}
+                  </p>
                   <p className="text-xs text-on-surface-variant">
-                    Takes around 10-30 seconds. Your diagnosis snapshot is saved with the kit, and you can edit outputs after generation.
+                    {variantB
+                      ? "Takes around 10-30 seconds. Your diagnosis snapshot is saved with the kit, and you can edit outputs after generation."
+                      : "Takes around 10-30 seconds. Your draft stays saved, and you can edit after generation."}
                   </p>
                 </div>
               </div>
             )}
 
-            {isFinalStep && !loading && (
+            {variantB && isFinalStep && !loading && (
               <div className="mb-5 grid gap-3 md:grid-cols-3">
                 <div className="rounded-xl border border-outline/25 bg-surface-container-low p-3">
                   <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Role</p>
@@ -879,7 +885,7 @@ export default function WizardCore(props: WizardCoreProps) {
               </div>
             )}
 
-            {isFinalStep && !loading && (
+            {variantB && isFinalStep && !loading && (
               <div className="mb-5 rounded-xl border border-tertiary/25 bg-tertiary/10 p-4">
                 <p className="text-xs font-bold uppercase tracking-wide text-tertiary">Proof and objections</p>
                 <ul className="mt-2 space-y-1 text-sm text-on-surface-variant">
@@ -905,7 +911,7 @@ export default function WizardCore(props: WizardCoreProps) {
                   onClick={handleSubmit(onValidSubmit)}
                   disabled={loading}
                 >
-                  {loading ? "Building your diagnosis..." : "Show my diagnosis and plan"}
+                  {loading ? (variantB ? "Building your diagnosis..." : "Generating...") : variantB ? "Show my diagnosis and plan" : "Generate my kit now"}
                 </button>
               )}
             </div>

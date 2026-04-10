@@ -64,11 +64,6 @@ const requiredStr = (message: string) => z.string().trim().min(1, { message });
 
 /** Social path: minimum viable brief for reach/engagement prompts. */
 export const socialBriefSchema = briefSchema.extend({
-  diagnostic_role: requiredStr("Select your role"),
-  diagnostic_account_stage: requiredStr("Select your stage"),
-  diagnostic_followers_band: requiredStr("Select followers range"),
-  diagnostic_primary_blocker: requiredStr("Select your primary blocker"),
-  diagnostic_revenue_goal: requiredStr("Select a target revenue range"),
   industry: requiredStr("Select an industry"),
   target_audience: requiredStr("Select at least one audience"),
   main_goal: requiredStr("Select a main campaign goal"),
@@ -78,11 +73,6 @@ export const socialBriefSchema = briefSchema.extend({
 
 /** Offer path: conversion-focused minimum. */
 export const offerBriefSchema = briefSchema.extend({
-  diagnostic_role: requiredStr("Select your role"),
-  diagnostic_account_stage: requiredStr("Select your stage"),
-  diagnostic_followers_band: requiredStr("Select followers range"),
-  diagnostic_primary_blocker: requiredStr("Select your primary blocker"),
-  diagnostic_revenue_goal: requiredStr("Select a target revenue range"),
   industry: requiredStr("Select an industry"),
   offer: requiredStr("Describe your offer"),
   target_audience: requiredStr("Select at least one audience"),
@@ -91,17 +81,36 @@ export const offerBriefSchema = briefSchema.extend({
 
 /** Deep path: authority content minimum. */
 export const deepBriefSchema = briefSchema.extend({
-  diagnostic_role: requiredStr("Select your role"),
-  diagnostic_account_stage: requiredStr("Select your stage"),
-  diagnostic_followers_band: requiredStr("Select followers range"),
-  diagnostic_primary_blocker: requiredStr("Select your primary blocker"),
-  diagnostic_revenue_goal: requiredStr("Select a target revenue range"),
   industry: requiredStr("Select an industry"),
   target_audience: requiredStr("Select at least one audience"),
   main_goal: requiredStr("Select a main goal"),
   visual_notes: requiredStr("Add creative direction"),
   campaign_duration: requiredStr("Add timing or duration"),
   best_content_types: requiredStr("List content types you want"),
+});
+
+export const socialBriefSchemaWithDiagnosis = socialBriefSchema.extend({
+  diagnostic_role: requiredStr("Select your role"),
+  diagnostic_account_stage: requiredStr("Select your stage"),
+  diagnostic_followers_band: requiredStr("Select followers range"),
+  diagnostic_primary_blocker: requiredStr("Select your primary blocker"),
+  diagnostic_revenue_goal: requiredStr("Select a target revenue range"),
+});
+
+export const offerBriefSchemaWithDiagnosis = offerBriefSchema.extend({
+  diagnostic_role: requiredStr("Select your role"),
+  diagnostic_account_stage: requiredStr("Select your stage"),
+  diagnostic_followers_band: requiredStr("Select followers range"),
+  diagnostic_primary_blocker: requiredStr("Select your primary blocker"),
+  diagnostic_revenue_goal: requiredStr("Select a target revenue range"),
+});
+
+export const deepBriefSchemaWithDiagnosis = deepBriefSchema.extend({
+  diagnostic_role: requiredStr("Select your role"),
+  diagnostic_account_stage: requiredStr("Select your stage"),
+  diagnostic_followers_band: requiredStr("Select followers range"),
+  diagnostic_primary_blocker: requiredStr("Select your primary blocker"),
+  diagnostic_revenue_goal: requiredStr("Select a target revenue range"),
 });
 
 /** Fields validated when leaving each step (0–4). Step 5 uses full schema on submit. */

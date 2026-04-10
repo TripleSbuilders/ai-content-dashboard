@@ -77,6 +77,15 @@ export default function WizardAnalyticsPage() {
       </section>
 
       <section className="rounded-2xl border border-outline/30 bg-surface-container-low p-4">
+        <h2 className="text-lg font-bold text-on-surface">A/B split visibility</h2>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <Card label="Variant A events" value={String(summary.byVariant.A)} />
+          <Card label="Variant B events" value={String(summary.byVariant.B)} />
+          <Card label="Unknown variant events" value={String(summary.byVariant.unknown)} />
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-outline/30 bg-surface-container-low p-4">
         <h2 className="text-lg font-bold text-on-surface">Step performance</h2>
         {summary.byStep.length === 0 ? (
           <p className="mt-2 text-sm text-on-surface-variant">No step data yet. Run the wizard flow first.</p>

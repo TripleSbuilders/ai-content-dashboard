@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useMemo, useState } from "react";
+import { isWizardVariantB } from "./lib/wizardExperiment";
 
 function cn(...parts: (string | false | undefined | null)[]) {
   return parts.filter(Boolean).join(" ");
@@ -8,6 +9,7 @@ function cn(...parts: (string | false | undefined | null)[]) {
 export default function ContentWizard() {
   const nav = useNavigate();
   const [selectedPath, setSelectedPath] = useState<string>("/wizard/social");
+  const variantB = isWizardVariantB();
 
   const cards = useMemo(
     () => [
@@ -62,25 +64,36 @@ export default function ContentWizard() {
           <p className="mt-1 text-sm text-on-surface-variant">
             اختار كارت واحد فقط، وبعدها اضغط زرار واحد للبدء.
           </p>
-          <div className="mt-4 grid gap-2 sm:grid-cols-2">
-            <button
-              type="button"
-              className="rounded-xl bg-gradient-to-r from-primary to-primary-container px-4 py-3 text-sm font-bold text-on-primary-container transition hover:opacity-95"
-              onClick={() => nav("/wizard/social")}
-            >
-              Start now (recommended)
-            </button>
-            <button
-              type="button"
-              className="rounded-xl border border-outline/30 bg-surface-container-high px-4 py-3 text-sm font-semibold text-on-surface transition hover:bg-surface-container-highest"
-              onClick={() => nav("/wizard/offer")}
-            >
-              I need offer-focused flow
-            </button>
-          </div>
+          {variantB ? (
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                className="rounded-xl bg-gradient-to-r from-primary to-primary-container px-4 py-3 text-sm font-bold text-on-primary-container transition hover:opacity-95"
+                onClick={() => nav("/wizard/social")}
+              >
+                Start now (recommended)
+              </button>
+              <button
+                type="button"
+                className="rounded-xl border border-outline/30 bg-surface-container-high px-4 py-3 text-sm font-semibold text-on-surface transition hover:bg-surface-container-highest"
+                onClick={() => nav("/wizard/offer")}
+              >
+                I need offer-focused flow
+              </button>
+            </div>
+          ) : null}
           <div className="mt-4 flex items-center gap-2 text-xs text-on-surface-variant">
             <span className="material-symbols-outlined text-sm">touch_app</span>
-            Use quick actions above, or pick any card below then press <span className="font-bold text-on-surface">Start now</span>.
+            {variantB ? (
+              <>
+                Use quick actions above, or pick any card below then press{" "}
+                <span className="font-bold text-on-surface">Start now</span>.
+              </>
+            ) : (
+              <>
+                Pick a card below, then press <span className="font-bold text-on-surface">Start now</span>.
+              </>
+            )}
           </div>
         </div>
 

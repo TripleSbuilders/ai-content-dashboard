@@ -1,15 +1,17 @@
-import { deepBriefSchema } from "../../briefSchema";
+import { deepBriefSchema, deepBriefSchemaWithDiagnosis } from "../../briefSchema";
 import WizardCore from "./WizardCore";
+import { isWizardVariantB } from "../../lib/wizardExperiment";
 
 export default function DeepContentWizard() {
+  const variantB = isWizardVariantB();
   return (
     <WizardCore
-      formSchema={deepBriefSchema}
+      formSchema={variantB ? deepBriefSchemaWithDiagnosis : deepBriefSchema}
       draftKey="ai-content-dashboard:wizard-draft:deep:v1"
       title="Deep Content Wizard"
       subtitle="For long-form and depth-driven output: strong creative brief, content structure, and production detail."
       routeHint="/kits/:id"
-      stepOrder={["diagnosis", "brand", "audience", "creative", "volume"]}
+      stepOrder={variantB ? ["diagnosis", "brand", "audience", "creative", "volume"] : ["brand", "audience", "creative", "volume"]}
       stepTitles={{
         diagnosis: "Quick diagnosis",
         brand: "Brand & industry",

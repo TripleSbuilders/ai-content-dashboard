@@ -14,6 +14,7 @@ const eventSchema = z.object({
   kit_id: z.string().optional(),
   error: z.string().optional(),
   restored_draft: z.boolean().optional(),
+  experiment_variant: z.enum(["A", "B"]).optional(),
 });
 
 const payloadSchema = z.object({

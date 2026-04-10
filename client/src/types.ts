@@ -37,6 +37,7 @@ export type BriefForm = {
   offer: string;
   competitors: string;
   visual_notes: string;
+  reference_image?: string;
   campaign_duration: string;
   budget_level: string;
   best_content_types: string;
@@ -45,6 +46,11 @@ export type BriefForm = {
   num_posts: number;
   num_image_designs: number;
   num_video_prompts: number;
+  diagnostic_role: string;
+  diagnostic_account_stage: string;
+  diagnostic_followers_band: string;
+  diagnostic_primary_blocker: string;
+  diagnostic_revenue_goal: string;
 };
 
 export type KitPostItem = {
@@ -87,3 +93,5 @@ export type KitVideoPromptItem = {
   ai_tool_instructions?: string;
   why_this_converts?: string;
 };
+
+export type { BaseBrief, BriefByMode, DeepBrief, OfferBrief, SocialBrief } from "./types/briefContracts";

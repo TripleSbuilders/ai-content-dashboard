@@ -1,4 +1,3 @@
-import PrimaryFlowBanner from "../components/PrimaryFlowBanner";
 
 const integrations = [
   { name: "Slack", desc: "Team notifications & approvals", icon: "chat", color: "from-primary to-primary-container", status: "Connected" },
@@ -12,7 +11,6 @@ const integrations = [
 export default function IntegrationsPage() {
   return (
     <>
-      <PrimaryFlowBanner />
       <p className="mb-6 rounded-xl border border-tertiary/25 bg-tertiary/10 px-4 py-3 text-sm text-on-surface">
         <strong className="text-tertiary">UI only:</strong> Integrations stay as design placeholders — no backend sync. The rest
         of the studio (kits, profile, notifications, brand voice, extras waitlist, help) uses the real API.
@@ -21,7 +19,7 @@ export default function IntegrationsPage() {
         <div>
           <h1 className="headline text-4xl font-black tracking-tight text-on-surface md:text-5xl">Integrations Hub</h1>
           <p className="mt-2 max-w-xl text-on-surface-variant">
-            Connect Ethereal Engine to the tools your team already uses. OAuth-ready placeholders — wire backend when ready.
+            Connect Social Geni to the tools your team already uses. OAuth-ready placeholders — wire backend when ready.
           </p>
         </div>
         <button

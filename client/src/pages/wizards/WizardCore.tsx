@@ -1,18 +1,49 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useEffect, useMemo, useState } from "react";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { z } from "zod";
 import { useNavigate } from "react-router-dom";
-import { generateKit, listPromptCatalogIndustries } from "../../api";
+import { listPromptCatalogIndustries } from "../../api";
 import { BRIEF_LIMITS, briefSchema, initialBriefForm } from "../../briefSchema";
-import { isWizardDirty, parseWizardDraft } from "../../wizardDraft";
+import PillGroup from "../../components/selection/PillGroup";
+import SelectableCard from "../../components/selection/SelectableCard";
+import ReferenceImageUploader from "../../components/ReferenceImageUploader";
+import AdditionalNotes from "../../components/AdditionalNotes";
+import {
+  decodeMultiSelection,
+  decodeSingleSelection,
+  encodeMultiSelection,
+  encodeSingleSelection,
+} from "../../lib/selectionFieldCodec";
 import type { BriefForm } from "../../types";
-import { emitWizardEvent, getWizardTypeFromDraftKey } from "../../lib/wizardAnalytics";
-import { BrandStep, AudienceStep, ChannelsStep, OfferStep, CreativeStep, VolumeStep } from "./WizardSteps";
+import {
+  BRAND_TONE_OPTIONS,
+  MAIN_GOAL_OPTIONS,
+  OTHER_OPTION,
+  PLATFORM_OPTIONS,
+  TARGET_AUDIENCE_OPTIONS,
+} from "./selectionOptions";
+import { getWizardTypeFromDraftKey } from "../../lib/wizardAnalytics";
+import { useWizardTelemetry } from "./hooks/useWizardTelemetry";
+import { useWizardSubmission } from "./hooks/useWizardSubmission";
+import { useWizardDraft } from "./hooks/useWizardDraft";
+import { useWizardOrchestrator } from "./hooks/useWizardOrchestrator";
+import WizardStepChips from "./components/WizardStepChips";
+import WizardValuePreview from "./components/WizardValuePreview";
+import { isWizardVariantB } from "../../lib/wizardExperiment";
 
-type StepId = "brand" | "audience" | "channels" | "offer" | "creative" | "volume";
+type StepId = "diagnosis" | "brand" | "audience" | "channels" | "offer" | "creative" | "volume";
 
-// Removed selection state
+type SelectionState = {
+  mainGoalSelected: string;
+  mainGoalOther: string;
+  brandToneSelected: string;
+  brandToneOther: string;
+  audienceSelected: string[];
+  audienceOther: string;
+  platformsSelected: string[];
+  platformsOther: string;
+};
 
 type WizardCoreProps = {
   draftKey: string;
@@ -47,11 +78,18 @@ const WAITING_STAGES = [
 ] as const;
 
 const STEP_FIELDS: Record<StepId, (keyof BriefForm)[]> = {
+  diagnosis: [
+    "diagnostic_role",
+    "diagnostic_account_stage",
+    "diagnostic_followers_band",
+    "diagnostic_primary_blocker",
+    "diagnostic_revenue_goal",
+  ],
   brand: ["brand_name", "industry"],
   audience: ["target_audience", "main_goal"],
   channels: ["platforms", "brand_tone", "brand_colors"],
   offer: ["offer", "competitors"],
-  creative: ["visual_notes", "campaign_duration", "budget_level", "best_content_types"],
+  creative: ["visual_notes", "reference_image", "campaign_duration", "budget_level", "best_content_types"],
   volume: [],
 };
 
@@ -63,6 +101,14 @@ function clamp(n: number, min: number, max: number) {
   return Math.min(max, Math.max(min, n));
 }
 
+const labelCls = "mb-2 ms-1 block text-xs font-semibold uppercase tracking-widest text-on-surface-variant";
+const fieldShell = "glow-focus overflow-hidden rounded-xl bg-surface-container-lowest p-0.5";
+const inputCls =
+  "block box-border w-full rounded-lg border-none bg-transparent px-4 py-3 text-on-surface placeholder:text-on-surface-variant/50 focus:ring-0 focus-visible:ring-2 focus-visible:ring-primary/45";
+const selectCls =
+  "block box-border w-full appearance-none rounded-lg border-none bg-surface-container-lowest px-4 py-3 text-on-surface focus:ring-0 focus-visible:ring-2 focus-visible:ring-primary/45 dark:bg-surface-container-high/70";
+const textareaCls = cn(inputCls, "min-h-[100px] resize-y");
+const errCls = "mt-1 text-sm text-error";
 const btnPrimary =
   "rounded-xl bg-gradient-to-r from-primary to-primary-container px-5 py-3 font-bold text-on-primary-container shadow-lg shadow-primary/15 transition active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-50 dark:from-brand-primary dark:to-brand-accent dark:text-brand-darkText";
 const btnSecondary =
@@ -77,6 +123,7 @@ export default function WizardCore(props: WizardCoreProps) {
   const zodSchema = props.formSchema ?? briefSchema;
   const zodResolverMemo = useMemo(() => zodResolver(zodSchema), [zodSchema]);
   const [industryOptions, setIndustryOptions] = useState<{ slug: string; name: string }[]>(FALLBACK_INDUSTRY_OPTIONS);
+  const variantB = isWizardVariantB();
 
   useEffect(() => {
     listPromptCatalogIndustries()
@@ -90,40 +137,68 @@ export default function WizardCore(props: WizardCoreProps) {
       });
   }, []);
 
-  const initialState = useMemo(() => {
-    try {
-      const raw = localStorage.getItem(props.draftKey);
-      if (!raw) return { step: 0, form: mergedDefaults, hadDraft: false };
-      const parsed = parseWizardDraft(raw, LIMITS, maxStep);
-      if (!parsed) return { step: 0, form: mergedDefaults, hadDraft: false };
-      return { step: parsed.step, form: { ...mergedDefaults, ...parsed.form }, hadDraft: true };
-    } catch {
-      return { step: 0, form: mergedDefaults, hadDraft: false };
-    }
-  }, [mergedDefaults, props.draftKey, maxStep]);
-
-  const [step, setStep] = useState(initialState.step);
-  const [showDraftBanner, setShowDraftBanner] = useState(initialState.hadDraft);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+  const [isOtherIndustry, setIsOtherIndustry] = useState(false);
   const [tipIndex, setTipIndex] = useState(0);
   const [reduceMotion, setReduceMotion] = useState(false);
-  const saveTimer = useRef<number | null>(null);
-  const startedAtRef = useRef<number>(Date.now());
-  const idempotencyKey = useMemo(() => crypto.randomUUID(), []);
 
-  const methods = useForm<BriefForm>({
+  const {
+    register,
+    control,
+    setValue,
+    watch,
+    reset,
+    getValues,
+    trigger,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<BriefForm>({
     resolver: zodResolverMemo,
-    defaultValues: initialState.form,
+    defaultValues: mergedDefaults,
     mode: "onTouched",
   });
-  const { watch, reset, getValues, trigger, handleSubmit } = methods;
+  const [wizardData, setWizardData] = useState<BriefForm>(mergedDefaults);
 
-  function showField(step: string, key: keyof BriefForm): boolean {
-    if (step === "volume") {
-      return (["num_posts", "num_image_designs", "num_video_prompts", "email"] as const).some((k) => k === key);
+  const updateWizardData = (newData: Partial<BriefForm>) => {
+    setWizardData((prev) => ({ ...prev, ...newData }));
+    for (const [key, value] of Object.entries(newData)) {
+      setValue(key as keyof BriefForm, value as BriefForm[keyof BriefForm], { shouldDirty: true });
     }
-    const keys = stepFieldMap[step as StepId] ?? STEP_FIELDS[step as StepId];
+  };
+
+  const {
+    initialState,
+    step,
+    setStep,
+    showDraftBanner,
+    clearStoredDraft,
+  } = useWizardDraft({
+    draftKey: props.draftKey,
+    mergedDefaults,
+    maxStep,
+    limits: LIMITS as unknown as Record<string, { min: number; max: number }>,
+    watch: (cb) => watch(cb),
+    getValues,
+  });
+
+  const [selectionState, setSelectionState] = useState<SelectionState>(() => {
+    const goal = decodeSingleSelection(initialState.form.main_goal, MAIN_GOAL_OPTIONS);
+    const tone = decodeSingleSelection(initialState.form.brand_tone, BRAND_TONE_OPTIONS);
+    const audience = decodeMultiSelection(initialState.form.target_audience, TARGET_AUDIENCE_OPTIONS);
+    const platforms = decodeMultiSelection(initialState.form.platforms, PLATFORM_OPTIONS);
+    return {
+      mainGoalSelected: goal.selected,
+      mainGoalOther: goal.otherText,
+      brandToneSelected: tone.selected,
+      brandToneOther: tone.otherText,
+      audienceSelected: audience.selected,
+      audienceOther: audience.otherText,
+      platformsSelected: platforms.selected,
+      platformsOther: platforms.otherText,
+    };
+  });
+
+  function showField(step: StepId, key: keyof BriefForm): boolean {
+    const keys = stepFieldMap[step] ?? STEP_FIELDS[step];
     if (!keys.length) return true;
     return keys.includes(key);
   }
@@ -137,136 +212,132 @@ export default function WizardCore(props: WizardCoreProps) {
   }, []);
 
   useEffect(() => {
-    const sub = watch(() => {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = window.setTimeout(() => {
-        try {
-          const form = getValues();
-          if (!isWizardDirty(form, step, LIMITS)) {
-            localStorage.removeItem(props.draftKey);
-            return;
-          }
-          localStorage.setItem(props.draftKey, JSON.stringify({ step, form }));
-        } catch {
-          // ignore
-        }
-      }, 400);
+    reset(initialState.form);
+    setWizardData(initialState.form);
+  }, [initialState.form, reset]);
+
+  useEffect(() => {
+    const subscription = watch((value) => {
+      setWizardData((prev) => ({ ...prev, ...(value as Partial<BriefForm>) }));
     });
-    return () => {
-      sub.unsubscribe();
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-    };
-  }, [watch, getValues, step, props.draftKey]);
+    return () => subscription.unsubscribe();
+  }, [watch]);
+
+  const telemetry = useWizardTelemetry({
+    wizardType,
+    draftKey: props.draftKey,
+    step,
+    stepOrder: props.stepOrder,
+    maxStep,
+    restoredDraft: initialState.hadDraft,
+  });
+
+  const clearDraft = () => {
+    reset(mergedDefaults);
+    setWizardData(mergedDefaults);
+    setSelectionState({
+      mainGoalSelected: "",
+      mainGoalOther: "",
+      brandToneSelected: "",
+      brandToneOther: "",
+      audienceSelected: [],
+      audienceOther: "",
+      platformsSelected: [],
+      platformsOther: "",
+    });
+    setStep(0);
+    clearStoredDraft();
+  };
+
+  const toggleListValue = (list: readonly string[], value: string): string[] =>
+    list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
+
+  useEffect(() => {
+    const serializedGoal = encodeSingleSelection(
+      selectionState.mainGoalSelected,
+      selectionState.mainGoalOther,
+      MAIN_GOAL_OPTIONS
+    );
+    const serializedTone = encodeSingleSelection(
+      selectionState.brandToneSelected,
+      selectionState.brandToneOther,
+      BRAND_TONE_OPTIONS
+    );
+    const serializedAudience = encodeMultiSelection(
+      selectionState.audienceSelected,
+      selectionState.audienceOther,
+      TARGET_AUDIENCE_OPTIONS
+    );
+    const serializedPlatforms = encodeMultiSelection(
+      selectionState.platformsSelected,
+      selectionState.platformsOther,
+      PLATFORM_OPTIONS
+    );
+
+    setValue("main_goal", serializedGoal, { shouldDirty: true });
+    setValue("brand_tone", serializedTone, { shouldDirty: true });
+    setValue("target_audience", serializedAudience, { shouldDirty: true });
+    setValue("platforms", serializedPlatforms, { shouldDirty: true });
+  }, [selectionState, setValue]);
+
+  const { next } = useWizardOrchestrator({
+    step,
+    maxStep,
+    stepOrder: props.stepOrder,
+    stepFieldMap,
+    trigger,
+    setStep,
+    onStepValidationFailed: (current) => {
+      telemetry.emit({
+        name: "wizard_step_validation_failed",
+        wizard_type: wizardType,
+        draft_key: props.draftKey,
+        step_index: step,
+        step_id: current,
+        validation_state: "failed",
+        elapsed_time_ms: telemetry.getElapsedMs(),
+      });
+    },
+    onStepAdvance: () => {
+      const current = props.stepOrder[step]!;
+      telemetry.emit({
+        name: "wizard_step_next_clicked",
+        wizard_type: wizardType,
+        draft_key: props.draftKey,
+        step_index: step,
+        step_id: current,
+        validation_state: "passed",
+        elapsed_time_ms: telemetry.getElapsedMs(),
+      });
+    },
+  });
+
+  const submission = useWizardSubmission({
+    draftKey: props.draftKey,
+    wizardType,
+    step,
+    stepOrder: props.stepOrder,
+    createIdempotencyKey: () => crypto.randomUUID(),
+    clearDraft: () => localStorage.removeItem(props.draftKey),
+    navigateToKit: (kitId) => nav(`/kits/${kitId}`),
+    clampCounts: (form) => ({
+      ...form,
+      num_posts: clamp(form.num_posts, LIMITS.num_posts.min, LIMITS.num_posts.max),
+      num_image_designs: clamp(form.num_image_designs, LIMITS.num_image_designs.min, LIMITS.num_image_designs.max),
+      num_video_prompts: clamp(form.num_video_prompts, LIMITS.num_video_prompts.min, LIMITS.num_video_prompts.max),
+    }),
+    emit: telemetry.emit,
+    getElapsedMs: telemetry.getElapsedMs,
+  });
+  const onValidSubmit = submission.onValidSubmit;
+  const loading = submission.loading;
+  const err = submission.error;
 
   useEffect(() => {
     if (!loading || reduceMotion) return;
     const id = window.setInterval(() => setTipIndex((i) => (i + 1) % WAITING_STAGES.length), 4500);
     return () => clearInterval(id);
   }, [loading, reduceMotion]);
-
-  useEffect(() => {
-    emitWizardEvent({
-      name: "wizard_started",
-      wizard_type: wizardType,
-      draft_key: props.draftKey,
-      restored_draft: initialState.hadDraft,
-      elapsed_time_ms: 0,
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    const current = props.stepOrder[step];
-    emitWizardEvent({
-      name: "wizard_step_viewed",
-      wizard_type: wizardType,
-      draft_key: props.draftKey,
-      step_index: step,
-      step_id: current,
-      total_steps: maxStep + 1,
-      elapsed_time_ms: Date.now() - startedAtRef.current,
-    });
-  }, [step, props.draftKey, props.stepOrder, maxStep, wizardType]);
-
-  const clearDraft = () => {
-    localStorage.removeItem(props.draftKey);
-    reset(mergedDefaults);
-    setStep(0);
-    setShowDraftBanner(false);
-  };
-
-  // Cleaned up unused toggle and sync effects
-  const next = async () => {
-    const current = props.stepOrder[step]!;
-    const keys = stepFieldMap[current] ?? [];
-    if (keys.length) {
-      const ok = await trigger([...keys]);
-      if (!ok) {
-        emitWizardEvent({
-          name: "wizard_step_validation_failed",
-          wizard_type: wizardType,
-          draft_key: props.draftKey,
-          step_index: step,
-          step_id: current,
-          validation_state: "failed",
-          elapsed_time_ms: Date.now() - startedAtRef.current,
-        });
-        return;
-      }
-    }
-    emitWizardEvent({
-      name: "wizard_step_next_clicked",
-      wizard_type: wizardType,
-      draft_key: props.draftKey,
-      step_index: step,
-      step_id: current,
-      validation_state: "passed",
-      elapsed_time_ms: Date.now() - startedAtRef.current,
-    });
-    setStep((s) => Math.min(maxStep, s + 1));
-  };
-
-  const onValidSubmit = async (form: BriefForm) => {
-    setErr(null);
-    setLoading(true);
-    emitWizardEvent({
-      name: "wizard_generate_clicked",
-      wizard_type: wizardType,
-      draft_key: props.draftKey,
-      step_index: step,
-      step_id: props.stepOrder[step],
-      elapsed_time_ms: Date.now() - startedAtRef.current,
-    });
-    try {
-      const payload = {
-        ...form,
-        num_posts: clamp(form.num_posts, LIMITS.num_posts.min, LIMITS.num_posts.max),
-        num_image_designs: clamp(form.num_image_designs, LIMITS.num_image_designs.min, LIMITS.num_image_designs.max),
-        num_video_prompts: clamp(form.num_video_prompts, LIMITS.num_video_prompts.min, LIMITS.num_video_prompts.max),
-      };
-      const kit = await generateKit(payload, idempotencyKey);
-      localStorage.removeItem(props.draftKey);
-      emitWizardEvent({
-        name: "kit_created_success",
-        wizard_type: wizardType,
-        draft_key: props.draftKey,
-        kit_id: kit.id,
-        elapsed_time_ms: Date.now() - startedAtRef.current,
-      });
-      nav(`/kits/${kit.id}`);
-    } catch (e) {
-      setErr(String(e));
-      emitWizardEvent({
-        name: "kit_created_failed",
-        wizard_type: wizardType,
-        draft_key: props.draftKey,
-        error: String(e),
-        elapsed_time_ms: Date.now() - startedAtRef.current,
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const currentStep = props.stepOrder[step]!;
   const isFinalStep = step === maxStep;
@@ -299,51 +370,529 @@ export default function WizardCore(props: WizardCoreProps) {
       <div className="wizard-root overflow-hidden rounded-2xl border border-outline/30 bg-surface-container-low sm:rounded-3xl dark:border-brand-muted/40 dark:bg-earth-darkCard/75" aria-busy={loading}>
         <div className={cn("wizard-body-wrap relative !rounded-3xl", loading && "wizard-body-wrap--loading")}>
           <div className="wizard-body p-4 sm:p-6 md:p-8">
+            <div className="mb-5 rounded-xl border border-outline/30 bg-surface-container-lowest/70 p-3 dark:border-brand-muted/40 dark:bg-earth-darkCard/70">
+              <div className="mb-2 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+                <span>Step {step + 1} of {maxStep + 1}</span>
+                <span>{props.stepTitles[currentStep]}</span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-surface-container-high dark:bg-surface-container-highest">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-primary to-primary-container transition-all duration-300"
+                  style={{ width: `${Math.max(8, Math.round(((step + 1) / (maxStep + 1)) * 100))}%` }}
+                />
+              </div>
+            </div>
+
             {canShowValuePreview && (
-              <div className="mb-5 rounded-xl border border-secondary/30 bg-secondary/10 p-4">
-                <p className="text-[11px] font-bold uppercase tracking-wide text-secondary">Early value preview</p>
-                <h3 className="mt-1 text-sm font-semibold text-on-surface">
-                  You are building a {wizardType} kit for {brandNameValue}
-                </h3>
-                <p className="mt-1 text-xs text-on-surface-variant">
-                  Industry: {industryValue}. Primary direction: {(mainGoalValue || audienceValue || "audience-led growth").slice(0, 120)}.
-                </p>
+              <WizardValuePreview
+                wizardType={wizardType}
+                brandName={String(brandNameValue ?? "")}
+                industry={String(industryValue ?? "")}
+                direction={String(mainGoalValue || audienceValue || "audience-led growth")}
+              />
+            )}
+
+            <WizardStepChips stepOrder={props.stepOrder} currentStep={step} stepTitles={props.stepTitles} />
+
+            {variantB && currentStep === "diagnosis" && (
+              <div className="space-y-6">
+                <div>
+                  <label htmlFor="diagnostic_role" className={labelCls}>Who are you?</label>
+                  <div className={fieldShell}>
+                    <select id="diagnostic_role" className={selectCls} {...register("diagnostic_role")}>
+                      <option value="">Select role…</option>
+                      <option value="entrepreneur-founder">Entrepreneur / Founder</option>
+                      <option value="coach-consultant">Coach or Consultant</option>
+                      <option value="doctor-expert-professional">Doctor / Expert / Professional</option>
+                      <option value="freelancer-creative">Freelancer or Creative</option>
+                    </select>
+                  </div>
+                  {errors.diagnostic_role && <p className={errCls}>{errors.diagnostic_role.message}</p>}
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="diagnostic_account_stage" className={labelCls}>Account Stage</label>
+                    <div className={fieldShell}>
+                      <select id="diagnostic_account_stage" className={selectCls} {...register("diagnostic_account_stage")}>
+                        <option value="">Select stage…</option>
+                        <option value="under-6-months">Just starting — under 6 months</option>
+                        <option value="6-12-months">6 months to 1 year</option>
+                        <option value="1-3-years">1–3 years, inconsistent results</option>
+                        <option value="3-plus-years">3+ years, want to scale</option>
+                      </select>
+                    </div>
+                    {errors.diagnostic_account_stage && <p className={errCls}>{errors.diagnostic_account_stage.message}</p>}
+                  </div>
+                  <div>
+                    <label htmlFor="diagnostic_followers_band" className={labelCls}>Follower Range</label>
+                    <div className={fieldShell}>
+                      <select id="diagnostic_followers_band" className={selectCls} {...register("diagnostic_followers_band")}>
+                        <option value="">Select range…</option>
+                        <option value="under-1k">Under 1,000</option>
+                        <option value="1k-5k">1,000 – 5,000</option>
+                        <option value="5k-20k">5,000 – 20,000</option>
+                        <option value="20k-plus">20,000+</option>
+                      </select>
+                    </div>
+                    {errors.diagnostic_followers_band && <p className={errCls}>{errors.diagnostic_followers_band.message}</p>}
+                  </div>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="diagnostic_primary_blocker" className={labelCls}>Primary Blocker</label>
+                    <div className={fieldShell}>
+                      <select id="diagnostic_primary_blocker" className={selectCls} {...register("diagnostic_primary_blocker")}>
+                        <option value="">Select blocker…</option>
+                        <option value="low-reach">I post but nobody sees my content</option>
+                        <option value="no-content-system">I don't know what to post consistently</option>
+                        <option value="no-conversion">Followers exist but no sales or clients</option>
+                        <option value="inconsistent-execution">No time — totally inconsistent</option>
+                      </select>
+                    </div>
+                    {errors.diagnostic_primary_blocker && <p className={errCls}>{errors.diagnostic_primary_blocker.message}</p>}
+                  </div>
+                  <div>
+                    <label htmlFor="diagnostic_revenue_goal" className={labelCls}>Target monthly revenue</label>
+                    <div className={fieldShell}>
+                      <select id="diagnostic_revenue_goal" className={selectCls} {...register("diagnostic_revenue_goal")}>
+                        <option value="">Select target…</option>
+                        <option value="500-1000">$500 – $1,000/month</option>
+                        <option value="1000-3000">$1,000 – $3,000/month</option>
+                        <option value="3000-10000">$3,000 – $10,000/month</option>
+                        <option value="10000-plus">$10,000+/month</option>
+                      </select>
+                    </div>
+                    {errors.diagnostic_revenue_goal && <p className={errCls}>{errors.diagnostic_revenue_goal.message}</p>}
+                  </div>
+                </div>
               </div>
             )}
 
-            <div className="mb-6 flex flex-nowrap gap-2 overflow-x-auto pb-1 sm:mb-8 sm:flex-wrap sm:overflow-visible">
-              {props.stepOrder.map((id, i) => (
-                <span
-                  key={id}
-                  className={cn(
-                    "whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-semibold transition",
-                    i === step
-                      ? "border-primary/30 bg-primary/20 text-primary dark:border-brand-primary/45 dark:bg-brand-primary/15 dark:text-brand-darkText"
-                      : "border-transparent bg-surface-container-lowest text-on-surface-variant dark:bg-earth-darkBg/55 dark:text-brand-darkText/70"
+            {currentStep === "brand" && (
+                <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="brand_name" className={labelCls}>Brand name</label>
+                  <div className={fieldShell}><input id="brand_name" className={inputCls} {...register("brand_name")} /></div>
+                  {errors.brand_name && <p className={errCls}>{errors.brand_name.message}</p>}
+                </div>
+                <div>
+                  <label htmlFor="industry" className={labelCls}>Industry</label>
+                  <div className={fieldShell}>
+                    <Controller
+                      name="industry"
+                      control={control}
+                      render={({ field }) => (
+                        <select
+                          id="industry"
+                          className={selectCls}
+                          value={isOtherIndustry ? "__other__" : (field.value || "")}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (v === "__other__") {
+                              setIsOtherIndustry(true);
+                              field.onChange("");
+                              return;
+                            }
+                            setIsOtherIndustry(false);
+                            field.onChange(v);
+                          }}
+                        >
+                          <option value="">Select industry…</option>
+                          {industryOptions.map((i) => (
+                            <option key={i.slug} value={i.slug}>
+                              {i.name}
+                            </option>
+                          ))}
+                          <option value="__other__">Other (write manually)</option>
+                        </select>
+                      )}
+                    />
+                  </div>
+                  {isOtherIndustry && (
+                    <div className={fieldShell + " mt-3"}>
+                      <Controller
+                        name="industry"
+                        control={control}
+                        render={({ field }) => (
+                          <input
+                            id="industry_other"
+                            className={inputCls}
+                            value={field.value || ""}
+                            onChange={(e) => field.onChange(e.target.value)}
+                            placeholder="Write your industry..."
+                          />
+                        )}
+                      />
+                    </div>
                   )}
-                >
-                  {i + 1}. {props.stepTitles[id]}
-                </span>
-              ))}
-            </div>
+                  {errors.industry && <p className={errCls}>{errors.industry.message}</p>}
+                </div>
+              </div>
+            )}
 
-            {currentStep === "brand" && <BrandStep form={methods} showField={showField} industryOptions={industryOptions} />}
-            {currentStep === "audience" && <AudienceStep form={methods} showField={showField} />}
-            {currentStep === "channels" && <ChannelsStep form={methods} showField={showField} />}
-            {currentStep === "offer" && <OfferStep form={methods} showField={showField} />}
-            {currentStep === "creative" && <CreativeStep form={methods} showField={showField} />}
-            {currentStep === "volume" && <VolumeStep form={methods} showField={showField} />}
+            {currentStep === "audience" && (
+              <div className="space-y-6">
+                {showField("audience", "target_audience") && (
+                  <div>
+                    <label className={labelCls}>Target audience</label>
+                    <PillGroup
+                      options={TARGET_AUDIENCE_OPTIONS}
+                      selectedValues={selectionState.audienceSelected}
+                      onToggle={(value) => {
+                        setSelectionState((prev) => ({
+                          ...prev,
+                          audienceSelected: toggleListValue(prev.audienceSelected, value),
+                        }));
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="mt-3 inline-flex items-center gap-2 rounded-full border border-brand-sand/30 bg-earth-card px-3 py-1.5 text-xs font-semibold text-on-surface transition hover:bg-earth-alt dark:border-outline/30 dark:bg-surface-container-high dark:hover:bg-surface-container-highest"
+                      onClick={() =>
+                        setSelectionState((prev) => {
+                          const enabled = !!prev.audienceOther.trim() || prev.audienceSelected.includes(OTHER_OPTION.value);
+                          return {
+                            ...prev,
+                            audienceSelected: enabled
+                              ? prev.audienceSelected.filter((v) => v !== OTHER_OPTION.value)
+                              : [...prev.audienceSelected, OTHER_OPTION.value],
+                          };
+                        })
+                      }
+                    >
+                      <span>{OTHER_OPTION.icon}</span>
+                      <span>{OTHER_OPTION.labelAr}</span>
+                    </button>
+                    {selectionState.audienceSelected.includes(OTHER_OPTION.value) && (
+                      <div className={fieldShell + " mt-3"}>
+                        <input
+                          id="target_audience_other"
+                          className={inputCls}
+                          value={selectionState.audienceOther}
+                          onChange={(e) => setSelectionState((prev) => ({ ...prev, audienceOther: e.target.value }))}
+                          placeholder="اكتب جمهورك المستهدف..."
+                        />
+                      </div>
+                    )}
+                    {errors.target_audience && <p className={errCls}>{errors.target_audience.message}</p>}
+                  </div>
+                )}
+                {showField("audience", "main_goal") && (
+                  <div>
+                    <label className={labelCls}>Main campaign goal</label>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      {MAIN_GOAL_OPTIONS.map((option) => (
+                        <SelectableCard
+                          key={option.value}
+                          label={option.labelAr}
+                          icon={option.icon}
+                          selected={selectionState.mainGoalSelected === option.value}
+                          onClick={() =>
+                            setSelectionState((prev) => ({
+                              ...prev,
+                              mainGoalSelected: option.value,
+                              mainGoalOther: "",
+                            }))
+                          }
+                        />
+                      ))}
+                      <SelectableCard
+                        label={OTHER_OPTION.labelAr}
+                        icon={OTHER_OPTION.icon}
+                        selected={selectionState.mainGoalSelected === OTHER_OPTION.value}
+                        onClick={() =>
+                          setSelectionState((prev) => ({
+                            ...prev,
+                            mainGoalSelected: OTHER_OPTION.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    {selectionState.mainGoalSelected === OTHER_OPTION.value && (
+                      <div className={fieldShell + " mt-3"}>
+                        <input
+                          id="main_goal_other"
+                          className={inputCls}
+                          value={selectionState.mainGoalOther}
+                          onChange={(e) => setSelectionState((prev) => ({ ...prev, mainGoalOther: e.target.value }))}
+                          placeholder="اكتب هدف الحملة..."
+                        />
+                      </div>
+                    )}
+                    {errors.main_goal && <p className={errCls}>{errors.main_goal.message}</p>}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {currentStep === "channels" && (
+              <div className="space-y-6">
+                {showField("channels", "platforms") && (
+                  <div>
+                    <label className={labelCls}>Active platforms</label>
+                    <PillGroup
+                      options={PLATFORM_OPTIONS}
+                      selectedValues={selectionState.platformsSelected}
+                      onToggle={(value) =>
+                        setSelectionState((prev) => ({
+                          ...prev,
+                          platformsSelected: toggleListValue(prev.platformsSelected, value),
+                        }))
+                      }
+                    />
+                    <button
+                      type="button"
+                      className="mt-3 inline-flex items-center gap-2 rounded-full border border-brand-sand/30 bg-earth-card px-3 py-1.5 text-xs font-semibold text-on-surface transition hover:bg-earth-alt dark:border-outline/30 dark:bg-surface-container-high dark:hover:bg-surface-container-highest"
+                      onClick={() =>
+                        setSelectionState((prev) => {
+                          const enabled = !!prev.platformsOther.trim() || prev.platformsSelected.includes(OTHER_OPTION.value);
+                          return {
+                            ...prev,
+                            platformsSelected: enabled
+                              ? prev.platformsSelected.filter((v) => v !== OTHER_OPTION.value)
+                              : [...prev.platformsSelected, OTHER_OPTION.value],
+                          };
+                        })
+                      }
+                    >
+                      <span>{OTHER_OPTION.icon}</span>
+                      <span>{OTHER_OPTION.labelAr}</span>
+                    </button>
+                    {selectionState.platformsSelected.includes(OTHER_OPTION.value) && (
+                      <div className={fieldShell + " mt-3"}>
+                        <input
+                          id="platforms_other"
+                          className={inputCls}
+                          value={selectionState.platformsOther}
+                          onChange={(e) => setSelectionState((prev) => ({ ...prev, platformsOther: e.target.value }))}
+                          placeholder="اكتب منصة إضافية..."
+                        />
+                      </div>
+                    )}
+                    {errors.platforms && <p className={errCls}>{errors.platforms.message}</p>}
+                  </div>
+                )}
+                {(showField("channels", "brand_tone") || showField("channels", "brand_colors")) && (
+                  <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
+                    {showField("channels", "brand_tone") && (
+                      <div>
+                        <label className={labelCls}>Brand tone</label>
+                        <div className="space-y-3">
+                          {BRAND_TONE_OPTIONS.map((option) => (
+                            <SelectableCard
+                              key={option.value}
+                              label={option.labelAr}
+                              icon={option.icon}
+                              selected={selectionState.brandToneSelected === option.value}
+                              onClick={() =>
+                                setSelectionState((prev) => ({
+                                  ...prev,
+                                  brandToneSelected: option.value,
+                                  brandToneOther: "",
+                                }))
+                              }
+                            />
+                          ))}
+                          <SelectableCard
+                            label={OTHER_OPTION.labelAr}
+                            icon={OTHER_OPTION.icon}
+                            selected={selectionState.brandToneSelected === OTHER_OPTION.value}
+                            onClick={() =>
+                              setSelectionState((prev) => ({
+                                ...prev,
+                                brandToneSelected: OTHER_OPTION.value,
+                              }))
+                            }
+                          />
+                        </div>
+                        {selectionState.brandToneSelected === OTHER_OPTION.value && (
+                          <div className={fieldShell + " mt-3"}>
+                            <input
+                              id="brand_tone_other"
+                              className={inputCls}
+                              value={selectionState.brandToneOther}
+                              onChange={(e) => setSelectionState((prev) => ({ ...prev, brandToneOther: e.target.value }))}
+                              placeholder="اكتب نبرة البراند..."
+                            />
+                          </div>
+                        )}
+                        {errors.brand_tone && <p className={errCls}>{errors.brand_tone.message}</p>}
+                      </div>
+                    )}
+                    {showField("channels", "brand_colors") && (
+                      <div>
+                        <label htmlFor="brand_colors" className={labelCls}>Brand colors</label>
+                        <div className={fieldShell}><input id="brand_colors" className={inputCls} {...register("brand_colors")} /></div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {currentStep === "offer" && (
+              <div className="space-y-6">
+                {showField("offer", "offer") && (
+                  <div>
+                    <label htmlFor="offer" className={labelCls}>Offer / core message</label>
+                    <div className={fieldShell}><textarea id="offer" className={textareaCls} {...register("offer")} /></div>
+                    {errors.offer && <p className={errCls}>{errors.offer.message}</p>}
+                  </div>
+                )}
+                {showField("offer", "competitors") && (
+                  <div>
+                    <label htmlFor="competitors" className={labelCls}>Competitors</label>
+                    <div className={fieldShell}><textarea id="competitors" className={textareaCls} {...register("competitors")} /></div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {currentStep === "creative" && (
+              <div className="space-y-6">
+                {showField("creative", "visual_notes") && (
+                  <AdditionalNotes {...register("visual_notes")} error={errors.visual_notes?.message} />
+                )}
+                {showField("creative", "reference_image") && (
+                  <div>
+                    <ReferenceImageUploader
+                      value={wizardData.reference_image || ""}
+                      onChange={(nextValue) => updateWizardData({ reference_image: nextValue })}
+                      disabled={loading}
+                    />
+                    {errors.reference_image && <p className={errCls}>{errors.reference_image.message}</p>}
+                  </div>
+                )}
+                {(showField("creative", "campaign_duration") || showField("creative", "budget_level")) && (
+                  <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
+                    {showField("creative", "campaign_duration") && (
+                      <div>
+                        <label htmlFor="campaign_duration" className={labelCls}>Campaign duration</label>
+                        <div className={fieldShell}><input id="campaign_duration" className={inputCls} {...register("campaign_duration")} /></div>
+                        {errors.campaign_duration && <p className={errCls}>{errors.campaign_duration.message}</p>}
+                      </div>
+                    )}
+                    {showField("creative", "budget_level") && (
+                      <div>
+                        <label htmlFor="budget_level" className={labelCls}>Budget level (1–7)</label>
+                        <div className={fieldShell}><input id="budget_level" className={inputCls} {...register("budget_level")} /></div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {showField("creative", "best_content_types") && (
+                  <div>
+                    <label htmlFor="best_content_types" className={labelCls}>Best-performing content types</label>
+                    <div className={fieldShell}><textarea id="best_content_types" className={textareaCls} {...register("best_content_types")} /></div>
+                    {errors.best_content_types && <p className={errCls}>{errors.best_content_types.message}</p>}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {currentStep === "volume" && (
+              <div className="space-y-6">
+                {(showField("volume", "num_posts") || showField("volume", "num_image_designs")) && (
+                  <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
+                    {showField("volume", "num_posts") && (
+                      <div>
+                        <label htmlFor="num_posts" className={labelCls}>Number of posts ({LIMITS.num_posts.min}–{LIMITS.num_posts.max})</label>
+                        <div className={fieldShell}>
+                          <Controller
+                            name="num_posts"
+                            control={control}
+                            render={({ field }) => (
+                              <input id="num_posts" type="number" className={inputCls} value={field.value} onChange={(e) => field.onChange(clamp(Number(e.target.value) || 0, LIMITS.num_posts.min, LIMITS.num_posts.max))} />
+                            )}
+                          />
+                        </div>
+                        {errors.num_posts && <p className={errCls}>{errors.num_posts.message}</p>}
+                      </div>
+                    )}
+                    {showField("volume", "num_image_designs") && (
+                      <div>
+                        <label htmlFor="num_image_designs" className={labelCls}>Image design count ({LIMITS.num_image_designs.min}–{LIMITS.num_image_designs.max})</label>
+                        <div className={fieldShell}>
+                          <Controller
+                            name="num_image_designs"
+                            control={control}
+                            render={({ field }) => (
+                              <input id="num_image_designs" type="number" className={inputCls} value={field.value} onChange={(e) => field.onChange(clamp(Number(e.target.value) || 0, LIMITS.num_image_designs.min, LIMITS.num_image_designs.max))} />
+                            )}
+                          />
+                        </div>
+                        {errors.num_image_designs && <p className={errCls}>{errors.num_image_designs.message}</p>}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {showField("volume", "num_video_prompts") && (
+                  <div>
+                    <label htmlFor="num_video_prompts" className={labelCls}>Video count ({LIMITS.num_video_prompts.min}–{LIMITS.num_video_prompts.max})</label>
+                    <div className={fieldShell}>
+                      <Controller
+                        name="num_video_prompts"
+                        control={control}
+                        render={({ field }) => (
+                          <input id="num_video_prompts" type="number" className={inputCls} value={field.value} onChange={(e) => field.onChange(clamp(Number(e.target.value) || 0, LIMITS.num_video_prompts.min, LIMITS.num_video_prompts.max))} />
+                        )}
+                      />
+                    </div>
+                    {errors.num_video_prompts && <p className={errCls}>{errors.num_video_prompts.message}</p>}
+                  </div>
+                )}
+                {showField("volume", "email") && (
+                  <div>
+                    <label htmlFor="email" className={labelCls}>Email for kit delivery (optional)</label>
+                    <div className={fieldShell}><input id="email" type="email" className={inputCls} {...register("email")} /></div>
+                    {errors.email && <p className={errCls}>{errors.email.message}</p>}
+                  </div>
+                )}
+              </div>
+            )}
 
             {err && <p className="mt-4 text-error dark:text-brand-accent">{err}</p>}
 
             {isFinalStep && !loading && (
               <div className="mb-5 rounded-xl border border-primary/30 bg-primary/10 p-4 dark:border-brand-primary/40 dark:bg-brand-primary/15">
                 <div className="space-y-2">
-                  <p className="text-sm font-semibold text-on-surface">Ready to generate your kit</p>
+                  <p className="text-sm font-semibold text-on-surface">
+                    {variantB ? "Ready to reveal your diagnosis and action plan" : "Ready to generate your kit"}
+                  </p>
                   <p className="text-xs text-on-surface-variant">
-                    Takes around 10-30 seconds. Your draft stays saved, and you can edit after generation.
+                    {variantB
+                      ? "Takes around 10-30 seconds. Your diagnosis snapshot is saved with the kit, and you can edit outputs after generation."
+                      : "Takes around 10-30 seconds. Your draft stays saved, and you can edit after generation."}
                   </p>
                 </div>
+              </div>
+            )}
+
+            {variantB && isFinalStep && !loading && (
+              <div className="mb-5 grid gap-3 md:grid-cols-3">
+                <div className="rounded-xl border border-outline/25 bg-surface-container-low p-3">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Role</p>
+                  <p className="mt-1 text-sm font-semibold text-on-surface">{watch("diagnostic_role") || "Not set"}</p>
+                </div>
+                <div className="rounded-xl border border-outline/25 bg-surface-container-low p-3">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Primary Blocker</p>
+                  <p className="mt-1 text-sm font-semibold text-on-surface">{watch("diagnostic_primary_blocker") || "Not set"}</p>
+                </div>
+                <div className="rounded-xl border border-outline/25 bg-surface-container-low p-3">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Revenue target</p>
+                  <p className="mt-1 text-sm font-semibold text-on-surface">{watch("diagnostic_revenue_goal") || "Not set"}</p>
+                </div>
+              </div>
+            )}
+
+            {variantB && isFinalStep && !loading && (
+              <div className="mb-5 rounded-xl border border-tertiary/25 bg-tertiary/10 p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-tertiary">Proof and objections</p>
+                <ul className="mt-2 space-y-1 text-sm text-on-surface-variant">
+                  <li>- Built for repeatable execution, not one-time suggestions.</li>
+                  <li>- You can regenerate, edit, and iterate every output after creation.</li>
+                  <li>- Draft-safe flow: nothing gets lost if you return later.</li>
+                </ul>
               </div>
             )}
 
@@ -362,7 +911,7 @@ export default function WizardCore(props: WizardCoreProps) {
                   onClick={handleSubmit(onValidSubmit)}
                   disabled={loading}
                 >
-                  {loading ? "Generating..." : "Generate my kit now"}
+                  {loading ? (variantB ? "Building your diagnosis..." : "Generating...") : variantB ? "Show my diagnosis and plan" : "Generate my kit now"}
                 </button>
               )}
             </div>

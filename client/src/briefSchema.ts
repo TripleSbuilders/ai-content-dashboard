@@ -31,6 +31,7 @@ export const briefSchema = z.object({
   offer: z.string(),
   competitors: z.string(),
   visual_notes: z.string(),
+  reference_image: z.string().max(3_000_000).optional(),
   campaign_duration: z.string(),
   budget_level: z.string(),
   best_content_types: z.string(),
@@ -49,6 +50,11 @@ export const briefSchema = z.object({
     .int()
     .min(L.num_video_prompts.min, `Must be between ${L.num_video_prompts.min} and ${L.num_video_prompts.max}`)
     .max(L.num_video_prompts.max, `Must be between ${L.num_video_prompts.min} and ${L.num_video_prompts.max}`),
+  diagnostic_role: z.string().optional().default(""),
+  diagnostic_account_stage: z.string().optional().default(""),
+  diagnostic_followers_band: z.string().optional().default(""),
+  diagnostic_primary_blocker: z.string().optional().default(""),
+  diagnostic_revenue_goal: z.string().optional().default(""),
   campaign_mode: z.enum(["social", "offer", "deep"]).default("social"),
 });
 
@@ -83,13 +89,44 @@ export const deepBriefSchema = briefSchema.extend({
   best_content_types: requiredStr("List content types you want"),
 });
 
+export const socialBriefSchemaWithDiagnosis = socialBriefSchema.extend({
+  diagnostic_role: requiredStr("Select your role"),
+  diagnostic_account_stage: requiredStr("Select your stage"),
+  diagnostic_followers_band: requiredStr("Select followers range"),
+  diagnostic_primary_blocker: requiredStr("Select your primary blocker"),
+  diagnostic_revenue_goal: requiredStr("Select a target revenue range"),
+});
+
+export const offerBriefSchemaWithDiagnosis = offerBriefSchema.extend({
+  diagnostic_role: requiredStr("Select your role"),
+  diagnostic_account_stage: requiredStr("Select your stage"),
+  diagnostic_followers_band: requiredStr("Select followers range"),
+  diagnostic_primary_blocker: requiredStr("Select your primary blocker"),
+  diagnostic_revenue_goal: requiredStr("Select a target revenue range"),
+});
+
+export const deepBriefSchemaWithDiagnosis = deepBriefSchema.extend({
+  diagnostic_role: requiredStr("Select your role"),
+  diagnostic_account_stage: requiredStr("Select your stage"),
+  diagnostic_followers_band: requiredStr("Select followers range"),
+  diagnostic_primary_blocker: requiredStr("Select your primary blocker"),
+  diagnostic_revenue_goal: requiredStr("Select a target revenue range"),
+});
+
 /** Fields validated when leaving each step (0–4). Step 5 uses full schema on submit. */
 export const STEP_FIELD_KEYS: readonly (readonly (keyof BriefForm)[])[] = [
+  [
+    "diagnostic_role",
+    "diagnostic_account_stage",
+    "diagnostic_followers_band",
+    "diagnostic_primary_blocker",
+    "diagnostic_revenue_goal",
+  ],
   ["brand_name", "industry"],
   ["target_audience", "main_goal"],
   ["platforms", "brand_tone", "brand_colors"],
   ["offer", "competitors"],
-  ["visual_notes", "campaign_duration", "budget_level", "best_content_types"],
+  ["visual_notes", "reference_image", "campaign_duration", "budget_level", "best_content_types"],
   [],
 ] as const;
 
@@ -106,12 +143,18 @@ export function initialBriefForm(): BriefForm {
     offer: "",
     competitors: "",
     visual_notes: "",
+    reference_image: "",
     campaign_duration: "",
     budget_level: "",
     best_content_types: "",
     num_posts: L.num_posts.fallback,
     num_image_designs: L.num_image_designs.fallback,
     num_video_prompts: L.num_video_prompts.fallback,
+    diagnostic_role: "",
+    diagnostic_account_stage: "",
+    diagnostic_followers_band: "",
+    diagnostic_primary_blocker: "",
+    diagnostic_revenue_goal: "",
     campaign_mode: "social",
   };
 }

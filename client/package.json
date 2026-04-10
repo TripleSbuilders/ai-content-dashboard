@@ -7,7 +7,8 @@
     "lint": "tsc -b --pretty false",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:competitor": "playwright test --config=playwright.competitor.config.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

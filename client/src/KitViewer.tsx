@@ -3,24 +3,20 @@ import {
   useEffect,
   useId,
   useMemo,
-  useRef,
   useState,
   type MouseEvent,
   type ReactNode,
 } from "react";
-import { ApiError, regenerateKitItem } from "./api";
 import type { KitPostItem, KitSummary } from "./types";
+import { buildKitViewModel } from "./features/kits/kitViewModel";
+import { useKitRegenerate } from "./features/kits/useKitRegenerate";
+import RegenerateFeedbackDialog from "./features/kits/RegenerateFeedbackDialog";
 
 const TOC_ID = "kit-plan-toc";
 const SCROLL_MARGIN = "6rem";
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
-}
-
-function asStringArray(v: unknown): string[] {
-  if (!Array.isArray(v)) return [];
-  return v.filter((x): x is string => typeof x === "string");
 }
 
 /** Copy with brief success state on the control itself */
@@ -264,7 +260,7 @@ function getKitMediaPlainBody(rec: Record<string, unknown>, kind: "image" | "vid
 
 function kitArticleShellClass(expanded: boolean): string {
   return (
-    "relative isolate min-h-0 min-w-0 max-w-full overflow-x-clip overflow-y-visible rounded-2xl border border-brand-sand/30 bg-earth-card/90 p-3 sm:p-4 dark:border-outline/25 dark:bg-surface-container-lowest/60 " +
+    "relative isolate min-h-0 min-w-0 max-w-full overflow-x-clip overflow-y-visible rounded-uniform border border-brand-sand/30 bg-earth-card/90 p-3 sm:p-4 dark:border-outline/25 dark:bg-surface-container-lowest/60 " +
     (expanded ? "z-20 shadow-lg shadow-surface/30" : "z-0")
   );
 }
@@ -276,12 +272,14 @@ function VideoBlueprintCard({
   lang,
   onRegenerate,
   regenerating,
+  showTechnical,
 }: {
   item: Record<string, unknown>;
   index: number;
   lang: ViewerLang;
   onRegenerate: (index: number) => void;
   regenerating: boolean;
+  showTechnical: boolean;
 }) {
   const uid = useId();
   const toggleId = `${uid}-toggle`;
@@ -353,9 +351,11 @@ function VideoBlueprintCard({
               {brief}
             </div>
           </FieldBlock>
-          <FieldBlock label="Full JSON" copyText={jsonFull} copyLabel="Copy raw JSON">
-            <p className="text-xs text-on-surface-variant">For tools, APIs, or archiving.</p>
-          </FieldBlock>
+          {showTechnical ? (
+            <FieldBlock label="Full JSON" copyText={jsonFull} copyLabel="Copy raw JSON">
+              <p className="text-xs text-on-surface-variant">For tools, APIs, or archiving.</p>
+            </FieldBlock>
+          ) : null}
         </div>
       ) : null}
     </article>
@@ -369,12 +369,14 @@ function ImageDesignCard({
   lang,
   onRegenerate,
   regenerating,
+  showTechnical,
 }: {
   item: Record<string, unknown>;
   index: number;
   lang: ViewerLang;
   onRegenerate: (index: number) => void;
   regenerating: boolean;
+  showTechnical: boolean;
 }) {
   const uid = useId();
   const toggleId = `${uid}-toggle`;
@@ -449,9 +451,11 @@ function ImageDesignCard({
               {brief}
             </div>
           </FieldBlock>
-          <FieldBlock label="Full JSON" copyText={jsonFull} copyLabel="Copy raw JSON">
-            <p className="text-xs text-on-surface-variant">For tools, APIs, or archiving.</p>
-          </FieldBlock>
+          {showTechnical ? (
+            <FieldBlock label="Full JSON" copyText={jsonFull} copyLabel="Copy raw JSON">
+              <p className="text-xs text-on-surface-variant">For tools, APIs, or archiving.</p>
+            </FieldBlock>
+          ) : null}
         </div>
       ) : null}
     </article>
@@ -482,7 +486,7 @@ function KitPromptCard({
   return (
     <article
       className={
-        "relative isolate min-h-0 min-w-0 max-w-full overflow-x-clip overflow-y-visible rounded-2xl border border-brand-sand/30 bg-earth-card/90 p-3 sm:p-4 dark:border-outline/25 dark:bg-surface-container-lowest/60 " +
+        "relative isolate min-h-0 min-w-0 max-w-full overflow-x-clip overflow-y-visible rounded-uniform border border-brand-sand/30 bg-earth-card/90 p-3 sm:p-4 dark:border-outline/25 dark:bg-surface-container-lowest/60 " +
         (expanded ? "z-20 shadow-lg shadow-surface/30" : "z-0")
       }
     >
@@ -584,7 +588,7 @@ function PostCard({
   return (
     <article
       className={
-        "relative isolate min-h-0 min-w-0 max-w-full overflow-x-clip overflow-y-visible rounded-2xl border border-brand-sand/30 bg-earth-card/90 p-3 sm:p-4 dark:border-outline/25 dark:bg-surface-container-lowest/60 " +
+        "relative isolate min-h-0 min-w-0 max-w-full overflow-x-clip overflow-y-visible rounded-uniform border border-brand-sand/30 bg-earth-card/90 p-3 sm:p-4 dark:border-outline/25 dark:bg-surface-container-lowest/60 " +
         (expanded ? "z-20 shadow-lg shadow-surface/30" : "z-0")
       }
     >
@@ -701,7 +705,7 @@ function CollapsibleSection({
     <section
       id={id}
       className={
-        "scroll-mt-24 overflow-x-clip overflow-y-visible rounded-3xl border border-brand-sand/30 bg-earth-card/90 dark:border-outline/30 dark:bg-surface-container-low/40 " +
+        "scroll-mt-24 overflow-x-clip overflow-y-visible rounded-uniform border border-brand-sand/30 bg-earth-card/90 dark:border-outline/30 dark:bg-surface-container-low/40 " +
         (open ? "relative z-10" : "relative z-0")
       }
       style={{ scrollMarginTop: SCROLL_MARGIN }}
@@ -763,50 +767,33 @@ function CollapsibleSection({
   );
 }
 
-export default function KitViewer({ kit, onKitUpdate }: { kit: KitSummary; onKitUpdate?: (next: KitSummary) => void }) {
-  const data = kit.result_json as Record<string, unknown> | null;
+export default function KitViewer({
+  kit,
+  onKitUpdate,
+  showTechnical = false,
+}: {
+  kit: KitSummary;
+  onKitUpdate?: (next: KitSummary) => void;
+  showTechnical?: boolean;
+}) {
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
   const [lang, setLang] = useState<ViewerLang>("ar");
-  const [regeneratingKey, setRegeneratingKey] = useState<string | null>(null);
-  const [regenError, setRegenError] = useState<string | null>(null);
-  const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [feedbackDraft, setFeedbackDraft] = useState("");
-  const [pendingRegenerate, setPendingRegenerate] = useState<{
-    item_type: "post" | "image" | "video";
-    index: number;
-  } | null>(null);
-  const feedbackTextareaRef = useRef<HTMLTextAreaElement | null>(null);
-
-  const posts = useMemo(() => (Array.isArray(data?.posts) ? (data!.posts as KitPostItem[]) : []), [data]);
-
-  const videoSection = useMemo(() => {
-    if (!data) return null;
-    const candidates: { title: string; items: unknown[] }[] = [];
-    for (const key of ["video_prompts", "video_assets", "ai_video_assets", "assets"]) {
-      const v = data[key];
-      if (Array.isArray(v) && v.length > 0) {
-        candidates.push({ title: key.replace(/_/g, " "), items: v });
-      }
-    }
-    return candidates[0] ?? null;
-  }, [data]);
-
-  const imageSection = useMemo(() => {
-    if (!data) return null;
-    const candidates: { title: string; items: unknown[] }[] = [];
-    for (const key of ["image_prompts", "image_designs", "creative_prompts", "design_prompts", "visual_prompts"]) {
-      const v = data[key];
-      if (Array.isArray(v) && v.length > 0) {
-        candidates.push({ title: key.replace(/_/g, " "), items: v });
-      }
-    }
-    return candidates[0] ?? null;
-  }, [data]);
-
-  const hasStrategyBlock = Boolean(isRecord(data?.strategy) || typeof data?.offer_headline === "string");
-  const painPoints = useMemo(() => asStringArray(data?.pain_points), [data]);
-
-  const hasStructuredPreview = posts.length > 0 || !!imageSection || !!videoSection;
+  const { data, posts, videoSection, imageSection, hasStrategyBlock, painPoints, hasStructuredPreview } = useMemo(
+    () => buildKitViewModel(kit),
+    [kit]
+  );
+  const {
+    regeneratingKey,
+    regenError,
+    feedbackOpen,
+    feedbackDraft,
+    setFeedbackDraft,
+    pendingRegenerate,
+    feedbackTextareaRef,
+    openRegenerateDialog,
+    closeFeedbackModal,
+    submitRegenerate,
+  } = useKitRegenerate({ kit, onKitUpdate });
 
   const tocItems = useMemo((): TocItem[] => {
     const items: TocItem[] = [];
@@ -816,9 +803,9 @@ export default function KitViewer({ kit, onKitUpdate }: { kit: KitSummary; onKit
     if (!hasStructuredPreview) items.push({ id: "kit-section-summary", label: "Summary" });
     if (hasStrategyBlock) items.push({ id: "kit-section-strategy", label: "Strategy & extras" });
     if (painPoints.length) items.push({ id: "kit-section-pain", label: "Pain points" });
-    items.push({ id: "kit-section-json", label: "Full JSON" });
+    if (showTechnical) items.push({ id: "kit-section-json", label: "Full JSON" });
     return items;
-  }, [posts.length, imageSection, videoSection, hasStructuredPreview, hasStrategyBlock, painPoints.length]);
+  }, [posts.length, imageSection, videoSection, hasStructuredPreview, hasStrategyBlock, painPoints.length, showTechnical]);
 
   const toggle = useCallback((id: string) => {
     setOpenMap((m) => ({ ...m, [id]: !m[id] }));
@@ -845,57 +832,6 @@ export default function KitViewer({ kit, onKitUpdate }: { kit: KitSummary; onKit
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const regenerateItem = useCallback(
-    async (item_type: "post" | "image" | "video", index: number, feedback?: string) => {
-      const key = `${item_type}-${index}`;
-      setRegenError(null);
-      setRegeneratingKey(key);
-      try {
-        const next = await regenerateKitItem(kit.id, {
-          item_type,
-          index,
-          row_version: kit.row_version,
-          feedback: feedback?.trim() || undefined,
-        });
-        onKitUpdate?.(next);
-      } catch (e) {
-        const msg = e instanceof ApiError || e instanceof Error ? e.message : String(e);
-        setRegenError(msg);
-      } finally {
-        setRegeneratingKey(null);
-      }
-    },
-    [kit.id, kit.row_version, onKitUpdate]
-  );
-
-  const openFeedbackModal = useCallback((item_type: "post" | "image" | "video", index: number) => {
-    setFeedbackDraft("");
-    setPendingRegenerate({ item_type, index });
-    setFeedbackOpen(true);
-  }, []);
-
-  const closeFeedbackModal = useCallback(() => {
-    if (regeneratingKey) return;
-    setFeedbackOpen(false);
-    setPendingRegenerate(null);
-    setFeedbackDraft("");
-  }, [regeneratingKey]);
-
-  const submitRegenerate = useCallback(
-    async (skipFeedback: boolean) => {
-      if (!pendingRegenerate) return;
-      await regenerateItem(
-        pendingRegenerate.item_type,
-        pendingRegenerate.index,
-        skipFeedback ? undefined : feedbackDraft
-      );
-      setFeedbackOpen(false);
-      setPendingRegenerate(null);
-      setFeedbackDraft("");
-    },
-    [pendingRegenerate, regenerateItem, feedbackDraft]
-  );
-
   useEffect(() => {
     if (!feedbackOpen) return;
     const onKeyDown = (e: KeyboardEvent) => {
@@ -907,7 +843,7 @@ export default function KitViewer({ kit, onKitUpdate }: { kit: KitSummary; onKit
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
         e.preventDefault();
         if (!regeneratingKey) {
-          void submitRegenerate(false);
+          void submitRegenerate();
         }
       }
     };
@@ -929,7 +865,7 @@ export default function KitViewer({ kit, onKitUpdate }: { kit: KitSummary; onKit
     <div className="relative space-y-6 pb-20">
       <nav
         id={TOC_ID}
-        className="sticky top-20 z-20 scroll-mt-24 rounded-2xl border border-brand-sand/30 bg-earth-card/95 p-3 shadow-lg shadow-surface/50 backdrop-blur-sm dark:border-primary/20 dark:bg-surface-container-low/95 sm:p-4 md:top-4 md:p-5"
+        className="sticky top-20 z-20 scroll-mt-24 rounded-uniform border border-brand-sand/30 bg-earth-card/95 p-3 shadow-lg shadow-surface/50 backdrop-blur-sm dark:border-primary/20 dark:bg-surface-container-low/95 sm:p-4 md:top-4 md:p-5"
         style={{ scrollMarginTop: SCROLL_MARGIN }}
         aria-label="Plan sections"
       >
@@ -1006,7 +942,7 @@ export default function KitViewer({ kit, onKitUpdate }: { kit: KitSummary; onKit
                 post={p}
                 index={i}
                 lang={lang}
-                onRegenerate={(idx) => openFeedbackModal("post", idx)}
+                onRegenerate={(idx) => openRegenerateDialog("post", idx)}
                 regenerating={regeneratingKey === `post-${i}`}
               />
             ))}
@@ -1035,8 +971,9 @@ export default function KitViewer({ kit, onKitUpdate }: { kit: KitSummary; onKit
                     item={rec}
                     index={i}
                     lang={lang}
-                    onRegenerate={(idx) => openFeedbackModal("image", idx)}
+                    onRegenerate={(idx) => openRegenerateDialog("image", idx)}
                     regenerating={regeneratingKey === `image-${i}`}
+                    showTechnical={showTechnical}
                   />
                 );
               }
@@ -1047,8 +984,9 @@ export default function KitViewer({ kit, onKitUpdate }: { kit: KitSummary; onKit
                     item={rec}
                     index={i}
                     lang={lang}
-                    onRegenerate={(idx) => openFeedbackModal("image", idx)}
+                    onRegenerate={(idx) => openRegenerateDialog("image", idx)}
                     regenerating={regeneratingKey === `image-${i}`}
+                    showTechnical={showTechnical}
                   />
                 );
               }
@@ -1061,7 +999,7 @@ export default function KitViewer({ kit, onKitUpdate }: { kit: KitSummary; onKit
                   title={title}
                   body={body}
                   caption={caption || undefined}
-                  onRegenerate={() => openFeedbackModal("image", i)}
+                  onRegenerate={() => openRegenerateDialog("image", i)}
                   regenerating={regeneratingKey === `image-${i}`}
                   copyLabel="Copy prompt"
                 />
@@ -1092,8 +1030,9 @@ export default function KitViewer({ kit, onKitUpdate }: { kit: KitSummary; onKit
                     item={rec}
                     index={i}
                     lang={lang}
-                    onRegenerate={(idx) => openFeedbackModal("video", idx)}
+                    onRegenerate={(idx) => openRegenerateDialog("video", idx)}
                     regenerating={regeneratingKey === `video-${i}`}
+                    showTechnical={showTechnical}
                   />
                 );
               }
@@ -1106,7 +1045,7 @@ export default function KitViewer({ kit, onKitUpdate }: { kit: KitSummary; onKit
                   title={title}
                   body={body}
                   caption={caption || undefined}
-                  onRegenerate={() => openFeedbackModal("video", i)}
+                  onRegenerate={() => openRegenerateDialog("video", i)}
                   regenerating={regeneratingKey === `video-${i}`}
                   copyLabel="Copy video prompt"
                 />
@@ -1128,7 +1067,7 @@ export default function KitViewer({ kit, onKitUpdate }: { kit: KitSummary; onKit
           tocLabel="Output summary"
         >
           <p className="text-on-surface-variant">
-            No structured post, image, or video blocks detected. Open <strong>Full JSON</strong> below to inspect the payload.
+            No structured post, image, or video blocks were detected for this kit.
           </p>
         </CollapsibleSection>
       )}
@@ -1161,7 +1100,7 @@ export default function KitViewer({ kit, onKitUpdate }: { kit: KitSummary; onKit
               copyLabel="Copy strategy JSON"
             >
               <pre
-                className="max-h-80 overflow-auto rounded-2xl bg-earth-alt p-4 text-xs text-brand-muted dark:bg-surface-container-lowest dark:text-on-surface-variant"
+                className="max-h-80 overflow-auto rounded-uniform bg-earth-alt p-4 text-xs text-brand-muted dark:bg-surface-container-lowest dark:text-on-surface-variant"
                 dir="ltr"
               >
                 {JSON.stringify(data.strategy, null, 2)}
@@ -1206,28 +1145,30 @@ export default function KitViewer({ kit, onKitUpdate }: { kit: KitSummary; onKit
         </CollapsibleSection>
       ) : null}
 
-      <CollapsibleSection
-        id="kit-section-json"
-        title="Full JSON"
-        subtitle="Raw payload"
-        icon="code"
-        iconBg="bg-brand-sand/20 text-brand-muted dark:bg-surface-container-highest dark:text-on-surface-variant"
-        open={!!openMap["kit-section-json"]}
-        onToggle={() => toggle("kit-section-json")}
-        tocLabel="Full JSON"
-      >
-        <p className="mb-3 text-sm text-on-surface-variant">
-          Technical view of the full response. Use <strong>Copy</strong> on the block or the kit header action to copy the whole JSON payload.
-        </p>
-        <BlockWithCopy copyText={JSON.stringify(data, null, 2)} copyLabel="Copy full JSON">
-          <pre
-            className="max-h-[min(70vh,520px)] overflow-auto rounded-2xl bg-earth-alt p-4 text-[0.75rem] leading-relaxed text-brand-muted dark:bg-surface-container-lowest dark:text-on-surface-variant"
-            dir="ltr"
-          >
-            {JSON.stringify(data, null, 2)}
-          </pre>
-        </BlockWithCopy>
-      </CollapsibleSection>
+      {showTechnical ? (
+        <CollapsibleSection
+          id="kit-section-json"
+          title="Full JSON"
+          subtitle="Raw payload"
+          icon="code"
+          iconBg="bg-brand-sand/20 text-brand-muted dark:bg-surface-container-highest dark:text-on-surface-variant"
+          open={!!openMap["kit-section-json"]}
+          onToggle={() => toggle("kit-section-json")}
+          tocLabel="Full JSON"
+        >
+          <p className="mb-3 text-sm text-on-surface-variant">
+            Technical view of the full response. Use <strong>Copy</strong> on the block or the kit header action to copy the whole JSON payload.
+          </p>
+          <BlockWithCopy copyText={JSON.stringify(data, null, 2)} copyLabel="Copy full JSON">
+            <pre
+              className="max-h-[min(70vh,520px)] overflow-auto rounded-uniform bg-earth-alt p-4 text-[0.75rem] leading-relaxed text-brand-muted dark:bg-surface-container-lowest dark:text-on-surface-variant"
+              dir="ltr"
+            >
+              {JSON.stringify(data, null, 2)}
+            </pre>
+          </BlockWithCopy>
+        </CollapsibleSection>
+      ) : null}
 
       {showBackTop ? (
         <button
@@ -1239,67 +1180,16 @@ export default function KitViewer({ kit, onKitUpdate }: { kit: KitSummary; onKit
           <span className="material-symbols-outlined">vertical_align_top</span>
         </button>
       ) : null}
-      {feedbackOpen && pendingRegenerate ? (
-        <div
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-surface/65 p-4 backdrop-blur-sm"
-          onClick={closeFeedbackModal}
-          role="presentation"
-        >
-          <div
-            className="w-full max-w-xl rounded-2xl border border-brand-sand/35 bg-earth-card p-5 shadow-2xl dark:border-outline/35 dark:bg-surface-container"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-4">
-              <h3 className="font-headline text-lg font-bold text-on-surface">Regenerate item</h3>
-              <p className="mt-1 text-sm text-on-surface-variant">
-                Add optional feedback to guide the rewrite for this {pendingRegenerate.item_type} item.
-              </p>
-            </div>
-            <label className="block">
-              <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                Feedback (optional)
-              </span>
-              <textarea
-                ref={feedbackTextareaRef}
-                value={feedbackDraft}
-                onChange={(e) => setFeedbackDraft(e.target.value)}
-                rows={4}
-                maxLength={1200}
-                className="w-full rounded-xl border border-brand-sand/35 bg-earth-alt px-3 py-2 text-sm text-on-surface outline-none transition focus-visible:ring-2 focus-visible:ring-primary/45 dark:border-outline/35 dark:bg-surface-container-high"
-                placeholder="Example: make it more concise, stronger hook, less formal tone..."
-              />
-            </label>
-            <div className="mt-2 text-[11px] text-on-surface-variant">{feedbackDraft.length}/1200</div>
-            <div className="mt-1 text-[11px] text-on-surface-variant">Shortcut: Ctrl/Cmd + Enter to regenerate</div>
-            <div className="mt-5 flex flex-wrap justify-end gap-2">
-              <button
-                type="button"
-                onClick={closeFeedbackModal}
-                disabled={Boolean(regeneratingKey)}
-                className="rounded-xl border border-brand-sand/30 bg-earth-alt px-4 py-2 text-sm font-semibold text-on-surface disabled:opacity-50 dark:border-outline/30 dark:bg-surface-container-high"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => void submitRegenerate(true)}
-                disabled={Boolean(regeneratingKey)}
-                className="rounded-xl border border-brand-sand/30 bg-earth-alt px-4 py-2 text-sm font-semibold text-on-surface disabled:opacity-50 dark:border-outline/30 dark:bg-surface-container-high"
-              >
-                Regenerate without feedback
-              </button>
-              <button
-                type="button"
-                onClick={() => void submitRegenerate(false)}
-                disabled={Boolean(regeneratingKey)}
-                className="rounded-xl bg-brand-primary px-4 py-2 text-sm font-bold text-white disabled:opacity-50 hover:bg-brand-primary/90 dark:bg-primary dark:text-on-primary"
-              >
-                {regeneratingKey ? "Regenerating..." : "Regenerate"}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <RegenerateFeedbackDialog
+        open={feedbackOpen}
+        pendingType={pendingRegenerate?.item_type}
+        value={feedbackDraft}
+        onChange={setFeedbackDraft}
+        onCancel={closeFeedbackModal}
+        onSubmit={() => void submitRegenerate()}
+        disabled={Boolean(regeneratingKey)}
+        textareaRef={feedbackTextareaRef}
+      />
     </div>
   );
 }

@@ -8,8 +8,25 @@ export type GeminiSettings = {
   maxRetries: number;
 };
 
+export type GeminiReferenceImage = {
+  mimeType: string;
+  dataBase64: string;
+};
+
 function shouldRetryGemini(statusCode: number): boolean {
   return statusCode === 429 || statusCode >= 500;
+}
+
+function isTransientFetchError(error: unknown): boolean {
+  const text = String(error ?? "").toLowerCase();
+  return (
+    text.includes("fetch failed") ||
+    text.includes("network") ||
+    text.includes("timed out") ||
+    text.includes("timeout") ||
+    text.includes("econnreset") ||
+    text.includes("socket hang up")
+  );
 }
 
 /** Apps Script uses 2–5 min on first retry; HTTP BFF uses shorter delays capped by timeout. */
@@ -22,12 +39,31 @@ function getBackoffMs(attempt: number): number {
   return Math.min(max, base * Math.pow(2, attempt));
 }
 
-function parseJsonFromModelText(text: string): unknown {
+export function parseJsonFromModelText(text: string): unknown {
   let normalized = String(text ?? "").trim();
   if (normalized.startsWith("```")) {
     normalized = normalized.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
   }
-  return JSON.parse(normalized);
+  try {
+    return JSON.parse(normalized);
+  } catch {
+    const objectStart = normalized.indexOf("{");
+    const arrayStart = normalized.indexOf("[");
+    const start =
+      objectStart === -1
+        ? arrayStart
+        : arrayStart === -1
+        ? objectStart
+        : Math.min(objectStart, arrayStart);
+    if (start === -1) throw new Error("No JSON payload found in model text.");
+
+    const objectEnd = normalized.lastIndexOf("}");
+    const arrayEnd = normalized.lastIndexOf("]");
+    const end = Math.max(objectEnd, arrayEnd);
+    if (end === -1 || end <= start) throw new Error("Incomplete JSON payload in model text.");
+    const candidate = normalized.slice(start, end + 1);
+    return JSON.parse(candidate);
+  }
 }
 
 function truncate(value: string, maxLen: number): string {
@@ -39,15 +75,26 @@ function truncate(value: string, maxLen: number): string {
 export async function callGeminiAPI(
   promptText: string,
   settings: GeminiSettings,
-  responseSchema?: Record<string, unknown>
+  responseSchema?: Record<string, unknown>,
+  referenceImage?: GeminiReferenceImage
 ): Promise<unknown> {
   const url =
     "https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(settings.model) + ":generateContent";
+  const parts: Array<Record<string, unknown>> = [{ text: promptText }];
+  if (referenceImage) {
+    parts.push({
+      inlineData: {
+        mimeType: referenceImage.mimeType,
+        data: referenceImage.dataBase64,
+      },
+    });
+  }
+
   const payload = {
     contents: [
       {
         role: "user",
-        parts: [{ text: promptText }],
+        parts,
       },
     ],
     generationConfig: {
@@ -102,7 +149,8 @@ export async function callGeminiAPI(
       await new Promise((r) => setTimeout(r, getBackoffMs(attempt)));
     } catch (error) {
       lastError = String(error);
-      if (attempt >= settings.maxRetries) {
+      // Retry only transient transport failures; parse/validation errors should fail fast.
+      if (!isTransientFetchError(error) || attempt >= settings.maxRetries) {
         throw new Error("Gemini request failed after retries: " + lastError);
       }
       await new Promise((r) => setTimeout(r, getBackoffMs(attempt)));

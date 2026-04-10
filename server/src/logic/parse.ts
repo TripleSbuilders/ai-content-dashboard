@@ -65,6 +65,7 @@ export function buildSubmissionSnapshot(source: Record<string, unknown> | null |
     offer: String(s.offer ?? "").trim(),
     competitors: String(s.competitors ?? "").trim(),
     visual_notes: String(s.visual_notes ?? "").trim(),
+    reference_image: String(s.reference_image ?? "").trim(),
     campaign_duration: String(s.campaign_duration ?? "").trim(),
     budget_level: String(s.budget_level ?? "").trim(),
     best_content_types: String(s.best_content_types ?? "").trim(),
@@ -82,6 +83,11 @@ export function buildSubmissionSnapshot(source: Record<string, unknown> | null |
       G_LIMITS.num_video_prompts.max,
       G_LIMITS.num_video_prompts.fallback
     ),
+    diagnostic_role: String(s.diagnostic_role ?? "").trim(),
+    diagnostic_account_stage: String(s.diagnostic_account_stage ?? "").trim(),
+    diagnostic_followers_band: String(s.diagnostic_followers_band ?? "").trim(),
+    diagnostic_primary_blocker: String(s.diagnostic_primary_blocker ?? "").trim(),
+    diagnostic_revenue_goal: String(s.diagnostic_revenue_goal ?? "").trim(),
   };
 }
 

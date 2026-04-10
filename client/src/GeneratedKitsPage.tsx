@@ -65,10 +65,10 @@ export default function GeneratedKitsPage({ adminMode = false }: { adminMode?: b
                 <li key={k.id}>
                   <Link
                     to={kitDetailsBase + k.id}
-                    className="flex h-full flex-col rounded-2xl border border-brand-sand/30 bg-earth-card p-4 transition hover:border-brand-primary/35 hover:bg-earth-alt dark:border-outline/30 dark:bg-surface-container-low dark:hover:bg-surface-container-high"
+                    className="flex h-full flex-col rounded-uniform border border-brand-sand/30 bg-earth-card p-4 transition hover:border-brand-primary/35 hover:bg-earth-alt dark:border-outline/30 dark:bg-surface-container-low dark:hover:bg-surface-container-high"
                   >
                     <div className="mb-3 flex items-center gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-brand-sand/40 bg-brand-sand/20 text-xs font-bold dark:border-outline/40 dark:bg-surface-container-highest/40">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-brand-sand/40 bg-brand-sand/20 text-xs font-bold dark:border-outline/40 dark:bg-surface-container-highest/40">
                         {ini}
                       </div>
                       <div className="min-w-0">
@@ -87,7 +87,7 @@ export default function GeneratedKitsPage({ adminMode = false }: { adminMode?: b
         </section>
       )}
 
-      <section className="overflow-hidden rounded-3xl border border-brand-sand/30 bg-earth-card p-1 dark:border-outline/30 dark:bg-surface-container-low">
+      <section className="overflow-hidden rounded-uniform border border-brand-sand/30 bg-earth-card p-1 dark:border-outline/30 dark:bg-surface-container-low">
         <div className="flex flex-wrap items-center justify-between gap-4 bg-earth-alt px-4 py-4 sm:px-8 sm:py-6 dark:bg-surface-container-high/30">
           <h3 className="font-manrope text-lg font-bold sm:text-xl">All generated kits</h3>
         </div>
@@ -125,7 +125,7 @@ export default function GeneratedKitsPage({ adminMode = false }: { adminMode?: b
                         <div className={"flex items-center " + (compactTable ? "gap-3" : "gap-4")}>
                           <div
                             className={
-                              "flex items-center justify-center rounded-lg border border-tertiary/35 bg-gradient-to-br from-tertiary/30 to-tertiary/10 " +
+                              "flex items-center justify-center rounded-full border border-tertiary/35 bg-tertiary/30 " +
                               avSize
                             }
                           >
@@ -174,7 +174,7 @@ export default function GeneratedKitsPage({ adminMode = false }: { adminMode?: b
                         <Link
                           to={kitDetailsBase + k.id}
                           className={
-                            "rounded-lg bg-brand-primary/10 font-bold uppercase tracking-widest text-brand-primary transition-all hover:bg-brand-primary hover:text-white dark:bg-primary/10 dark:text-primary dark:hover:bg-primary dark:hover:text-on-primary " +
+                            "rounded-uniform bg-brand-primary/10 font-bold uppercase tracking-widest text-brand-primary transition-all hover:bg-brand-primary hover:text-white dark:bg-primary/10 dark:text-primary dark:hover:bg-primary dark:hover:text-on-primary " +
                             (compactTable ? "px-3 py-1.5 text-xs" : "px-4 py-2 text-sm")
                           }
                         >

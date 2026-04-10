@@ -14,7 +14,7 @@ export default function RegenerateFeedbackDialog(props: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-lg rounded-2xl border border-outline/30 bg-surface p-5 shadow-xl dark:bg-surface-container-low">
+      <div className="w-full max-w-lg rounded-uniform border border-outline/30 bg-surface p-5 shadow-xl dark:bg-surface-container-low">
         <h3 className="font-headline text-lg font-bold text-on-surface">Regenerate item</h3>
         <p className="mt-1 text-sm text-on-surface-variant">
           Add optional feedback to guide the rewrite for this {props.pendingType} item.

@@ -260,7 +260,7 @@ function getKitMediaPlainBody(rec: Record<string, unknown>, kind: "image" | "vid
 
 function kitArticleShellClass(expanded: boolean): string {
   return (
-    "relative isolate min-h-0 min-w-0 max-w-full overflow-x-clip overflow-y-visible rounded-2xl border border-brand-sand/30 bg-earth-card/90 p-3 sm:p-4 dark:border-outline/25 dark:bg-surface-container-lowest/60 " +
+    "relative isolate min-h-0 min-w-0 max-w-full overflow-x-clip overflow-y-visible rounded-uniform border border-brand-sand/30 bg-earth-card/90 p-3 sm:p-4 dark:border-outline/25 dark:bg-surface-container-lowest/60 " +
     (expanded ? "z-20 shadow-lg shadow-surface/30" : "z-0")
   );
 }
@@ -486,7 +486,7 @@ function KitPromptCard({
   return (
     <article
       className={
-        "relative isolate min-h-0 min-w-0 max-w-full overflow-x-clip overflow-y-visible rounded-2xl border border-brand-sand/30 bg-earth-card/90 p-3 sm:p-4 dark:border-outline/25 dark:bg-surface-container-lowest/60 " +
+        "relative isolate min-h-0 min-w-0 max-w-full overflow-x-clip overflow-y-visible rounded-uniform border border-brand-sand/30 bg-earth-card/90 p-3 sm:p-4 dark:border-outline/25 dark:bg-surface-container-lowest/60 " +
         (expanded ? "z-20 shadow-lg shadow-surface/30" : "z-0")
       }
     >
@@ -588,7 +588,7 @@ function PostCard({
   return (
     <article
       className={
-        "relative isolate min-h-0 min-w-0 max-w-full overflow-x-clip overflow-y-visible rounded-2xl border border-brand-sand/30 bg-earth-card/90 p-3 sm:p-4 dark:border-outline/25 dark:bg-surface-container-lowest/60 " +
+        "relative isolate min-h-0 min-w-0 max-w-full overflow-x-clip overflow-y-visible rounded-uniform border border-brand-sand/30 bg-earth-card/90 p-3 sm:p-4 dark:border-outline/25 dark:bg-surface-container-lowest/60 " +
         (expanded ? "z-20 shadow-lg shadow-surface/30" : "z-0")
       }
     >
@@ -705,7 +705,7 @@ function CollapsibleSection({
     <section
       id={id}
       className={
-        "scroll-mt-24 overflow-x-clip overflow-y-visible rounded-3xl border border-brand-sand/30 bg-earth-card/90 dark:border-outline/30 dark:bg-surface-container-low/40 " +
+        "scroll-mt-24 overflow-x-clip overflow-y-visible rounded-uniform border border-brand-sand/30 bg-earth-card/90 dark:border-outline/30 dark:bg-surface-container-low/40 " +
         (open ? "relative z-10" : "relative z-0")
       }
       style={{ scrollMarginTop: SCROLL_MARGIN }}
@@ -865,7 +865,7 @@ export default function KitViewer({
     <div className="relative space-y-6 pb-20">
       <nav
         id={TOC_ID}
-        className="sticky top-20 z-20 scroll-mt-24 rounded-2xl border border-brand-sand/30 bg-earth-card/95 p-3 shadow-lg shadow-surface/50 backdrop-blur-sm dark:border-primary/20 dark:bg-surface-container-low/95 sm:p-4 md:top-4 md:p-5"
+        className="sticky top-20 z-20 scroll-mt-24 rounded-uniform border border-brand-sand/30 bg-earth-card/95 p-3 shadow-lg shadow-surface/50 backdrop-blur-sm dark:border-primary/20 dark:bg-surface-container-low/95 sm:p-4 md:top-4 md:p-5"
         style={{ scrollMarginTop: SCROLL_MARGIN }}
         aria-label="Plan sections"
       >
@@ -1100,7 +1100,7 @@ export default function KitViewer({
               copyLabel="Copy strategy JSON"
             >
               <pre
-                className="max-h-80 overflow-auto rounded-2xl bg-earth-alt p-4 text-xs text-brand-muted dark:bg-surface-container-lowest dark:text-on-surface-variant"
+                className="max-h-80 overflow-auto rounded-uniform bg-earth-alt p-4 text-xs text-brand-muted dark:bg-surface-container-lowest dark:text-on-surface-variant"
                 dir="ltr"
               >
                 {JSON.stringify(data.strategy, null, 2)}
@@ -1161,7 +1161,7 @@ export default function KitViewer({
           </p>
           <BlockWithCopy copyText={JSON.stringify(data, null, 2)} copyLabel="Copy full JSON">
             <pre
-              className="max-h-[min(70vh,520px)] overflow-auto rounded-2xl bg-earth-alt p-4 text-[0.75rem] leading-relaxed text-brand-muted dark:bg-surface-container-lowest dark:text-on-surface-variant"
+              className="max-h-[min(70vh,520px)] overflow-auto rounded-uniform bg-earth-alt p-4 text-[0.75rem] leading-relaxed text-brand-muted dark:bg-surface-container-lowest dark:text-on-surface-variant"
               dir="ltr"
             >
               {JSON.stringify(data, null, 2)}

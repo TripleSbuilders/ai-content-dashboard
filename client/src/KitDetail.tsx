@@ -264,7 +264,19 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
       </div>
 
       {kit.result_json && (
-        <section className="mb-8 rounded-3xl border border-secondary/25 bg-secondary/10 p-4 sm:p-6">
+        <Suspense
+          fallback={
+            <div className="glass-panel flex min-h-[200px] items-center justify-center rounded-3xl border border-outline/30 p-8 text-on-surface-variant">
+              Loading viewer…
+            </div>
+          }
+        >
+          <LazyViewer kit={kit} onKitUpdate={setKit} showTechnical={showTechnical} />
+        </Suspense>
+      )}
+
+      {kit.result_json && (
+        <section className="mt-8 rounded-3xl border border-secondary/25 bg-secondary/10 p-4 sm:p-6">
           <p className="text-xs font-bold uppercase tracking-wide text-secondary">Next best action</p>
           <h2 className="mt-1 font-headline text-xl font-extrabold text-on-surface sm:text-2xl">Choose your next move</h2>
           <p className="mt-2 text-sm text-on-surface-variant">
@@ -358,9 +370,7 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
           <div className="mt-4 rounded-xl border border-outline/25 bg-surface-container-low p-4">
             <p className="text-xs font-bold uppercase tracking-wide text-on-surface-variant">Recommended next move</p>
             <p className="mt-1 text-sm font-semibold text-on-surface">{recommendation}</p>
-            {narrativeSummary ? (
-              <p className="mt-2 text-xs text-on-surface-variant">{narrativeSummary}</p>
-            ) : null}
+            {narrativeSummary ? <p className="mt-2 text-xs text-on-surface-variant">{narrativeSummary}</p> : null}
           </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-outline/25 bg-surface-container-low p-4">
@@ -376,18 +386,6 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
             Trust cue: Your current kit is saved and can be revisited anytime from Generated kits.
           </p>
         </section>
-      )}
-
-      {kit.result_json && (
-        <Suspense
-          fallback={
-            <div className="glass-panel flex min-h-[200px] items-center justify-center rounded-3xl border border-outline/30 p-8 text-on-surface-variant">
-              Loading viewer…
-            </div>
-          }
-        >
-          <LazyViewer kit={kit} onKitUpdate={setKit} showTechnical={showTechnical} />
-        </Suspense>
       )}
     </>
   );

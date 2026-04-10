@@ -35,6 +35,7 @@ export async function persistKit(
   db: any,
   snapshot: any,
   aiContent: Record<string, unknown> | null,
+  deviceId: string,
   meta: {
     deliveryStatus: string;
     modelUsed: string;
@@ -53,6 +54,7 @@ export async function persistKit(
     .insert(kits)
     .values({
       id,
+      deviceId,
       briefJson,
       resultJson: aiContent ? JSON.stringify(aiContent) : null,
       deliveryStatus: meta.deliveryStatus,
@@ -107,13 +109,22 @@ export async function updateKit(
   return updated[0] ?? null;
 }
 
-export async function listKits(db: any) {
-  const rows = await db.select().from(kits).orderBy(desc(kits.createdAt)).limit(200);
+export async function listKits(db: any, deviceId: string) {
+  const rows = await db
+    .select()
+    .from(kits)
+    .where(eq(kits.deviceId, deviceId))
+    .orderBy(desc(kits.createdAt))
+    .limit(200);
   return rows.map(serializeKit);
 }
 
-export async function getKitById(db: any, id: string) {
-  const row = (await db.select().from(kits).where(eq(kits.id, id)).limit(1))[0];
+export async function getKitById(db: any, id: string, deviceId: string) {
+  const row = (await db
+    .select()
+    .from(kits)
+    .where(and(eq(kits.id, id), eq(kits.deviceId, deviceId)))
+    .limit(1))[0];
   if (!row) return null;
   return row;
 }

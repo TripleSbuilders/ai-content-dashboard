@@ -31,7 +31,7 @@ async function main() {
     "*",
     cors({
       origin: origin === "*" ? "*" : origin.split(",").map((o) => o.trim()),
-      allowHeaders: ["Content-Type", "Authorization", "Idempotency-Key"],
+      allowHeaders: ["Content-Type", "Authorization", "Idempotency-Key", "X-Device-ID"],
       exposeHeaders: ["Content-Type"],
     })
   );

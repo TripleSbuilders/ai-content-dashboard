@@ -1,4 +1,5 @@
 import { getWizardExperimentVariant, type WizardExperimentVariant } from "./wizardExperiment";
+import { getDeviceId } from "./deviceId";
 
 export type WizardEventName =
   | "wizard_started"
@@ -88,7 +89,7 @@ async function shipWizardEvents(events: WizardEventPayload[]) {
     }
     const res = await fetch(endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-Device-ID": getDeviceId() },
       body,
       keepalive: true,
     });

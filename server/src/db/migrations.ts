@@ -6,6 +6,7 @@ CREATE SCHEMA IF NOT EXISTS social_geni;
 
 CREATE TABLE IF NOT EXISTS social_geni.kits (
   id TEXT PRIMARY KEY NOT NULL,
+  device_id TEXT NOT NULL DEFAULT '',
   brief_json TEXT NOT NULL,
   result_json TEXT,
   delivery_status TEXT NOT NULL,
@@ -18,6 +19,9 @@ CREATE TABLE IF NOT EXISTS social_geni.kits (
   created_at TIMESTAMPTZ NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL
 );
+
+ALTER TABLE social_geni.kits
+ADD COLUMN IF NOT EXISTS device_id TEXT NOT NULL DEFAULT '';
 
 CREATE TABLE IF NOT EXISTS social_geni.idempotency_keys (
   key_hash TEXT PRIMARY KEY NOT NULL,
@@ -42,6 +46,7 @@ CREATE INDEX IF NOT EXISTS idx_kit_failure_logs_kit ON social_geni.kit_failure_l
 CREATE INDEX IF NOT EXISTS idx_kit_failure_logs_phase ON social_geni.kit_failure_logs (phase, created_at DESC);
 
 CREATE INDEX IF NOT EXISTS idx_kits_created ON social_geni.kits (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_kits_device_created ON social_geni.kits (device_id, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS social_geni.notifications (
   id TEXT PRIMARY KEY NOT NULL,

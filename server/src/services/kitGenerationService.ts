@@ -74,13 +74,14 @@ export function startIdempotencyCleanupJob(intervalMs = 10 * 60 * 1000, deps?: K
 async function persistGenerationFailure(params: {
   db: typeof db;
   snapshot: ReturnType<typeof buildSubmissionSnapshot>;
+  deviceId: string;
   settingsModel: string;
   reason: string;
   correlationId: string;
   promptVersionId?: string | null;
   isFallback?: boolean;
 }) {
-  return persistKit(params.db, params.snapshot, null, {
+  return persistKit(params.db, params.snapshot, null, params.deviceId, {
     deliveryStatus: "failed_generation",
     modelUsed: params.settingsModel,
     lastError: params.reason,
@@ -93,6 +94,7 @@ async function persistGenerationFailure(params: {
 export async function generateKitService(input: {
   idempotencyKey: string;
   body: Record<string, unknown>;
+  deviceId: string;
 }, deps?: KitGenerationDependencies) {
   const d = withDeps(deps);
   const idemHeader = input.idempotencyKey?.trim();
@@ -123,7 +125,7 @@ export async function generateKitService(input: {
   if (demoMode) {
     const aiContent = buildDemoKitContent(snapshot) as Record<string, unknown>;
     const emailResult = await d.sendKit(snapshot, aiContent);
-    const row = await persistKit(d.db, snapshot, aiContent, {
+    const row = await persistKit(d.db, snapshot, aiContent, input.deviceId, {
       deliveryStatus: resolveDeliveryStatus(emailResult),
       modelUsed: "demo-mode",
       lastError: emailResult.error || "",
@@ -140,6 +142,7 @@ export async function generateKitService(input: {
     const row = await persistGenerationFailure({
       db: d.db,
       snapshot,
+      deviceId: input.deviceId,
       settingsModel: settings.model,
       reason: "Missing GEMINI_API_KEY.",
       correlationId,
@@ -160,7 +163,7 @@ export async function generateKitService(input: {
       { callAPI: d.callGemini }
     );
     const emailResult = await d.sendKit(snapshot, aiContent);
-    const row = await persistKit(d.db, snapshot, aiContent, {
+    const row = await persistKit(d.db, snapshot, aiContent, input.deviceId, {
       deliveryStatus: resolveDeliveryStatus(emailResult),
       modelUsed: settings.model,
       lastError: emailResult.error || "",
@@ -186,6 +189,7 @@ export async function generateKitService(input: {
     const row = await persistGenerationFailure({
       db: d.db,
       snapshot,
+      deviceId: input.deviceId,
       settingsModel: settings.model,
       reason,
       correlationId,
@@ -454,12 +458,12 @@ export async function regenerateKitItemService(input: {
   return { status: 200, body: serializeKit(updated[0]!) };
 }
 
-export async function listKitsService() {
-  return listKits(withDeps().db);
+export async function listKitsService(deviceId: string) {
+  return listKits(withDeps().db, deviceId);
 }
 
-export async function getKitByIdService(id: string) {
-  const row = await getKitById(withDeps().db, id);
+export async function getKitByIdService(id: string, deviceId: string) {
+  const row = await getKitById(withDeps().db, id, deviceId);
   if (!row) throw new HttpError(404, "Not found");
   return serializeKit(row);
 }

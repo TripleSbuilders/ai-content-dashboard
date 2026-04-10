@@ -1,3 +1,5 @@
+import { getDeviceId } from "../lib/deviceId";
+
 export class ApiError extends Error {
   readonly status: number;
   constructor(message: string, status: number) {
@@ -12,6 +14,7 @@ const base = import.meta.env.VITE_API_URL ?? "";
 export function buildHeaders(extra?: Record<string, string>): HeadersInit {
   return {
     "Content-Type": "application/json",
+    "X-Device-ID": getDeviceId(),
     ...extra,
   };
 }

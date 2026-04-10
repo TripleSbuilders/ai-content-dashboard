@@ -10,6 +10,8 @@ import {
 } from "../services/kitGenerationService.js";
 import { respondHttpError } from "./httpErrorMapping.js";
 
+const deviceIdSchema = z.string().uuid();
+
 const generateBodySchema = z
   .object({
     submitted_at: z.union([z.string(), z.number()]).optional(),
@@ -54,12 +56,27 @@ const regenerateItemBodySchema = z.object({
 
 type RegenerateItemType = z.infer<typeof regenerateItemBodySchema>["item_type"];
 
+function requireDeviceId(c: import("hono").Context): { ok: true; deviceId: string } | { ok: false; response: Response } {
+  const raw = c.req.header("X-Device-ID")?.trim() ?? "";
+  const parsed = deviceIdSchema.safeParse(raw);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      response: c.json({ error: "Missing or invalid X-Device-ID header." }, 400),
+    };
+  }
+  return { ok: true, deviceId: parsed.data };
+}
+
 export function createKitsRouter(mw: (c: import("hono").Context, next: Next) => Promise<void | Response>) {
   const app = new Hono();
 
   app.use("/api/kits/*", mw);
 
   app.post("/api/kits/generate", async (c) => {
+    const device = requireDeviceId(c);
+    if (!device.ok) return device.response;
+
     let body: z.infer<typeof generateBodySchema>;
     try {
       body = generateBodySchema.parse(await c.req.json());
@@ -71,6 +88,7 @@ export function createKitsRouter(mw: (c: import("hono").Context, next: Next) => 
       const result = await generateKitService({
         idempotencyKey: c.req.header("Idempotency-Key")?.trim() || "",
         body: body as Record<string, unknown>,
+        deviceId: device.deviceId,
       });
       return c.json(result.body, result.status as 200 | 201);
     } catch (err) {
@@ -79,12 +97,16 @@ export function createKitsRouter(mw: (c: import("hono").Context, next: Next) => 
   });
 
   app.get("/api/kits", async (c) => {
-    return c.json(await listKitsService());
+    const device = requireDeviceId(c);
+    if (!device.ok) return device.response;
+    return c.json(await listKitsService(device.deviceId));
   });
 
   app.get("/api/kits/:id", async (c) => {
+    const device = requireDeviceId(c);
+    if (!device.ok) return device.response;
     try {
-      return c.json(await getKitByIdService(c.req.param("id")));
+      return c.json(await getKitByIdService(c.req.param("id"), device.deviceId));
     } catch (err) {
       return respondHttpError(c, err, "Unexpected error while loading kit.");
     }

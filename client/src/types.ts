@@ -46,6 +46,8 @@ export type BriefForm = {
   num_posts: number;
   num_image_designs: number;
   num_video_prompts: number;
+  /** When true, server may run extra Gemini steps for content ideas package (requires CONTENT_PACKAGE_CHAIN_ENABLED). */
+  include_content_package: boolean;
   diagnostic_role: string;
   diagnostic_account_stage: string;
   diagnostic_followers_band: string;

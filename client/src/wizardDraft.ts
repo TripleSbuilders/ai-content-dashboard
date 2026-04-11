@@ -27,6 +27,7 @@ const BRIEF_KEYS: (keyof BriefForm)[] = [
   "num_posts",
   "num_image_designs",
   "num_video_prompts",
+  "include_content_package",
 ];
 
 export type WizardLimits = {
@@ -67,6 +68,7 @@ export function isWizardDirty(form: BriefForm, step: number, limits: WizardLimit
   ) {
     return true;
   }
+  if (form.include_content_package) return true;
   return false;
 }
 
@@ -79,6 +81,7 @@ export function parseWizardDraft(raw: string, limits: WizardLimits, maxStep: num
     for (const k of BRIEF_KEYS) {
       if (!(k in f)) {
         if (k === "campaign_mode") continue;
+        if (k === "include_content_package") continue;
         return null;
       }
     }
@@ -121,6 +124,7 @@ export function parseWizardDraft(raw: string, limits: WizardLimits, maxStep: num
         limits.num_video_prompts.max,
         limits.num_video_prompts.fallback
       ),
+      include_content_package: typeof f.include_content_package === "boolean" ? f.include_content_package : false,
       campaign_mode: normalizeCampaignMode("campaign_mode" in f ? f.campaign_mode : "social"),
     };
     return { step: o.step, form };

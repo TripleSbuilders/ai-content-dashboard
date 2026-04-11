@@ -848,6 +848,27 @@ export default function WizardCore(props: WizardCoreProps) {
                     {errors.email && <p className={errCls}>{errors.email.message}</p>}
                   </div>
                 )}
+                {showField("volume", "include_content_package") && (
+                  <div className="flex gap-3 rounded-xl border border-outline/20 bg-surface-container-low/60 p-4 dark:border-outline/25 dark:bg-earth-darkCard/40">
+                    <input
+                      id="include_content_package"
+                      type="checkbox"
+                      className="mt-1 h-4 w-4 shrink-0 rounded border-outline text-primary focus:ring-primary/40"
+                      {...register("include_content_package")}
+                    />
+                    <div className="min-w-0">
+                      <label htmlFor="include_content_package" className="text-sm font-medium text-on-surface cursor-pointer">
+                        Include content ideas package
+                      </label>
+                      <p className="mt-1 text-xs text-on-surface-variant">
+                        Adds extra structured ideas (hooks, scripts, templates) via follow-up model calls. Your project must enable this on the server; generation may take longer.
+                      </p>
+                      {errors.include_content_package && (
+                        <p className={errCls}>{errors.include_content_package.message}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

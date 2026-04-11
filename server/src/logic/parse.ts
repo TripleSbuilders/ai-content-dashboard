@@ -88,6 +88,7 @@ export function buildSubmissionSnapshot(source: Record<string, unknown> | null |
     diagnostic_followers_band: String(s.diagnostic_followers_band ?? "").trim(),
     diagnostic_primary_blocker: String(s.diagnostic_primary_blocker ?? "").trim(),
     diagnostic_revenue_goal: String(s.diagnostic_revenue_goal ?? "").trim(),
+    include_content_package: s.include_content_package === true,
   };
 }
 

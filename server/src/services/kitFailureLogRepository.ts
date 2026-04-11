@@ -3,7 +3,7 @@ import { kitFailureLogs } from "../db/schema.js";
 
 type LogFailureInput = {
   kitId?: string;
-  phase: "generate" | "retry" | "regenerate";
+  phase: "generate" | "retry" | "regenerate" | "content_package_chain";
   errorCode: string;
   errorMessage: string;
   correlationId: string;

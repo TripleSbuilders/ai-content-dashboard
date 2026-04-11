@@ -25,6 +25,33 @@ export function buildJsonCorrectionPrompt(basePrompt: string, validationErrors: 
   ].join("\n");
 }
 
+export type JsonStepValidate<T> = (raw: unknown) => { ok: true; data: T } | { ok: false; errors: string[] };
+
+export async function generateJsonStepWithGuardrails<T>(
+  basePrompt: string,
+  settings: GeminiSettings,
+  responseSchema: Record<string, unknown>,
+  validate: JsonStepValidate<T>,
+  referenceImage?: GeminiReferenceImage,
+  deps?: AIGenerationDependencies
+): Promise<T> {
+  const callAPI = deps?.callAPI ?? callGeminiAPI;
+  let promptText = basePrompt;
+  let lastErrors: string[] = [];
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const raw = await callAPI(promptText, settings, responseSchema, referenceImage);
+    const result = validate(raw);
+    if (result.ok) return result.data;
+    lastErrors = result.errors;
+    if (attempt === 0) {
+      promptText = buildJsonCorrectionPrompt(basePrompt, lastErrors);
+      continue;
+    }
+  }
+  throw new Error("content_package_chain: step validation failed: " + lastErrors.join(" | "));
+}
+
 export async function generateWithGuardrails(
   basePrompt: string,
   snapshot: SubmissionSnapshot,

@@ -3,13 +3,16 @@ import { nanoid } from "nanoid";
 import { db } from "../db/index.js";
 import { idempotencyKeys, kits } from "../db/schema.js";
 import { resolveDeliveryStatus, sendAdminFailureAlert, sendClientDelayEmail, sendKitEmail } from "../email/send.js";
-import { buildDemoKitContent } from "../logic/demoKit.js";
+import { buildDemoContentIdeasPackage, buildDemoKitContent } from "../logic/demoKit.js";
 import { callGeminiAPI, loadGeminiSettingsFromEnv } from "../logic/geminiClient.js";
 import { recordKitNotification } from "../logic/notifyKit.js";
+import { CONTENT_IDEAS_PACKAGE_KEY } from "../logic/packageConstants.js";
+import { shouldRunContentPackageChain } from "../logic/packageEnv.js";
 import { buildSubmissionSnapshot, briefFingerprint, isPlainObject, parseSubmissionSnapshotJson } from "../logic/parse.js";
 import { resolvePrompt } from "../logic/promptResolver.js";
 import { normalizeDeliveryStatus } from "../logic/status.js";
 import { generateWithGuardrails } from "./aiGenerationProvider.js";
+import { runContentPackageChain } from "./contentPackageOrchestrator.js";
 import { parseReferenceImageFromDataUrl } from "./imageProcessor.js";
 import {
   finalizeIdempotencyKey,
@@ -47,6 +50,10 @@ function withDeps(deps?: KitGenerationDependencies) {
     sendAdminAlert: deps?.sendAdminAlert ?? sendAdminFailureAlert,
     notify: deps?.notify ?? recordKitNotification,
   };
+}
+
+function isContentPackageChainFailureMessage(message: string): boolean {
+  return message.includes("content_package_chain");
 }
 
 function logGenerationTelemetry(meta: {
@@ -124,6 +131,9 @@ export async function generateKitService(input: {
 
   if (demoMode) {
     const aiContent = buildDemoKitContent(snapshot) as Record<string, unknown>;
+    if (shouldRunContentPackageChain(snapshot)) {
+      aiContent[CONTENT_IDEAS_PACKAGE_KEY] = buildDemoContentIdeasPackage();
+    }
     const emailResult = await d.sendKit(snapshot, aiContent);
     const row = await persistKit(d.db, snapshot, aiContent, input.deviceId, {
       deliveryStatus: resolveDeliveryStatus(emailResult),
@@ -162,6 +172,10 @@ export async function generateKitService(input: {
       referenceImage,
       { callAPI: d.callGemini }
     );
+    if (shouldRunContentPackageChain(snapshot)) {
+      const pkg = await runContentPackageChain(snapshot, settings, referenceImage, { callAPI: d.callGemini });
+      (aiContent as Record<string, unknown>)[CONTENT_IDEAS_PACKAGE_KEY] = pkg as unknown as Record<string, unknown>;
+    }
     const emailResult = await d.sendKit(snapshot, aiContent);
     const row = await persistKit(d.db, snapshot, aiContent, input.deviceId, {
       deliveryStatus: resolveDeliveryStatus(emailResult),
@@ -198,8 +212,8 @@ export async function generateKitService(input: {
     });
     await logKitFailure(d.db, {
       kitId: row.id,
-      phase: "generate",
-      errorCode: "GENERATION_FAILED",
+      phase: isContentPackageChainFailureMessage(reason) ? "content_package_chain" : "generate",
+      errorCode: isContentPackageChainFailureMessage(reason) ? "CONTENT_PACKAGE_CHAIN_FAILED" : "GENERATION_FAILED",
       errorMessage: reason,
       correlationId,
       modelUsed: settings.model,
@@ -257,6 +271,9 @@ export async function retryKitService(input: { id: string; brief_json: string; r
 
   if (demoMode) {
     const aiContent = buildDemoKitContent(snapshot) as Record<string, unknown>;
+    if (shouldRunContentPackageChain(snapshot)) {
+      aiContent[CONTENT_IDEAS_PACKAGE_KEY] = buildDemoContentIdeasPackage();
+    }
     const emailResult = await d.sendKit(snapshot, aiContent);
     const done = (await d.db.update(kits).set({
       resultJson: JSON.stringify(aiContent),
@@ -296,6 +313,10 @@ export async function retryKitService(input: { id: string; brief_json: string; r
       referenceImage,
       { callAPI: d.callGemini }
     );
+    if (shouldRunContentPackageChain(snapshot)) {
+      const pkg = await runContentPackageChain(snapshot, settings, referenceImage, { callAPI: d.callGemini });
+      (aiContent as Record<string, unknown>)[CONTENT_IDEAS_PACKAGE_KEY] = pkg as unknown as Record<string, unknown>;
+    }
     const emailResult = await d.sendKit(snapshot, aiContent);
     const ok = (await d.db.update(kits).set({
       briefJson: JSON.stringify({ ...snapshot, submitted_at: snapshot.submitted_at.toISOString() }),
@@ -337,12 +358,12 @@ export async function retryKitService(input: { id: string; brief_json: string; r
     if (!fr) throw new HttpError(409, "Concurrent update; refresh and try again.");
     await logKitFailure(d.db, {
       kitId: id,
-      phase: "retry",
-      errorCode: "RETRY_FAILED",
+      phase: isContentPackageChainFailureMessage(reason) ? "content_package_chain" : "retry",
+      errorCode: isContentPackageChainFailureMessage(reason) ? "CONTENT_PACKAGE_CHAIN_FAILED" : "RETRY_FAILED",
       errorMessage: reason,
       correlationId,
       modelUsed: settings.model,
-      meta: { promptMode: resolved.promptMode, industrySource: resolved.industrySource },
+      meta: { promptMode: resolved.promptMode, industrySource: resolved.industrySource, parentPhase: "retry" },
     });
     logGenerationTelemetry({
       phase: "retry",

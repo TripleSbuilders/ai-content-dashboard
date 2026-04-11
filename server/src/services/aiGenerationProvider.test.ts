@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { getIdeasStepSchema } from "../logic/packageResponseSchema.js";
+import { validateIdeasStep } from "../logic/packageValidate.js";
 import { buildSubmissionSnapshot } from "../logic/parse.js";
-import { generateWithGuardrails } from "./aiGenerationProvider.js";
+import { generateJsonStepWithGuardrails, generateWithGuardrails } from "./aiGenerationProvider.js";
 
 describe("aiGenerationProvider", () => {
   it("accepts injected callAPI dependency for testing", async () => {
@@ -78,5 +80,32 @@ describe("aiGenerationProvider", () => {
       { callAPI: async () => fakePayload }
     );
     expect(result.jsonValid).toBe(true);
+  });
+
+  it("generateJsonStepWithGuardrails retries once on invalid JSON then succeeds", async () => {
+    const good = {
+      ideas: Array.from({ length: 10 }, (_, i) => ({
+        id: i + 1,
+        title: `T${i}`,
+        description: `D${i}`,
+      })),
+    };
+    let calls = 0;
+    const data = await generateJsonStepWithGuardrails(
+      "prompt",
+      { apiKey: "x", model: "m", timeoutMs: 10_000, maxRetries: 0 },
+      getIdeasStepSchema(),
+      (raw) => validateIdeasStep(raw),
+      undefined,
+      {
+        callAPI: async () => {
+          calls += 1;
+          if (calls === 1) return { ideas: [] };
+          return good;
+        },
+      }
+    );
+    expect(calls).toBe(2);
+    expect(data.ideas).toHaveLength(10);
   });
 });

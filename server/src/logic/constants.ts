@@ -37,4 +37,6 @@ export type SubmissionSnapshot = {
   diagnostic_followers_band: string;
   diagnostic_primary_blocker: string;
   diagnostic_revenue_goal: string;
+  /** When true and CONTENT_PACKAGE_CHAIN_ENABLED is set, kit generation runs the chained ideas/scripts/hooks/templates pipeline and merges `content_ideas_package` into result_json. */
+  include_content_package: boolean;
 };

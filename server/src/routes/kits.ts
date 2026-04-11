@@ -39,6 +39,7 @@ const generateBodySchema = z
     num_image_designs: z.number().optional(),
     num_video_prompts: z.number().optional(),
     campaign_mode: z.enum(["social", "offer", "deep"]).optional(),
+    include_content_package: z.boolean().optional(),
   })
   .passthrough();
 

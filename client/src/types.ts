@@ -48,6 +48,8 @@ export type BriefForm = {
   num_video_prompts: number;
   /** When true, server may run extra Gemini steps for content ideas package (requires CONTENT_PACKAGE_CHAIN_ENABLED). */
   include_content_package: boolean;
+  /** Strategic ideas count for content package (1–25); hooks = this × 2 on server. */
+  content_package_idea_count: number;
   diagnostic_role: string;
   diagnostic_account_stage: string;
   diagnostic_followers_band: string;

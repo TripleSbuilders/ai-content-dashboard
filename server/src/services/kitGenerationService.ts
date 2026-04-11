@@ -132,7 +132,7 @@ export async function generateKitService(input: {
   if (demoMode) {
     const aiContent = buildDemoKitContent(snapshot) as Record<string, unknown>;
     if (shouldRunContentPackageChain(snapshot)) {
-      aiContent[CONTENT_IDEAS_PACKAGE_KEY] = buildDemoContentIdeasPackage();
+      aiContent[CONTENT_IDEAS_PACKAGE_KEY] = buildDemoContentIdeasPackage(snapshot.content_package_idea_count);
     }
     const emailResult = await d.sendKit(snapshot, aiContent);
     const row = await persistKit(d.db, snapshot, aiContent, input.deviceId, {
@@ -272,7 +272,7 @@ export async function retryKitService(input: { id: string; brief_json: string; r
   if (demoMode) {
     const aiContent = buildDemoKitContent(snapshot) as Record<string, unknown>;
     if (shouldRunContentPackageChain(snapshot)) {
-      aiContent[CONTENT_IDEAS_PACKAGE_KEY] = buildDemoContentIdeasPackage();
+      aiContent[CONTENT_IDEAS_PACKAGE_KEY] = buildDemoContentIdeasPackage(snapshot.content_package_idea_count);
     }
     const emailResult = await d.sendKit(snapshot, aiContent);
     const done = (await d.db.update(kits).set({

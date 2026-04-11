@@ -1,11 +1,11 @@
 import type { SubmissionSnapshot } from "./constants.js";
 import { isHighBudget } from "./industry.js";
-import { PACKAGE_HOOKS_PER_IDEA, PACKAGE_IDEA_COUNT } from "./packageConstants.js";
+import { PACKAGE_HOOKS_PER_IDEA } from "./packageConstants.js";
 import type { ContentIdeasPackage } from "./packageValidate.js";
 
 /** Deterministic chained package for DEMO_MODE when `include_content_package` is on. */
-export function buildDemoContentIdeasPackage(): ContentIdeasPackage {
-  const ideas = Array.from({ length: PACKAGE_IDEA_COUNT }, (_, i) => {
+export function buildDemoContentIdeasPackage(ideaCount: number): ContentIdeasPackage {
+  const ideas = Array.from({ length: ideaCount }, (_, i) => {
     const id = i + 1;
     return {
       id,
@@ -13,11 +13,6 @@ export function buildDemoContentIdeasPackage(): ContentIdeasPackage {
       description: `Demo short-form concept ${id} aligned to the brief.`,
     };
   });
-  const scripts = ideas.map((idea) => ({
-    idea_id: idea.id,
-    visuals: `Demo shot plan for idea ${idea.id}.`,
-    voiceover: `Demo voiceover script for idea ${idea.id}.`,
-  }));
   const hooks = ideas.flatMap((idea) =>
     Array.from({ length: PACKAGE_HOOKS_PER_IDEA }, (_, j) => ({
       idea_id: idea.id,
@@ -29,7 +24,7 @@ export function buildDemoContentIdeasPackage(): ContentIdeasPackage {
     idea_id: idea.id,
     template_format: `Demo reusable template outline for idea ${idea.id} (carousel / reel beats).`,
   }));
-  return { ideas, scripts, hooks, templates };
+  return { ideas, hooks, templates };
 }
 
 /** Minimal valid kit for DEMO_MODE — counts match snapshot. */

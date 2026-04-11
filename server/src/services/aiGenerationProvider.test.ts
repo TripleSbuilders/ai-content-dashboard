@@ -91,11 +91,12 @@ describe("aiGenerationProvider", () => {
       })),
     };
     let calls = 0;
+    const ideaCount = 10;
     const data = await generateJsonStepWithGuardrails(
       "prompt",
       { apiKey: "x", model: "m", timeoutMs: 10_000, maxRetries: 0 },
-      getIdeasStepSchema(),
-      (raw) => validateIdeasStep(raw),
+      getIdeasStepSchema(ideaCount),
+      (raw) => validateIdeasStep(raw, ideaCount),
       undefined,
       {
         callAPI: async () => {

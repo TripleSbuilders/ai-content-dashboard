@@ -28,12 +28,14 @@ const BRIEF_KEYS: (keyof BriefForm)[] = [
   "num_image_designs",
   "num_video_prompts",
   "include_content_package",
+  "content_package_idea_count",
 ];
 
 export type WizardLimits = {
   num_posts: { min: number; max: number; fallback: number };
   num_image_designs: { min: number; max: number; fallback: number };
   num_video_prompts: { min: number; max: number; fallback: number };
+  content_package_idea_count: { min: number; max: number; fallback: number };
 };
 
 export function isWizardDirty(form: BriefForm, step: number, limits: WizardLimits): boolean {
@@ -64,7 +66,8 @@ export function isWizardDirty(form: BriefForm, step: number, limits: WizardLimit
   if (
     form.num_posts !== limits.num_posts.fallback ||
     form.num_image_designs !== limits.num_image_designs.fallback ||
-    form.num_video_prompts !== limits.num_video_prompts.fallback
+    form.num_video_prompts !== limits.num_video_prompts.fallback ||
+    form.content_package_idea_count !== limits.content_package_idea_count.fallback
   ) {
     return true;
   }
@@ -82,6 +85,7 @@ export function parseWizardDraft(raw: string, limits: WizardLimits, maxStep: num
       if (!(k in f)) {
         if (k === "campaign_mode") continue;
         if (k === "include_content_package") continue;
+        if (k === "content_package_idea_count") continue;
         return null;
       }
     }
@@ -123,6 +127,12 @@ export function parseWizardDraft(raw: string, limits: WizardLimits, maxStep: num
         limits.num_video_prompts.min,
         limits.num_video_prompts.max,
         limits.num_video_prompts.fallback
+      ),
+      content_package_idea_count: num(
+        f.content_package_idea_count,
+        limits.content_package_idea_count.min,
+        limits.content_package_idea_count.max,
+        limits.content_package_idea_count.fallback
       ),
       include_content_package: typeof f.include_content_package === "boolean" ? f.include_content_package : false,
       campaign_mode: normalizeCampaignMode("campaign_mode" in f ? f.campaign_mode : "social"),

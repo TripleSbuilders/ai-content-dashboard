@@ -3,6 +3,8 @@
  * Each step uses a small OBJECT root to constrain hallucinations.
  */
 
+import { expectedHooksTotal, PACKAGE_HOOKS_PER_IDEA } from "./packageConstants.js";
+
 const ideaItem = {
   type: "OBJECT",
   required: ["id", "title", "description"],
@@ -13,53 +15,37 @@ const ideaItem = {
   },
 } as const;
 
-export function getIdeasStepSchema(): Record<string, unknown> {
+export function getIdeasStepSchema(ideaCount: number): Record<string, unknown> {
   return {
     type: "OBJECT",
     required: ["ideas"],
     properties: {
       ideas: {
         type: "ARRAY",
+        minItems: ideaCount,
+        maxItems: ideaCount,
         items: ideaItem,
       },
     },
   };
 }
 
-export function getScriptsStepSchema(): Record<string, unknown> {
-  return {
-    type: "OBJECT",
-    required: ["scripts"],
-    properties: {
-      scripts: {
-        type: "ARRAY",
-        items: {
-          type: "OBJECT",
-          required: ["idea_id", "visuals", "voiceover"],
-          properties: {
-            idea_id: { type: "INTEGER" },
-            visuals: { type: "STRING" },
-            voiceover: { type: "STRING" },
-          },
-        },
-      },
-    },
-  };
-}
-
-export function getHooksStepSchema(): Record<string, unknown> {
+export function getHooksStepSchema(ideaCount: number): Record<string, unknown> {
+  const totalHooks = expectedHooksTotal(ideaCount);
   return {
     type: "OBJECT",
     required: ["hooks"],
     properties: {
       hooks: {
         type: "ARRAY",
+        minItems: totalHooks,
+        maxItems: totalHooks,
         items: {
           type: "OBJECT",
           required: ["idea_id", "variant_index", "hook_text"],
           properties: {
             idea_id: { type: "INTEGER" },
-            variant_index: { type: "INTEGER" },
+            variant_index: { type: "INTEGER", minimum: 1, maximum: PACKAGE_HOOKS_PER_IDEA },
             hook_text: { type: "STRING" },
           },
         },
@@ -68,13 +54,15 @@ export function getHooksStepSchema(): Record<string, unknown> {
   };
 }
 
-export function getTemplatesStepSchema(): Record<string, unknown> {
+export function getTemplatesStepSchema(ideaCount: number): Record<string, unknown> {
   return {
     type: "OBJECT",
     required: ["templates"],
     properties: {
       templates: {
         type: "ARRAY",
+        minItems: ideaCount,
+        maxItems: ideaCount,
         items: {
           type: "OBJECT",
           required: ["idea_id", "template_format"],

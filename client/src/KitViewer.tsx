@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import type { KitPostItem, KitSummary } from "./types";
-import { buildKitViewModel } from "./features/kits/kitViewModel";
+import { buildKitViewModel, type KitContentIdeasPackageView } from "./features/kits/kitViewModel";
 import { useKitRegenerate } from "./features/kits/useKitRegenerate";
 import RegenerateFeedbackDialog from "./features/kits/RegenerateFeedbackDialog";
 
@@ -680,6 +680,156 @@ function PostCard({
 
 type TocItem = { id: string; label: string };
 
+function buildContentPackageFullCopy(pkg: KitContentIdeasPackageView): string {
+  const lines: string[] = [];
+  if (pkg.ideas.length) {
+    lines.push("=== Strategic ideas ===");
+    for (const idea of pkg.ideas) {
+      lines.push(`#${idea.id ?? "?"} ${idea.title ?? ""}`.trim());
+      if (idea.description) lines.push(idea.description);
+      lines.push("");
+    }
+  }
+  if (pkg.hooks.length) {
+    lines.push("=== Hooks ===");
+    const byIdea = new Map<number, typeof pkg.hooks>();
+    for (const h of pkg.hooks) {
+      const id = typeof h.idea_id === "number" ? h.idea_id : -1;
+      if (id < 0) continue;
+      if (!byIdea.has(id)) byIdea.set(id, []);
+      byIdea.get(id)!.push(h);
+    }
+    const sortedIds = [...byIdea.keys()].sort((a, b) => a - b);
+    for (const id of sortedIds) {
+      const arr = byIdea.get(id)!;
+      arr.sort((a, b) => (a.variant_index ?? 0) - (b.variant_index ?? 0));
+      lines.push(`Idea ${id}:`);
+      for (const h of arr) {
+        lines.push(`  [${h.variant_index ?? "?"}] ${h.hook_text ?? ""}`);
+      }
+      lines.push("");
+    }
+  }
+  if (pkg.templates.length) {
+    lines.push("=== Templates ===");
+    for (const t of pkg.templates) {
+      lines.push(`Idea ${t.idea_id ?? "?"}: ${t.template_format ?? ""}`);
+    }
+  }
+  return lines.join("\n").trim();
+}
+
+function ContentIdeasPackagePanel({ pkg, kitId }: { pkg: KitContentIdeasPackageView; kitId: string }) {
+  const hooksByIdea = new Map<number, KitContentIdeasPackageView["hooks"]>();
+  for (const h of pkg.hooks) {
+    const id = typeof h.idea_id === "number" ? h.idea_id : -1;
+    if (id < 0) continue;
+    if (!hooksByIdea.has(id)) hooksByIdea.set(id, []);
+    hooksByIdea.get(id)!.push(h);
+  }
+  for (const arr of hooksByIdea.values()) {
+    arr.sort((a, b) => (a.variant_index ?? 0) - (b.variant_index ?? 0));
+  }
+  const ideaTitle = (id: number) => pkg.ideas.find((i) => i.id === id)?.title?.trim() || `Idea ${id}`;
+  const fullCopy = buildContentPackageFullCopy(pkg);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-on-surface-variant">
+          Extra outputs from the content ideas package (strategic ideas, hooks, templates). Separate from main kit video prompts.
+        </p>
+        <CopyFieldButton text={fullCopy} label="Copy entire content package" />
+      </div>
+
+      {pkg.ideas.length > 0 ? (
+        <div className="space-y-3">
+          <h3 className="text-sm font-bold uppercase tracking-wide text-on-surface">Strategic ideas</h3>
+          <div className="grid grid-cols-1 gap-3">
+            {pkg.ideas.map((idea, i) => {
+              const id = idea.id ?? i + 1;
+              const block = [`#${id} ${idea.title ?? ""}`.trim(), idea.description ?? ""].filter(Boolean).join("\n\n");
+              return (
+                <FieldBlock
+                  key={`${kitId}-cp-idea-${id}-${i}`}
+                  label={`Idea ${id}`}
+                  copyText={block}
+                  copyLabel={`Copy idea ${id}`}
+                >
+                  {idea.title ? (
+                    <p className="px-3 pt-2 text-sm font-semibold text-on-surface [overflow-wrap:anywhere]" dir="auto">
+                      {idea.title}
+                    </p>
+                  ) : null}
+                  {idea.description ? (
+                    <p className="px-3 pb-2 text-sm leading-relaxed text-on-surface [overflow-wrap:anywhere]" dir="auto">
+                      {idea.description}
+                    </p>
+                  ) : null}
+                </FieldBlock>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
+      {pkg.hooks.length > 0 ? (
+        <div className="space-y-3">
+          <h3 className="text-sm font-bold uppercase tracking-wide text-on-surface">Hook lines</h3>
+          <div className="grid grid-cols-1 gap-3">
+            {[...hooksByIdea.entries()]
+              .sort((a, b) => a[0] - b[0])
+              .map(([ideaId, hooks]) => {
+                const body = hooks.map((h) => `[${h.variant_index ?? "?"}] ${h.hook_text ?? ""}`).join("\n");
+                return (
+                  <FieldBlock
+                    key={`${kitId}-cp-hooks-${ideaId}`}
+                    label={ideaTitle(ideaId)}
+                    copyText={body}
+                    copyLabel={`Copy hooks for idea ${ideaId}`}
+                  >
+                    <ul className="space-y-2 px-3 py-2 text-sm leading-relaxed text-on-surface [overflow-wrap:anywhere]" dir="auto">
+                      {hooks.map((h, j) => (
+                        <li key={`${ideaId}-v-${h.variant_index}-${j}`}>
+                          <span className="font-mono text-xs text-on-surface-variant">v{h.variant_index}: </span>
+                          {h.hook_text ?? "—"}
+                        </li>
+                      ))}
+                    </ul>
+                  </FieldBlock>
+                );
+              })}
+          </div>
+        </div>
+      ) : null}
+
+      {pkg.templates.length > 0 ? (
+        <div className="space-y-3">
+          <h3 className="text-sm font-bold uppercase tracking-wide text-on-surface">Reusable templates</h3>
+          <div className="grid grid-cols-1 gap-3">
+            {pkg.templates.map((t, i) => {
+              const id = t.idea_id ?? i + 1;
+              const text = t.template_format ?? "";
+              return (
+                <FieldBlock
+                  key={`${kitId}-cp-tpl-${id}-${i}`}
+                  label={`Template · ${ideaTitle(typeof t.idea_id === "number" ? t.idea_id : id)}`}
+                  copyText={text}
+                  copyLabel={`Copy template for idea ${id}`}
+                >
+                  <p className="px-3 py-2 text-sm leading-relaxed text-on-surface [overflow-wrap:anywhere] whitespace-pre-wrap" dir="auto">
+                    {text || "—"}
+                  </p>
+                </FieldBlock>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function CollapsibleSection({
   id,
   title,
@@ -789,6 +939,7 @@ export default function KitViewer({
     offerOptimization,
     painPoints,
     hasStructuredPreview,
+    contentIdeasPackage,
   } = useMemo(() => buildKitViewModel(kit), [kit]);
 
   const strategyOfferHeadline = useMemo(() => {
@@ -820,9 +971,26 @@ export default function KitViewer({
     if (!hasStructuredPreview) items.push({ id: "kit-section-summary", label: "Summary" });
     if (hasStrategyBlock) items.push({ id: "kit-section-strategy", label: "Strategy & extras" });
     if (painPoints.length) items.push({ id: "kit-section-pain", label: "Pain points" });
+    if (
+      contentIdeasPackage &&
+      (contentIdeasPackage.ideas.length > 0 ||
+        contentIdeasPackage.hooks.length > 0 ||
+        contentIdeasPackage.templates.length > 0)
+    ) {
+      items.push({ id: "kit-section-content-package", label: "Content ideas package" });
+    }
     if (showTechnical) items.push({ id: "kit-section-json", label: "Full JSON" });
     return items;
-  }, [posts.length, imageSection, videoSection, hasStructuredPreview, hasStrategyBlock, painPoints.length, showTechnical]);
+  }, [
+    posts.length,
+    imageSection,
+    videoSection,
+    hasStructuredPreview,
+    hasStrategyBlock,
+    painPoints.length,
+    contentIdeasPackage,
+    showTechnical,
+  ]);
 
   const toggle = useCallback((id: string) => {
     setOpenMap((m) => ({ ...m, [id]: !m[id] }));
@@ -1071,6 +1239,24 @@ export default function KitViewer({
           </div>
         </CollapsibleSection>
       )}
+
+      {contentIdeasPackage &&
+      (contentIdeasPackage.ideas.length > 0 ||
+        contentIdeasPackage.hooks.length > 0 ||
+        contentIdeasPackage.templates.length > 0) ? (
+        <CollapsibleSection
+          id="kit-section-content-package"
+          title="Content ideas package"
+          subtitle="Strategic ideas, hooks, and templates"
+          icon="lightbulb"
+          iconBg="bg-amber-500/15 text-amber-800 dark:bg-amber-400/15 dark:text-amber-200"
+          open={!!openMap["kit-section-content-package"]}
+          onToggle={() => toggle("kit-section-content-package")}
+          tocLabel="Content ideas package"
+        >
+          <ContentIdeasPackagePanel pkg={contentIdeasPackage} kitId={kit.id} />
+        </CollapsibleSection>
+      ) : null}
 
       {!hasStructuredPreview && (
         <CollapsibleSection

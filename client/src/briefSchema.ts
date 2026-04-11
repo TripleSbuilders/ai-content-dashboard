@@ -10,6 +10,7 @@ export const BRIEF_LIMITS = {
   num_posts: { min: 1, max: 25, fallback: 5 },
   num_image_designs: { min: 1, max: 10, fallback: 5 },
   num_video_prompts: { min: 1, max: 10, fallback: 3 },
+  content_package_idea_count: { min: 1, max: 25, fallback: 10 },
 } as const;
 
 const L = BRIEF_LIMITS;
@@ -51,6 +52,17 @@ export const briefSchema = z.object({
     .min(L.num_video_prompts.min, `Must be between ${L.num_video_prompts.min} and ${L.num_video_prompts.max}`)
     .max(L.num_video_prompts.max, `Must be between ${L.num_video_prompts.min} and ${L.num_video_prompts.max}`),
   include_content_package: z.boolean().default(false),
+  content_package_idea_count: z.coerce
+    .number({ invalid_type_error: "Enter a valid number" })
+    .int()
+    .min(
+      L.content_package_idea_count.min,
+      `Must be between ${L.content_package_idea_count.min} and ${L.content_package_idea_count.max}`
+    )
+    .max(
+      L.content_package_idea_count.max,
+      `Must be between ${L.content_package_idea_count.min} and ${L.content_package_idea_count.max}`
+    ),
   diagnostic_role: z.string().optional().default(""),
   diagnostic_account_stage: z.string().optional().default(""),
   diagnostic_followers_band: z.string().optional().default(""),
@@ -128,7 +140,7 @@ export const STEP_FIELD_KEYS: readonly (readonly (keyof BriefForm)[])[] = [
   ["platforms", "brand_tone", "brand_colors"],
   ["offer", "competitors"],
   ["visual_notes", "reference_image", "campaign_duration", "budget_level", "best_content_types"],
-  ["include_content_package", "num_posts", "num_image_designs", "num_video_prompts", "email"],
+  ["include_content_package", "content_package_idea_count", "num_posts", "num_image_designs", "num_video_prompts", "email"],
 ] as const;
 
 export function initialBriefForm(): BriefForm {
@@ -152,6 +164,7 @@ export function initialBriefForm(): BriefForm {
     num_image_designs: L.num_image_designs.fallback,
     num_video_prompts: L.num_video_prompts.fallback,
     include_content_package: false,
+    content_package_idea_count: L.content_package_idea_count.fallback,
     diagnostic_role: "",
     diagnostic_account_stage: "",
     diagnostic_followers_band: "",

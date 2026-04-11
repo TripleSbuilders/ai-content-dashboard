@@ -59,6 +59,8 @@ type WizardCoreProps = {
 };
 
 const LIMITS = BRIEF_LIMITS;
+/** Must match server `PACKAGE_HOOKS_PER_IDEA` (packageConstants). */
+const CONTENT_PACKAGE_HOOKS_PER_IDEA = 2;
 const FALLBACK_INDUSTRY_OPTIONS: { slug: string; name: string }[] = (
   ["ecommerce", "real-estate", "restaurants", "clinics", "education", "general"] as const
 ).map((slug) => ({ slug, name: slug.replace(/-/g, " ") }));
@@ -325,6 +327,11 @@ export default function WizardCore(props: WizardCoreProps) {
       num_posts: clamp(form.num_posts, LIMITS.num_posts.min, LIMITS.num_posts.max),
       num_image_designs: clamp(form.num_image_designs, LIMITS.num_image_designs.min, LIMITS.num_image_designs.max),
       num_video_prompts: clamp(form.num_video_prompts, LIMITS.num_video_prompts.min, LIMITS.num_video_prompts.max),
+      content_package_idea_count: clamp(
+        form.content_package_idea_count,
+        LIMITS.content_package_idea_count.min,
+        LIMITS.content_package_idea_count.max
+      ),
     }),
     emit: telemetry.emit,
     getElapsedMs: telemetry.getElapsedMs,
@@ -841,6 +848,42 @@ export default function WizardCore(props: WizardCoreProps) {
                     {errors.num_video_prompts && <p className={errCls}>{errors.num_video_prompts.message}</p>}
                   </div>
                 )}
+                {showField("volume", "content_package_idea_count") && (
+                  <div>
+                    <label htmlFor="content_package_idea_count" className={labelCls}>
+                      Content package — idea count ({LIMITS.content_package_idea_count.min}–{LIMITS.content_package_idea_count.max})
+                    </label>
+                    <div className={fieldShell}>
+                      <Controller
+                        name="content_package_idea_count"
+                        control={control}
+                        render={({ field }) => (
+                          <input
+                            id="content_package_idea_count"
+                            type="number"
+                            className={inputCls}
+                            value={field.value}
+                            onChange={(e) =>
+                              field.onChange(
+                                clamp(
+                                  Number(e.target.value) || 0,
+                                  LIMITS.content_package_idea_count.min,
+                                  LIMITS.content_package_idea_count.max
+                                )
+                              )
+                            }
+                          />
+                        )}
+                      />
+                    </div>
+                    {errors.content_package_idea_count && (
+                      <p className={errCls}>{errors.content_package_idea_count.message}</p>
+                    )}
+                    <p className="mt-1 text-xs text-on-surface-variant">
+                      Used only if you enable the content ideas package below: same number of strategic ideas and reusable templates; hook lines = this × 2.
+                    </p>
+                  </div>
+                )}
                 {showField("volume", "email") && (
                   <div>
                     <label htmlFor="email" className={labelCls}>Email for kit delivery (optional)</label>
@@ -860,8 +903,22 @@ export default function WizardCore(props: WizardCoreProps) {
                       <label htmlFor="include_content_package" className="text-sm font-medium text-on-surface cursor-pointer">
                         Include content ideas package
                       </label>
-                      <p className="mt-1 text-xs text-on-surface-variant">
-                        Adds extra structured ideas (hooks, scripts, templates) via follow-up model calls. Your project must enable this on the server; generation may take longer.
+                      <p className="mt-1 text-xs text-on-surface-variant leading-relaxed">
+                        When enabled, adds{" "}
+                        <strong className="text-on-surface">
+                          {watch("content_package_idea_count")} ideas
+                        </strong>
+                        ,{" "}
+                        <strong className="text-on-surface">
+                          {watch("content_package_idea_count")} templates
+                        </strong>
+                        , and{" "}
+                        <strong className="text-on-surface">
+                          {watch("content_package_idea_count") * CONTENT_PACKAGE_HOOKS_PER_IDEA} hook lines
+                        </strong>{" "}
+                        ({CONTENT_PACKAGE_HOOKS_PER_IDEA} per idea) via <strong className="text-on-surface">three</strong> extra Gemini calls after the main kit (ideas, then hooks and templates in parallel). This is{" "}
+                        <strong className="text-on-surface">in addition to</strong> the main kit <strong className="text-on-surface">video prompts</strong> you set above — not a replacement. Requires{" "}
+                        <code className="rounded bg-earth-alt px-1 text-[10px] dark:bg-surface-container-highest">CONTENT_PACKAGE_CHAIN_ENABLED</code> on the server; generation takes longer.
                       </p>
                       {errors.include_content_package && (
                         <p className={errCls}>{errors.include_content_package.message}</p>

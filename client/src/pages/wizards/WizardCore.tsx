@@ -7,15 +7,13 @@ import { BRIEF_LIMITS, briefSchema, initialBriefForm } from "../../briefSchema";
 import PillGroup from "../../components/selection/PillGroup";
 import SelectableCard from "../../components/selection/SelectableCard";
 import ReferenceImageUploader from "../../components/ReferenceImageUploader";
+import AdditionalNotes from "../../components/AdditionalNotes";
 import {
   decodeMultiSelection,
   decodeSingleSelection,
   encodeMultiSelection,
   encodeSingleSelection,
 } from "../../lib/selectionFieldCodec";
-=========
->>>>>>>>> Temporary merge branch 2
-import { isWizardDirty, parseWizardDraft } from "../../wizardDraft";
 import type { BriefForm } from "../../types";
 import {
   BRAND_TONE_OPTIONS,
@@ -375,25 +373,99 @@ export default function WizardCore(props: WizardCoreProps) {
                 <span>Step {step + 1} of {maxStep + 1}</span>
                 <span>{props.stepTitles[currentStep]}</span>
               </div>
-            )}
-
-            <div className="mb-6 flex flex-nowrap gap-2 overflow-x-auto pb-1 sm:mb-8 sm:flex-wrap sm:overflow-visible">
-              {props.stepOrder.map((id, i) => (
-                <span
-                  key={id}
-                  className={cn(
-                    "whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-semibold transition",
-                    i === step
-                      ? "border-primary/30 bg-primary/20 text-primary dark:border-brand-primary/45 dark:bg-brand-primary/15 dark:text-brand-darkText"
-                      : "border-transparent bg-surface-container-lowest text-on-surface-variant dark:bg-earth-darkBg/55 dark:text-brand-darkText/70"
-                  )}
-                >
-                  {i + 1}. {props.stepTitles[id]}
-                </span>
-              ))}
+              <div className="h-2 w-full overflow-hidden rounded-full bg-surface-container-high dark:bg-surface-container-highest">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-primary to-primary-container transition-all duration-300"
+                  style={{ width: `${Math.max(8, Math.round(((step + 1) / (maxStep + 1)) * 100))}%` }}
+                />
+              </div>
             </div>
 
-<<<<<<<<< Temporary merge branch 1
+            {canShowValuePreview && (
+              <WizardValuePreview
+                wizardType={wizardType}
+                brandName={String(brandNameValue ?? "")}
+                industry={String(industryValue ?? "")}
+                direction={String(mainGoalValue || audienceValue || "audience-led growth")}
+              />
+            )}
+
+            <WizardStepChips stepOrder={props.stepOrder} currentStep={step} stepTitles={props.stepTitles} />
+
+            {variantB && currentStep === "diagnosis" && (
+              <div className="space-y-6">
+                <div>
+                  <label htmlFor="diagnostic_role" className={labelCls}>Who are you?</label>
+                  <div className={fieldShell}>
+                    <select id="diagnostic_role" className={selectCls} {...register("diagnostic_role")}>
+                      <option value="">Select role…</option>
+                      <option value="entrepreneur-founder">Entrepreneur / Founder</option>
+                      <option value="coach-consultant">Coach or Consultant</option>
+                      <option value="doctor-expert-professional">Doctor / Expert / Professional</option>
+                      <option value="freelancer-creative">Freelancer or Creative</option>
+                    </select>
+                  </div>
+                  {errors.diagnostic_role && <p className={errCls}>{errors.diagnostic_role.message}</p>}
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="diagnostic_account_stage" className={labelCls}>Account Stage</label>
+                    <div className={fieldShell}>
+                      <select id="diagnostic_account_stage" className={selectCls} {...register("diagnostic_account_stage")}>
+                        <option value="">Select stage…</option>
+                        <option value="under-6-months">Just starting — under 6 months</option>
+                        <option value="6-12-months">6 months to 1 year</option>
+                        <option value="1-3-years">1–3 years, inconsistent results</option>
+                        <option value="3-plus-years">3+ years, want to scale</option>
+                      </select>
+                    </div>
+                    {errors.diagnostic_account_stage && <p className={errCls}>{errors.diagnostic_account_stage.message}</p>}
+                  </div>
+                  <div>
+                    <label htmlFor="diagnostic_followers_band" className={labelCls}>Follower Range</label>
+                    <div className={fieldShell}>
+                      <select id="diagnostic_followers_band" className={selectCls} {...register("diagnostic_followers_band")}>
+                        <option value="">Select range…</option>
+                        <option value="under-1k">Under 1,000</option>
+                        <option value="1k-5k">1,000 – 5,000</option>
+                        <option value="5k-20k">5,000 – 20,000</option>
+                        <option value="20k-plus">20,000+</option>
+                      </select>
+                    </div>
+                    {errors.diagnostic_followers_band && <p className={errCls}>{errors.diagnostic_followers_band.message}</p>}
+                  </div>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="diagnostic_primary_blocker" className={labelCls}>Primary Blocker</label>
+                    <div className={fieldShell}>
+                      <select id="diagnostic_primary_blocker" className={selectCls} {...register("diagnostic_primary_blocker")}>
+                        <option value="">Select blocker…</option>
+                        <option value="low-reach">I post but nobody sees my content</option>
+                        <option value="no-content-system">I don't know what to post consistently</option>
+                        <option value="no-conversion">Followers exist but no sales or clients</option>
+                        <option value="inconsistent-execution">No time — totally inconsistent</option>
+                      </select>
+                    </div>
+                    {errors.diagnostic_primary_blocker && <p className={errCls}>{errors.diagnostic_primary_blocker.message}</p>}
+                  </div>
+                  <div>
+                    <label htmlFor="diagnostic_revenue_goal" className={labelCls}>Target monthly revenue</label>
+                    <div className={fieldShell}>
+                      <select id="diagnostic_revenue_goal" className={selectCls} {...register("diagnostic_revenue_goal")}>
+                        <option value="">Select target…</option>
+                        <option value="500-1000">$500 – $1,000/month</option>
+                        <option value="1000-3000">$1,000 – $3,000/month</option>
+                        <option value="3000-10000">$3,000 – $10,000/month</option>
+                        <option value="10000-plus">$10,000+/month</option>
+                      </select>
+                    </div>
+                    {errors.diagnostic_revenue_goal && <p className={errCls}>{errors.diagnostic_revenue_goal.message}</p>}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {currentStep === "brand" && (
                 <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
                 <div>
@@ -682,10 +754,22 @@ export default function WizardCore(props: WizardCoreProps) {
                 {showField("creative", "reference_image") && (
                   <div>
                     <ReferenceImageUploader
-                      value={watch("reference_image") || ""}
-                      onChange={(nextValue) => setValue("reference_image", nextValue, { shouldDirty: true })}
-                      disabled={loading}
+                      value={wizardData.reference_image || ""}
+                      onChange={(nextValue) => updateWizardData({ reference_image: nextValue })}
+                      disabled={loading || referenceImageLocked}
                     />
+                    {referenceImageLocked && (
+                      <div className="mt-1 flex items-center gap-2 text-xs text-on-surface-variant">
+                        <span>🔒 Reference image is available on Creator Pro and Agency plans.</span>
+                        <button
+                          type="button"
+                          className="font-bold text-primary underline-offset-2 hover:underline"
+                          onClick={() => nav("/pricing")}
+                        >
+                          Upgrade
+                        </button>
+                      </div>
+                    )}
                     {errors.reference_image && <p className={errCls}>{errors.reference_image.message}</p>}
                   </div>
                 )}
@@ -810,16 +894,52 @@ export default function WizardCore(props: WizardCoreProps) {
                     {errors.email && <p className={errCls}>{errors.email.message}</p>}
                   </div>
                 )}
+                {showField("volume", "include_content_package") && (
+                  <div className="flex gap-3 rounded-xl border border-outline/20 bg-surface-container-low/60 p-4 dark:border-outline/25 dark:bg-earth-darkCard/40">
+                    <input
+                      id="include_content_package"
+                      type="checkbox"
+                      className="mt-1 h-4 w-4 shrink-0 rounded border-outline text-primary focus:ring-primary/40"
+                      {...register("include_content_package")}
+                    />
+                    <div className="min-w-0">
+                      <label htmlFor="include_content_package" className="text-sm font-medium text-on-surface cursor-pointer">
+                        Include content ideas package
+                      </label>
+                      <p className="mt-1 text-xs text-on-surface-variant leading-relaxed">
+                        When enabled, adds{" "}
+                        <strong className="text-on-surface">
+                          {watch("content_package_idea_count")} ideas
+                        </strong>
+                        ,{" "}
+                        <strong className="text-on-surface">
+                          {watch("content_package_idea_count")} templates
+                        </strong>
+                        , and{" "}
+                        <strong className="text-on-surface">
+                          {watch("content_package_idea_count") * CONTENT_PACKAGE_HOOKS_PER_IDEA} hook lines
+                        </strong>{" "}
+                        ({CONTENT_PACKAGE_HOOKS_PER_IDEA} per idea) via <strong className="text-on-surface">three</strong> extra Gemini calls after the main kit (ideas, then hooks and templates in parallel). This is{" "}
+                        <strong className="text-on-surface">in addition to</strong> the main kit <strong className="text-on-surface">video prompts</strong> you set above — not a replacement. Requires{" "}
+                        <code className="rounded bg-earth-alt px-1 text-[10px] dark:bg-surface-container-highest">CONTENT_PACKAGE_CHAIN_ENABLED</code> on the server; generation takes longer.
+                      </p>
+                      {errors.include_content_package && (
+                        <p className={errCls}>{errors.include_content_package.message}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {entitlements && (
+                  <div className="rounded-xl border border-outline/20 bg-surface-container-low/60 p-4 text-xs text-on-surface-variant dark:border-outline/25 dark:bg-earth-darkCard/40">
+                    <p className="font-semibold text-on-surface">Current plan usage</p>
+                    <p className="mt-1">
+                      Plan: <strong>{entitlements.plan_code}</strong> · Kits used this month:{" "}
+                      <strong>{entitlements.usage.kits_used}</strong>
+                    </p>
+                  </div>
+                )}
               </div>
             )}
-=========
-            {currentStep === "brand" && <BrandStep form={methods} showField={showField} industryOptions={industryOptions} />}
-            {currentStep === "audience" && <AudienceStep form={methods} showField={showField} />}
-            {currentStep === "channels" && <ChannelsStep form={methods} showField={showField} />}
-            {currentStep === "offer" && <OfferStep form={methods} showField={showField} />}
-            {currentStep === "creative" && <CreativeStep form={methods} showField={showField} />}
-            {currentStep === "volume" && <VolumeStep form={methods} showField={showField} />}
->>>>>>>>> Temporary merge branch 2
 
             {err && <p className="mt-4 text-error dark:text-brand-accent">{err}</p>}
 

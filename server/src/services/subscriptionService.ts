@@ -12,7 +12,7 @@ import { HttpError } from "./serviceErrors.js";
 import type { db as dbType } from "../db/index.js";
 import type { CampaignMode } from "../logic/campaignMode.js";
 
-export type PlanCode = "free" | "creator_pro" | "agency";
+export type PlanCode = "free" | "creator_pro" | "agency" | "admin_unlimited";
 export type UsageKind = "kits" | "retry" | "regenerate";
 
 type PlanSpec = {
@@ -49,6 +49,14 @@ export const PLAN_SPECS: Record<PlanCode, PlanSpec> = {
     allowReferenceImage: true,
     allowedCampaignModes: ["social", "offer", "deep"],
   },
+  admin_unlimited: {
+    code: "admin_unlimited",
+    monthlyKits: null,
+    monthlyRetry: null,
+    monthlyRegenerate: null,
+    allowReferenceImage: true,
+    allowedCampaignModes: ["social", "offer", "deep"],
+  },
 };
 
 export type AccessContext = {
@@ -63,11 +71,21 @@ export type AccessContext = {
   };
 };
 
-function normalizePlanCode(value: string): PlanCode {
+export function normalizePlanCode(value: string): PlanCode {
   const v = value.trim().toLowerCase();
+  if (v === "admin_unlimited" || v === "admin") return "admin_unlimited";
   if (v === "agency") return "agency";
   if (v === "creator_pro" || v === "pro" || v === "creator") return "creator_pro";
   return "free";
+}
+
+export function normalizeEmail(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+export function shouldBootstrapAdmin(userEmail: string): boolean {
+  const bootstrapEmail = normalizeEmail(String(process.env.SUPER_ADMIN_EMAIL ?? ""));
+  return Boolean(bootstrapEmail) && normalizeEmail(userEmail) === bootstrapEmail;
 }
 
 function periodKeyOf(date: Date): string {
@@ -95,10 +113,11 @@ export async function ensureUserFromSupabase(
   if (existing) {
     const nextEmail = authUser.email || existing.email;
     const nextName = authUser.displayName || existing.displayName || "User";
-    if (nextEmail !== existing.email || nextName !== existing.displayName) {
+    const nextIsAdmin = existing.isAdmin || shouldBootstrapAdmin(nextEmail);
+    if (nextEmail !== existing.email || nextName !== existing.displayName || nextIsAdmin !== existing.isAdmin) {
       await db
         .update(users)
-        .set({ email: nextEmail, displayName: nextName, updatedAt: now })
+        .set({ email: nextEmail, displayName: nextName, isAdmin: nextIsAdmin, updatedAt: now })
         .where(eq(users.id, existing.id));
       return { id: existing.id, email: nextEmail, displayName: nextName };
     }
@@ -110,6 +129,7 @@ export async function ensureUserFromSupabase(
     supabaseUserId: authUser.supabaseUserId,
     email: authUser.email || "",
     displayName: authUser.displayName || "User",
+    isAdmin: shouldBootstrapAdmin(authUser.email || ""),
     createdAt: now,
     updatedAt: now,
   });

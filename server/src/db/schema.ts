@@ -39,6 +39,7 @@ export const users = socialGeni.table("users", {
   supabaseUserId: text("supabase_user_id").notNull().unique(),
   email: text("email").notNull().default(""),
   displayName: text("display_name").notNull().default(""),
+  isAdmin: boolean("is_admin").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull(),
 });

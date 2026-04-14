@@ -57,9 +57,13 @@ CREATE TABLE IF NOT EXISTS social_geni.users (
   supabase_user_id TEXT NOT NULL UNIQUE,
   email TEXT NOT NULL DEFAULT '',
   display_name TEXT NOT NULL DEFAULT '',
+  is_admin BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL
 );
+
+ALTER TABLE social_geni.users
+ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;
 
 CREATE TABLE IF NOT EXISTS social_geni.user_devices (
   id TEXT PRIMARY KEY NOT NULL,

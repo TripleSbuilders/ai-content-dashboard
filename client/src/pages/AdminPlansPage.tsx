@@ -1,10 +1,19 @@
 import { useMemo, useState } from "react";
-import { getAdminUserPlans, updateAdminUserPlan, type AdminPlanSubscription } from "../api";
+import {
+  getAdminUserPlans,
+  listAdminUsers,
+  updateAdminUserPlan,
+  updateAdminUserRole,
+  updateAdminUserRoleByEmail,
+  type AdminPlanSubscription,
+  type AdminUserItem,
+} from "../api";
 
 const planOptions = [
   { value: "free", label: "Free" },
   { value: "creator_pro", label: "Creator Pro" },
   { value: "agency", label: "Agency" },
+  { value: "admin_unlimited", label: "Admin Unlimited" },
 ] as const;
 
 const statusOptions = [
@@ -21,7 +30,11 @@ function fmtDate(value: string | null) {
 }
 
 export default function AdminPlansPage() {
-  const [apiSecret, setApiSecret] = useState("");
+  const [users, setUsers] = useState<AdminUserItem[]>([]);
+  const [usersQuery, setUsersQuery] = useState("");
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [roleEmail, setRoleEmail] = useState("");
+  const [roleSaving, setRoleSaving] = useState(false);
   const [userId, setUserId] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -31,22 +44,73 @@ export default function AdminPlansPage() {
     subscriptions: AdminPlanSubscription[];
   } | null>(null);
 
-  const [planCode, setPlanCode] = useState<"free" | "creator_pro" | "agency">("free");
+  const [planCode, setPlanCode] = useState<"free" | "creator_pro" | "agency" | "admin_unlimited">("free");
   const [planStatus, setPlanStatus] = useState<"active" | "trialing" | "cancelled" | "expired">("active");
   const [periodStart, setPeriodStart] = useState("");
   const [periodEnd, setPeriodEnd] = useState("");
 
   const latest = useMemo(() => snapshot?.subscriptions[0] ?? null, [snapshot]);
 
-  const loadPlans = async () => {
-    if (!apiSecret.trim() || !userId.trim()) {
-      setMessage("API secret and user id are required.");
+  const loadUsers = async () => {
+    setUsersLoading(true);
+    setMessage(null);
+    try {
+      const data = await listAdminUsers(usersQuery, 1);
+      setUsers(data.users);
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Failed to load users.");
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
+  const toggleRole = async (target: AdminUserItem, isAdmin: boolean) => {
+    setRoleSaving(true);
+    setMessage(null);
+    try {
+      await updateAdminUserRole(target.id, isAdmin);
+      setMessage(`Updated admin role for ${target.email || target.id}.`);
+      await loadUsers();
+      if (snapshot?.user.id === target.id) {
+        await loadPlans();
+      }
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Failed to update role.");
+    } finally {
+      setRoleSaving(false);
+    }
+  };
+
+  const applyRoleByEmail = async (isAdmin: boolean) => {
+    if (!roleEmail.trim()) {
+      setMessage("Email is required.");
+      return;
+    }
+    setRoleSaving(true);
+    setMessage(null);
+    try {
+      const data = await updateAdminUserRoleByEmail(roleEmail.trim(), isAdmin);
+      setMessage(`Role updated for ${roleEmail.trim()} (${isAdmin ? "admin" : "user"}).`);
+      setUserId(data.user_id);
+      await loadUsers();
+      await loadPlans(data.user_id);
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Failed to update role by email.");
+    } finally {
+      setRoleSaving(false);
+    }
+  };
+
+  const loadPlans = async (overrideUserId?: string) => {
+    const targetUserId = (overrideUserId ?? userId).trim();
+    if (!targetUserId) {
+      setMessage("User ID is required.");
       return;
     }
     setLoading(true);
     setMessage(null);
     try {
-      const data = await getAdminUserPlans(userId.trim(), apiSecret.trim());
+      const data = await getAdminUserPlans(targetUserId);
       setSnapshot(data);
       if (data.subscriptions[0]) {
         const current = data.subscriptions[0];
@@ -64,14 +128,14 @@ export default function AdminPlansPage() {
   };
 
   const applyPlan = async () => {
-    if (!apiSecret.trim() || !userId.trim()) {
-      setMessage("API secret and user id are required.");
+    if (!userId.trim()) {
+      setMessage("User ID is required.");
       return;
     }
     setSaving(true);
     setMessage(null);
     try {
-      await updateAdminUserPlan(userId.trim(), apiSecret.trim(), {
+      await updateAdminUserPlan(userId.trim(), {
         plan_code: planCode,
         status: planStatus,
         period_start: periodStart ? new Date(periodStart).toISOString() : undefined,
@@ -91,14 +155,14 @@ export default function AdminPlansPage() {
     setPlanStatus("active");
     setPeriodStart("");
     setPeriodEnd("");
-    if (!apiSecret.trim() || !userId.trim()) {
-      setMessage("API secret and user id are required.");
+    if (!userId.trim()) {
+      setMessage("User ID is required.");
       return;
     }
     setSaving(true);
     setMessage(null);
     try {
-      await updateAdminUserPlan(userId.trim(), apiSecret.trim(), {
+      await updateAdminUserPlan(userId.trim(), {
         plan_code: nextPlan,
         status: "active",
       });
@@ -127,18 +191,109 @@ export default function AdminPlansPage() {
       )}
 
       <div className="rounded-uniform border border-brand-sand/30 bg-earth-card p-4 sm:p-6 dark:border-outline/30 dark:bg-surface-container-low">
-        <h2 className="headline mb-4 text-xl font-bold">Lookup user</h2>
-        <div className="grid gap-3 md:grid-cols-3">
+        <h2 className="headline mb-4 text-xl font-bold">Users</h2>
+        <div className="grid gap-3 md:grid-cols-[1fr_auto]">
           <label className="block text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-            API Secret
+            Search by email
             <input
-              type="password"
-              value={apiSecret}
-              onChange={(e) => setApiSecret(e.target.value)}
+              value={usersQuery}
+              onChange={(e) => setUsersQuery(e.target.value)}
               className="mt-2 w-full rounded-xl border border-brand-sand/30 bg-earth-card px-3 py-2 text-sm focus:ring-2 focus:ring-primary/35 dark:border-outline/30 dark:bg-surface-container-high"
-              placeholder="API_SECRET"
+              placeholder="name@example.com"
             />
           </label>
+          <div className="flex items-end">
+            <button
+              type="button"
+              onClick={() => void loadUsers()}
+              disabled={usersLoading}
+              className="h-[40px] w-full rounded-xl bg-brand-primary px-4 text-sm font-bold text-white disabled:opacity-60 dark:bg-primary dark:text-on-primary md:w-auto"
+            >
+              {usersLoading ? "Loading..." : "Load users"}
+            </button>
+          </div>
+        </div>
+        <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto_auto]">
+          <input
+            value={roleEmail}
+            onChange={(e) => setRoleEmail(e.target.value)}
+            className="w-full rounded-xl border border-brand-sand/30 bg-earth-card px-3 py-2 text-sm focus:ring-2 focus:ring-primary/35 dark:border-outline/30 dark:bg-surface-container-high"
+            placeholder="Promote/demote by email"
+          />
+          <button
+            type="button"
+            onClick={() => void applyRoleByEmail(true)}
+            disabled={roleSaving}
+            className="rounded-xl bg-brand-primary px-4 py-2 text-sm font-bold text-white disabled:opacity-60 dark:bg-primary dark:text-on-primary"
+          >
+            Make admin
+          </button>
+          <button
+            type="button"
+            onClick={() => void applyRoleByEmail(false)}
+            disabled={roleSaving}
+            className="rounded-xl border border-outline/30 bg-surface-container-high px-4 py-2 text-sm font-bold text-on-surface disabled:opacity-60 dark:bg-surface-container-high"
+          >
+            Remove admin
+          </button>
+        </div>
+        <div className="mt-4 overflow-auto">
+          <table className="w-full min-w-[780px] text-left text-sm">
+            <thead>
+              <tr className="border-b border-outline/25 text-xs uppercase tracking-wider text-on-surface-variant">
+                <th className="px-2 py-2">Email</th>
+                <th className="px-2 py-2">Name</th>
+                <th className="px-2 py-2">User ID</th>
+                <th className="px-2 py-2">Admin</th>
+                <th className="px-2 py-2">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((u) => (
+                <tr key={u.id} className="border-b border-outline/10">
+                  <td className="px-2 py-2">{u.email || "—"}</td>
+                  <td className="px-2 py-2">{u.display_name || "—"}</td>
+                  <td className="px-2 py-2 font-mono text-xs">{u.id}</td>
+                  <td className="px-2 py-2">{u.is_admin ? "Yes" : "No"}</td>
+                  <td className="px-2 py-2">
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUserId(u.id);
+                          void loadPlans(u.id);
+                        }}
+                        className="rounded-lg border border-outline/30 bg-surface-container-high px-3 py-1.5 text-xs font-semibold"
+                      >
+                        Open plans
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void toggleRole(u, !u.is_admin)}
+                        disabled={roleSaving}
+                        className="rounded-lg border border-outline/30 bg-surface-container-high px-3 py-1.5 text-xs font-semibold disabled:opacity-60"
+                      >
+                        {u.is_admin ? "Remove admin" : "Make admin"}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {users.length === 0 && !usersLoading && (
+                <tr>
+                  <td className="px-2 py-3 text-on-surface-variant" colSpan={5}>
+                    No users loaded yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="rounded-uniform border border-brand-sand/30 bg-earth-card p-4 sm:p-6 dark:border-outline/30 dark:bg-surface-container-low">
+        <h2 className="headline mb-4 text-xl font-bold">Lookup user</h2>
+        <div className="grid gap-3 md:grid-cols-2">
           <label className="block text-xs font-bold uppercase tracking-wider text-on-surface-variant">
             User ID
             <input
@@ -160,7 +315,7 @@ export default function AdminPlansPage() {
           </div>
         </div>
         <p className="mt-3 text-xs text-on-surface-variant">
-          Security note: API secret is kept in session memory only and is never stored in localStorage.
+          Admin access now uses your logged-in admin account token.
         </p>
       </div>
 

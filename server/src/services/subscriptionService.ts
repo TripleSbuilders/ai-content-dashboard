@@ -37,8 +37,8 @@ export const PLAN_SPECS: Record<PlanCode, PlanSpec> = {
   },
   early_adopter: {
     code: "early_adopter",
-    monthlyVideoPrompts: 5,
-    monthlyImagePrompts: 15,
+    monthlyVideoPrompts: 2,
+    monthlyImagePrompts: 10,
     monthlyRetry: null,
     monthlyRegenerate: null,
     allowReferenceImage: true,

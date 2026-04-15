@@ -165,7 +165,7 @@ export default function AdminPlansPage() {
     } catch (e) {
       const text = e instanceof Error ? e.message : "Failed to load plans.";
       setPlanLoadError(text);
-      if (!isUnauthorizedErrorMessage(text) || users.length === 0) {
+      if (!isUnauthorizedErrorMessage(text)) {
         setSnapshot(null);
         setMessage({ tone: "error", text });
       }

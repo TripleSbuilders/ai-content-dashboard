@@ -19,15 +19,15 @@ export default function App() {
   const plan = entitlements?.plan_code ?? "free";
   const modeLocked = plan === "free";
   const LockedMode = ({ mode }: { mode: "offer" | "deep" }) => (
-    <div className="rounded-2xl border border-outline/25 bg-surface-container-low p-6 text-on-surface">
-      <h2 className="font-headline text-xl font-bold">🔒 {mode === "offer" ? "Offer" : "Deep"} mode is locked</h2>
-      <p className="mt-2 text-on-surface-variant">
+    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <h2 className="text-xl font-bold text-gray-900">🔒 {mode === "offer" ? "Offer" : "Deep"} mode is locked</h2>
+      <p className="mt-2 text-gray-600">
         This mode is available in Creator Pro and Agency plans. Upgrade your account to unlock it.
       </p>
-      <p className="mt-3 text-xs text-on-surface-variant">Current plan: {plan}</p>
+      <p className="mt-3 text-xs text-gray-500">Current plan: {plan}</p>
       <Link
         to="/pricing"
-        className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-on-primary transition hover:opacity-90"
+        className="mt-4 inline-flex items-center gap-2 rounded-xl bg-green-500 px-4 py-2 text-sm font-bold text-white transition hover:opacity-90"
       >
         <span className="material-symbols-outlined text-base">rocket_launch</span>
         Upgrade plan
@@ -42,7 +42,7 @@ export default function App() {
             demoBanner={
               demoMode ? (
                 <div
-                  className="mb-4 rounded-xl border border-amber-500/30 bg-amber-950/40 px-4 py-3 text-sm text-amber-100"
+                  className="mb-4 rounded-xl border border-amber-400/30 bg-amber-50 px-4 py-3 text-sm text-amber-800"
                   role="status"
                 >
                   Demo mode — the real Gemini path is not invoked

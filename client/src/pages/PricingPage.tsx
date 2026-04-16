@@ -28,9 +28,9 @@ function buildUpgradeUrl(plan: PlanId): string {
 
 function FeatureItem({ children }: { children: string }) {
   return (
-    <li className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400 dark:text-gray-500">
-      <span className="material-symbols-outlined text-base text-indigo-600 dark:text-indigo-400">check_circle</span>
-      <span>{children}</span>
+    <li className="flex items-start gap-3 text-sm text-gray-700 dark:text-gray-300">
+      <span className="material-symbols-outlined text-[18px] text-gray-900 dark:text-white mt-0.5">check_circle</span>
+      <span className="leading-relaxed">{children}</span>
     </li>
   );
 }
@@ -118,23 +118,26 @@ export default function PricingPage() {
   };
 
   return (
-    <section className="space-y-8">
-      <header className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm">
-        <p className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Pricing</p>
-        <h1 className="mt-2 text-3xl font-black tracking-tight text-gray-900 dark:text-gray-50 sm:text-4xl">
+    <section className="space-y-12">
+      <header className="text-center max-w-3xl mx-auto py-8">
+        <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white sm:text-5xl">
           Choose the plan that fits your growth
         </h1>
-        <p className="mt-3 max-w-3xl text-gray-600 dark:text-gray-400 dark:text-gray-500">
-          Start free, then upgrade when you are ready. Server-side gatekeeping is already active for all plan limits.
+        <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
+          Start free, then upgrade when you are ready. Server-side gatekeeping is active for all plan limits.
         </p>
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 dark:text-gray-500">
-          Current plan: <strong className="text-gray-900 dark:text-gray-50">{currentPlan}</strong>
-        </p>
+        <div className="mt-6 flex items-center justify-center gap-2">
+          <span className="text-sm text-gray-500 dark:text-gray-400">Current plan:</span>
+          <span className="inline-flex items-center rounded-full border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 py-1 px-3 text-xs font-semibold uppercase tracking-widest text-gray-900 dark:text-white shadow-sm">
+            {currentPlan}
+          </span>
+        </div>
       </header>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-3 items-start max-w-6xl mx-auto">
         {planCards.map((plan) => {
           const isCurrent = currentPlan === plan.id;
+          const isMissingUrl = !buildUpgradeUrl(plan.id) && plan.id !== "free";
           const ctaLabel =
             plan.id === "free"
               ? "Start Free"
@@ -143,53 +146,72 @@ export default function PricingPage() {
                 : plan.id === "creator_pro"
                   ? "Upgrade to Creator Pro"
                   : "Upgrade to Agency";
-          const isDisabled = plan.id === "free" || isCurrent || !buildUpgradeUrl(plan.id);
+          const isDisabled = plan.id === "free" || isCurrent || isMissingUrl;
+          
           return (
             <article
               key={plan.id}
               className={[
-                "rounded-xl border p-5 bg-white dark:bg-gray-900 shadow-sm",
+                "relative flex flex-col rounded-3xl p-8 bg-white dark:bg-[#111] shadow-xl transition-transform hover:-translate-y-1",
                 plan.highlight
-                  ? "border-indigo-200 ring-2 ring-indigo-600 ring-offset-2"
-                  : "border-gray-200 dark:border-gray-800",
+                  ? "border border-indigo-500/20 dark:border-indigo-500/30 ring-1 ring-inset ring-indigo-500/10 dark:ring-indigo-500/20 shadow-indigo-500/5 lg:-mt-4 lg:mb-4 lg:scale-105"
+                  : "border border-gray-200 dark:border-white/10",
               ].join(" ")}
             >
-              {plan.highlight ? (
-                <p className="mb-3 inline-flex rounded-full bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-                  Recommended
-                </p>
-              ) : null}
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-50">{plan.title}</h2>
-              <p className="mt-1 text-gray-600 dark:text-gray-400 dark:text-gray-500">{plan.subtitle}</p>
-              <p className="mt-4 text-3xl font-black text-gray-900 dark:text-gray-50">
-                {plan.price}
-                <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500">/month</span>
-              </p>
-              <ul className="mt-4 space-y-2">
+              {plan.highlight && (
+                <div className="absolute -top-4 left-0 right-0 flex justify-center">
+                  <span className="rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 px-4 py-1 text-[11px] font-bold uppercase tracking-wider text-white shadow-sm">
+                    Recommended
+                  </span>
+                </div>
+              )}
+              
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{plan.title}</h2>
+                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{plan.subtitle}</p>
+              </div>
+
+              <div className="mb-8 flex items-baseline text-gray-900 dark:text-white">
+                <span className="text-5xl font-extrabold tracking-tight">{plan.price}</span>
+                <span className="ml-1 text-sm font-medium text-gray-500 dark:text-gray-400">/month</span>
+              </div>
+
+              <ul className="mb-10 space-y-4 flex-1">
                 {plan.features.map((f) => (
                   <FeatureItem key={f}>{f}</FeatureItem>
                 ))}
               </ul>
+
               <button
                 type="button"
                 onClick={() => onUpgradeClick(plan.id)}
                 disabled={isDisabled}
-                className="mt-5 inline-flex w-full items-center justify-center rounded-xl bg-green-500 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-green-600 disabled:cursor-not-allowed disabled:bg-gray-300"
+                className={[
+                  "w-full rounded-xl px-4 py-3 text-sm font-bold shadow-sm transition-all focus-visible:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-[#111]",
+                  plan.highlight && !isDisabled
+                    ? "bg-gray-900 text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200 focus:ring-gray-900 dark:focus:ring-white"
+                    : isDisabled
+                    ? "bg-gray-100 text-gray-400 dark:bg-white/5 dark:text-gray-600 cursor-not-allowed"
+                    : "bg-gray-50 text-gray-900 border border-gray-200 hover:bg-gray-100 dark:bg-white/5 dark:text-white dark:border-white/10 dark:hover:bg-white/10 focus:ring-gray-200 dark:focus:ring-white/20"
+                ].join(" ")}
               >
                 {ctaLabel}
               </button>
-              {!buildUpgradeUrl(plan.id) && plan.id !== "free" ? (
-                <p className="mt-2 text-xs text-red-500">
-                  Upgrade link is not configured. Set `VITE_UPGRADE_WHATSAPP_URL` or `VITE_UPGRADE_WHATSAPP_PHONE`.
-                </p>
-              ) : null}
+              
+              {isMissingUrl && (
+                <div className="mt-3 text-center">
+                  <p className="text-[10px] text-red-500 dark:text-red-400 opacity-80">
+                    Upgrade link not configured. Check env vars.
+                  </p>
+                </div>
+              )}
             </article>
           );
         })}
       </div>
 
-      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 text-sm text-gray-600 dark:text-gray-400 dark:text-gray-500 shadow-sm">
-        Activation is currently handled quickly by support on WhatsApp until direct checkout is enabled.
+      <div className="max-w-2xl mx-auto rounded-2xl border border-gray-200 dark:border-white/10 bg-white/50 dark:bg-white/[0.02] p-5 text-center text-sm text-gray-500 dark:text-gray-400 shadow-sm backdrop-blur-sm">
+        Activation is currently handled securely by support via WhatsApp until direct checkout is deployed.
       </div>
 
       <LoginModal
@@ -197,12 +219,12 @@ export default function PricingPage() {
         loading={loginLoading}
         onClose={() => setLoginModalOpen(false)}
         onLogin={onLogin}
-        title="Login to continue upgrade"
-        description="Please sign in first, then continue to WhatsApp to complete your plan upgrade."
+        title="Sign in to upgrade"
+        description="Securely link your account before proceeding to checkout."
         footer={
           pendingPlan ? (
-            <span>
-              Target plan: <strong className="text-gray-900 dark:text-gray-50">{planToLabel(pendingPlan)}</strong>
+            <span className="font-medium">
+              Target plan: <strong className="text-gray-900 dark:text-white ml-1">{planToLabel(pendingPlan)}</strong>
             </span>
           ) : null
         }

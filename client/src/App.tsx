@@ -10,6 +10,11 @@ import DeepContentWizard from "./pages/wizards/DeepContentWizard";
 import PricingPage from "./pages/PricingPage";
 import UserLayout from "./layout/UserLayout";
 import AdminLayout from "./layout/AdminLayout";
+import ProfilePage from "./pages/ProfilePage";
+import BrandVoicePage from "./pages/BrandVoicePage";
+import HelpPage from "./pages/HelpPage";
+import IntegrationsPage from "./pages/IntegrationsPage";
+import ExtrasPage from "./pages/ExtrasPage";
 import { useAuth } from "./auth/AuthContext";
 
 const demoMode = import.meta.env.VITE_DEMO_MODE === "true";
@@ -19,19 +24,30 @@ export default function App() {
   const plan = entitlements?.plan_code ?? "starter";
   const modeLocked = plan === "starter";
   const LockedMode = ({ mode }: { mode: "offer" | "deep" }) => (
-    <div className="rounded-2xl border border-outline/25 bg-surface-container-low p-6 text-on-surface">
-      <h2 className="font-headline text-xl font-bold">🔒 {mode === "offer" ? "Offer" : "Deep"} mode is locked</h2>
-      <p className="mt-2 text-on-surface-variant">
-        This mode is available in Early Adopter plan. Upgrade your account to unlock it.
-      </p>
-      <p className="mt-3 text-xs text-on-surface-variant">Current plan: {plan}</p>
-      <Link
-        to="/pricing"
-        className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-on-primary transition hover:opacity-90"
-      >
-        <span className="material-symbols-outlined text-base">rocket_launch</span>
-        Upgrade plan
-      </Link>
+    <div className="flex flex-col items-center justify-center min-h-[50vh]">
+      <div className="w-full max-w-md rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#111] p-8 shadow-sm text-center">
+        <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 shadow-sm">
+           <span className="material-symbols-outlined text-gray-900 dark:text-white text-2xl">lock</span>
+        </div>
+        <h2 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white mb-2">
+          {mode === "offer" ? "Offer Engine" : "Deep Content"} Locked
+        </h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-6">
+          This advanced capability is exclusively available on the Early Adopter plan. Upgrade your studio to unlock it immediately.
+        </p>
+        <div className="flex flex-col items-center gap-3">
+          <Link
+            to="/pricing"
+            className="inline-flex w-full justify-center items-center gap-2 rounded-xl bg-gray-900 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-100 active:scale-[0.98]"
+          >
+            <span className="material-symbols-outlined text-[18px]">bolt</span>
+            Upgrade Plan
+          </Link>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+            Current Plan: {plan}
+          </p>
+        </div>
+      </div>
     </div>
   );
   return (
@@ -42,7 +58,7 @@ export default function App() {
             demoBanner={
               demoMode ? (
                 <div
-                  className="mb-4 rounded-xl border border-amber-500/30 bg-amber-950/40 px-4 py-3 text-sm text-amber-100"
+                  className="mb-4 rounded-xl border border-amber-400/30 bg-amber-50 px-4 py-3 text-sm text-amber-800"
                   role="status"
                 >
                   Demo mode — the real Gemini path is not invoked
@@ -60,11 +76,11 @@ export default function App() {
         <Route path="/wizard/offer" element={modeLocked ? <LockedMode mode="offer" /> : <OfferProductWizard />} />
         <Route path="/wizard/deep" element={modeLocked ? <LockedMode mode="deep" /> : <DeepContentWizard />} />
         <Route path="/kits/:id" element={<KitDetail />} />
-        <Route path="/help" element={<Navigate to="/wizard" replace />} />
-        <Route path="/integrations" element={<Navigate to="/wizard" replace />} />
-        <Route path="/extras" element={<Navigate to="/wizard" replace />} />
-        <Route path="/brand-voice" element={<Navigate to="/wizard" replace />} />
-        <Route path="/profile" element={<Navigate to="/wizard" replace />} />
+        <Route path="/help" element={<HelpPage />} />
+        <Route path="/integrations" element={<IntegrationsPage />} />
+        <Route path="/extras" element={<ExtrasPage />} />
+        <Route path="/brand-voice" element={<BrandVoicePage />} />
+        <Route path="/profile" element={<ProfilePage />} />
       </Route>
 
       <Route path="/admin" element={<AdminLayout />}>

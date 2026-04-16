@@ -112,18 +112,18 @@ function buildMultiArray(selected: readonly string[], otherText: string): string
   return Array.from(new Set(values));
 }
 
-const labelCls = "mb-2 ms-1 block text-xs font-semibold uppercase tracking-widest text-on-surface-variant";
-const fieldShell = "glow-focus overflow-hidden rounded-xl bg-surface-container-lowest p-0.5";
+const labelCls = "mb-2 ms-0.5 block text-[11px] font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400";
+const fieldShell = "overflow-hidden rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#111] transition-colors focus-within:border-gray-900 dark:focus-within:border-white/30";
 const inputCls =
-  "block box-border w-full rounded-lg border-none bg-transparent px-4 py-3 text-on-surface placeholder:text-on-surface-variant/50 focus:ring-0 focus-visible:ring-2 focus-visible:ring-primary/45";
+  "block box-border w-full rounded-xl border-none bg-transparent px-4 py-3 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:ring-0 focus:outline-none";
 const selectCls =
-  "block box-border w-full appearance-none rounded-lg border-none bg-surface-container-lowest px-4 py-3 text-on-surface focus:ring-0 focus-visible:ring-2 focus-visible:ring-primary/45 dark:bg-surface-container-high/70";
+  "block box-border w-full appearance-none rounded-xl border-none bg-transparent px-4 py-3 text-gray-900 dark:text-gray-100 focus:ring-0 focus:outline-none";
 const textareaCls = cn(inputCls, "min-h-[100px] resize-y");
-const errCls = "mt-1 text-sm text-error";
+const errCls = "mt-1.5 text-sm font-medium text-red-500 dark:text-red-400";
 const btnPrimary =
-  "rounded-xl bg-gradient-to-r from-primary to-primary-container px-5 py-3 font-bold text-on-primary-container shadow-lg shadow-primary/15 transition active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-50 dark:from-brand-primary dark:to-brand-accent dark:text-brand-darkText";
+  "rounded-lg bg-gray-900 text-white dark:bg-white dark:text-black px-6 py-3 text-sm font-semibold shadow-sm transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 hover:bg-gray-800 dark:hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:ring-offset-2 dark:focus:ring-offset-black";
 const btnSecondary =
-  "rounded-xl border border-outline/30 bg-surface-container-high px-5 py-3 font-semibold text-on-surface transition hover:bg-surface-container-highest focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-50 dark:border-brand-muted/40 dark:bg-earth-darkCard dark:text-brand-darkText";
+  "rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-[#111] px-6 py-3 text-sm font-semibold text-gray-900 dark:text-white transition-all hover:bg-gray-50 dark:hover:bg-white/5 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:focus:ring-white/20";
 
 type NumericBoundInputProps = {
   id: string;
@@ -427,25 +427,25 @@ export default function WizardCore(props: WizardCoreProps) {
       </div>
 
       {showDraftBanner && (
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-tertiary/25 bg-tertiary/10 px-4 py-3 text-sm text-on-surface dark:border-brand-sand/40 dark:bg-brand-sand/10 dark:text-brand-darkText">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-white/10 bg-white/50 dark:bg-[#111]/50 px-5 py-4 text-sm font-medium text-gray-900 dark:text-white shadow-sm backdrop-blur-sm">
           <span>Restored a saved draft for this path.</span>
-          <button type="button" className={btnSecondary + " py-2 text-sm"} onClick={clearDraft}>
+          <button type="button" className={btnSecondary + " !py-2 !text-xs"} onClick={clearDraft}>
             Clear draft
           </button>
         </div>
       )}
 
-      <div className="wizard-root overflow-hidden rounded-2xl border border-outline/30 bg-surface-container-low sm:rounded-3xl dark:border-brand-muted/40 dark:bg-earth-darkCard/75" aria-busy={loading}>
-        <div className={cn("wizard-body-wrap relative !rounded-3xl", loading && "wizard-body-wrap--loading")}>
-          <div className="wizard-body p-4 sm:p-6 md:p-8">
-            <div className="mb-5 rounded-xl border border-outline/30 bg-surface-container-lowest/70 p-3 dark:border-brand-muted/40 dark:bg-earth-darkCard/70">
-              <div className="mb-2 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+      <div className="wizard-root overflow-hidden rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#0c0c0e] sm:rounded-[2rem] shadow-sm" aria-busy={loading}>
+        <div className={cn("wizard-body-wrap relative", loading && "wizard-body-wrap--loading")}>
+          <div className="wizard-body p-5 sm:p-8 md:p-10 lg:p-12">
+            <div className="mb-8 rounded-2xl border border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-[#111] p-4 sm:p-5">
+              <div className="mb-3 flex items-center justify-between text-[11px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
                 <span>Step {step + 1} of {maxStep + 1}</span>
-                <span>{props.stepTitles[currentStep]}</span>
+                <span className="text-gray-900 dark:text-white">{props.stepTitles[currentStep]}</span>
               </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-surface-container-high dark:bg-surface-container-highest">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-white/10">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-primary to-primary-container transition-all duration-300"
+                  className="h-full rounded-full bg-gray-900 dark:bg-white transition-all duration-500 ease-out"
                   style={{ width: `${Math.max(8, Math.round(((step + 1) / (maxStep + 1)) * 100))}%` }}
                 />
               </div>
@@ -537,7 +537,7 @@ export default function WizardCore(props: WizardCoreProps) {
             )}
 
             {currentStep === "brand" && (
-                <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
+              <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
                 <div>
                   <label htmlFor="brand_name" className={labelCls}>Brand name</label>
                   <div className={fieldShell}><input id="brand_name" className={inputCls} {...register("brand_name")} /></div>

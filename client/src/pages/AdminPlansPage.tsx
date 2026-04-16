@@ -8,7 +8,6 @@ import {
   type AdminPlanSubscription,
   type AdminUserItem,
 } from "../api";
-import { AdminNotice, AdminPageShell } from "../components/admin/AdminPageShell";
 import { useAuth } from "../auth/AuthContext";
 
 const planOptions = [
@@ -152,8 +151,8 @@ export default function AdminPlansPage() {
       setSnapshot(data);
       if (data.subscriptions[0]) {
         const current = data.subscriptions[0];
-        setPlanCode(current.plan_code);
-        setPlanStatus(current.status);
+        setPlanCode(current.plan_code as any);
+        setPlanStatus(current.status as any);
         setPeriodStart(current.period_start.slice(0, 16));
         setPeriodEnd(current.period_end ? current.period_end.slice(0, 16) : "");
       } else {
@@ -267,47 +266,61 @@ export default function AdminPlansPage() {
   };
 
   return (
-    <AdminPageShell
-      eyebrow="Plan operations"
-      title="Plan Management"
-      description="Search users instantly, select a user, then update role and plan from one unified workspace."
-      actions={
+    <div className="space-y-6">
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-4xl">Plan Management</h1>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            Search users instantly, update roles, and manage subscriptions from one unified workspace.
+          </p>
+        </div>
         <button
           type="button"
           onClick={() => setRefreshKey((v) => v + 1)}
-          className="inline-flex items-center gap-2 rounded-lg border border-outline/30 bg-surface-container-high px-3 py-2 text-sm font-semibold text-on-surface transition hover:bg-surface-container-highest"
+          className="inline-flex items-center gap-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-[#111] px-4 py-2 text-sm font-semibold text-gray-900 dark:text-white shadow-sm transition hover:bg-gray-50 dark:hover:bg-white/5"
         >
-          <span className="material-symbols-outlined text-base">refresh</span>
+          <span className="material-symbols-outlined text-[18px]">refresh</span>
           Refresh
         </button>
-      }
-    >
-      {message ? <AdminNotice tone={message.tone}>{message.text}</AdminNotice> : null}
+      </header>
+
+      {message && (
+        <div className={`rounded-xl border px-4 py-3 text-sm font-medium shadow-sm flex items-center gap-2 ${
+          message.tone === 'success' ? 'border-emerald-200/50 dark:border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' : 
+          message.tone === 'error' ? 'border-red-200/50 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400' :
+          'border-blue-200/50 dark:border-blue-500/20 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400'
+        }`}>
+           <span className="material-symbols-outlined text-[18px]">
+             {message.tone === 'success' ? 'check_circle' : message.tone === 'error' ? 'error' : 'info'}
+           </span>
+           {message.text}
+        </div>
+      )}
 
       <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
-        <section className="rounded-2xl border border-outline/30 bg-surface-container-low p-4 sm:p-5">
-          <div className="space-y-3">
-            <label className="block text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-              Search users by email
+        <section className="rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#111] p-4 sm:p-5 shadow-sm">
+          <div className="space-y-4">
+            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+              Search Users By Email
               <input
                 value={usersQuery}
                 onChange={(e) => {
                   setUsersQuery(e.target.value);
                   setUsersPage(1);
                 }}
-                className="mt-2 w-full rounded-xl border border-outline/30 bg-surface-container-high px-3 py-2 text-sm focus:ring-2 focus:ring-primary/35"
+                className="mt-2 w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-black px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white/30 focus:outline-none transition-all shadow-sm"
                 placeholder="name@example.com"
                 aria-label="Search users by email"
               />
             </label>
 
-            <div className="grid gap-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                Quick role change by email
+            <div className="grid gap-2 pt-4 border-t border-gray-100 dark:border-white/5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                Quick Role Change By Email
                 <input
                   value={roleEmail}
                   onChange={(e) => setRoleEmail(e.target.value)}
-                  className="mt-2 w-full rounded-xl border border-outline/30 bg-surface-container-high px-3 py-2 text-sm focus:ring-2 focus:ring-primary/35"
+                  className="mt-2 w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-black px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white/30 focus:outline-none transition-all shadow-sm"
                   placeholder="admin@example.com"
                 />
               </label>
@@ -316,31 +329,31 @@ export default function AdminPlansPage() {
                   type="button"
                   onClick={() => void applyRoleByEmail(true)}
                   disabled={roleSaving}
-                  className="flex-1 rounded-lg bg-primary px-3 py-2 text-sm font-bold text-on-primary disabled:opacity-60"
+                  className="flex-1 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-black px-3 py-2 text-xs font-bold disabled:opacity-60 hover:opacity-90 transition-opacity shadow-sm"
                 >
-                  Make admin
+                  Make Admin
                 </button>
                 <button
                   type="button"
                   onClick={() => void applyRoleByEmail(false)}
                   disabled={roleSaving}
-                  className="flex-1 rounded-lg border border-outline/30 bg-surface-container-high px-3 py-2 text-sm font-bold text-on-surface disabled:opacity-60"
+                  className="flex-1 rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#111] px-3 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 disabled:opacity-60 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors shadow-sm"
                 >
-                  Remove admin
+                  Remove Admin
                 </button>
               </div>
             </div>
           </div>
 
-          <div className="mt-4 rounded-xl border border-outline/20">
-            <div className="border-b border-outline/20 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
+          <div className="mt-5 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-black overflow-hidden shadow-sm">
+            <div className="border-b border-gray-200 dark:border-white/10 px-3 py-2.5 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 bg-white/50 dark:bg-white/5">
               Users {usersLoading ? "(loading...)" : `(${usersTotal})`}
             </div>
-            <div className="max-h-[520px] overflow-auto">
+            <div className="max-h-[520px] overflow-auto custom-scrollbar">
               {users.length === 0 && !usersLoading ? (
-                <p className="px-3 py-4 text-sm text-on-surface-variant">No users found.</p>
+                <p className="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">No users found.</p>
               ) : (
-                <ul className="divide-y divide-outline/15">
+                <ul className="divide-y divide-gray-100 dark:divide-white/5">
                   {users.map((u) => {
                     const active = selectedUserId === u.id;
                     return (
@@ -348,22 +361,20 @@ export default function AdminPlansPage() {
                         <button
                           type="button"
                           onClick={() => setSelectedUserId(u.id)}
-                          className={[
-                            "w-full px-3 py-3 text-left transition hover:bg-surface-container-high",
-                            active ? "bg-primary/10" : "",
-                          ].join(" ")}
+                          className={`w-full px-4 py-3 text-left transition-colors ${
+                            active ? "bg-white dark:bg-[#1a1a1a] border-l-2 border-l-gray-900 dark:border-l-white" : "hover:bg-white/60 dark:hover:bg-[#141414] border-l-2 border-l-transparent"
+                          }`}
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
-                              <p className="truncate text-sm font-semibold text-on-surface">{u.email || "—"}</p>
-                              <p className="truncate text-xs text-on-surface-variant">{u.display_name || "No name"}</p>
-                              <p className="mt-1 truncate font-mono text-[10px] text-on-surface-variant">{u.id}</p>
+                              <p className="truncate text-sm font-semibold text-gray-900 dark:text-white">{u.email || "—"}</p>
+                              <p className="truncate text-xs text-gray-500 dark:text-gray-400">{u.display_name || "No name"}</p>
+                              <p className="mt-1 truncate font-mono text-[10px] text-gray-400 dark:text-gray-500">{u.id}</p>
                             </div>
                             <span
-                              className={[
-                                "rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wider",
-                                u.is_admin ? "bg-primary/15 text-primary" : "bg-surface-container-high text-on-surface-variant",
-                              ].join(" ")}
+                              className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest ${
+                                u.is_admin ? "bg-gray-900 dark:bg-white text-white dark:text-black" : "bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-gray-400"
+                              }`}
                             >
                               {u.is_admin ? "Admin" : "User"}
                             </span>
@@ -375,23 +386,23 @@ export default function AdminPlansPage() {
                 </ul>
               )}
             </div>
-            <div className="flex items-center justify-between border-t border-outline/20 px-3 py-2 text-xs">
+            <div className="flex items-center justify-between border-t border-gray-200 dark:border-white/10 px-3 py-2 text-xs bg-white/50 dark:bg-white/5">
               <button
                 type="button"
                 onClick={() => setUsersPage((p) => Math.max(1, p - 1))}
                 disabled={usersPage <= 1 || usersLoading}
-                className="rounded border border-outline/30 px-2 py-1 font-semibold disabled:opacity-50"
+                className="rounded border border-gray-200 dark:border-white/10 px-2 py-1 font-semibold disabled:opacity-50 hover:bg-white dark:hover:bg-white/5"
               >
                 Previous
               </button>
-              <span className="text-on-surface-variant">
+              <span className="text-gray-500 dark:text-gray-400 font-medium">
                 Page {usersPage} / {totalPages}
               </span>
               <button
                 type="button"
                 onClick={() => setUsersPage((p) => Math.min(totalPages, p + 1))}
                 disabled={usersPage >= totalPages || usersLoading}
-                className="rounded border border-outline/30 px-2 py-1 font-semibold disabled:opacity-50"
+                className="rounded border border-gray-200 dark:border-white/10 px-2 py-1 font-semibold disabled:opacity-50 hover:bg-white dark:hover:bg-white/5"
               >
                 Next
               </button>
@@ -401,52 +412,55 @@ export default function AdminPlansPage() {
 
         <section className="space-y-4">
           {!selectedUserId ? (
-            <AdminNotice tone="info">Select a user from the list to view role, subscription and history.</AdminNotice>
+            <div className="rounded-xl border border-blue-200/50 dark:border-blue-500/20 bg-blue-50 dark:bg-blue-500/10 px-4 py-3 text-sm font-medium text-blue-700 dark:text-blue-400 shadow-sm flex items-center gap-2">
+               <span className="material-symbols-outlined text-[18px]">info</span>
+               Select a user from the list to view role, subscription and history.
+            </div>
           ) : null}
 
-          <div className="rounded-2xl border border-outline/30 bg-surface-container-low p-4 sm:p-5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#111] p-5 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Selected user</p>
-                <h2 className="mt-1 text-lg font-bold text-on-surface">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-500">Selected User</p>
+                <h2 className="mt-1 text-xl font-bold text-gray-900 dark:text-white tracking-tight">
                   {snapshot?.user.email || selectedUser?.email || "Loading user..."}
                 </h2>
-                <p className="text-sm text-on-surface-variant">{snapshot?.user.display_name || selectedUser?.display_name || "—"}</p>
-                <p className="mt-1 font-mono text-xs text-on-surface-variant">{selectedUserId}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{snapshot?.user.display_name || selectedUser?.display_name || "—"}</p>
+                <p className="mt-1.5 font-mono text-[11px] text-gray-400 dark:text-gray-500">{selectedUserId}</p>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <button
                   type="button"
                   onClick={() => void toggleRole(selectedUserId, true)}
                   disabled={roleSaving || snapshot?.user.is_admin === true}
-                  className="rounded-lg bg-primary px-3 py-2 text-sm font-bold text-on-primary disabled:opacity-50"
+                  className="rounded-xl bg-gray-900 dark:bg-white px-4 py-2 text-sm font-bold text-white dark:text-black shadow-sm disabled:opacity-50 hover:opacity-90 transition-opacity"
                 >
-                  Make admin
+                  Make Admin
                 </button>
                 <button
                   type="button"
                   onClick={() => void toggleRole(selectedUserId, false)}
                   disabled={roleSaving || snapshot?.user.is_admin === false}
-                  className="rounded-lg border border-outline/30 bg-surface-container-high px-3 py-2 text-sm font-bold text-on-surface disabled:opacity-50"
+                  className="rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#111] px-4 py-2 text-sm font-bold text-gray-700 dark:text-gray-300 shadow-sm disabled:opacity-50 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
                 >
-                  Remove admin
+                  Remove Admin
                 </button>
               </div>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-outline/30 bg-surface-container-low p-4 sm:p-5">
-            <h3 className="text-lg font-bold text-on-surface">Update plan</h3>
-            {snapshotLoading ? <p className="mt-2 text-sm text-on-surface-variant">Loading current plan...</p> : null}
-            {planLoadError ? <p className="mt-2 text-sm text-error">{planLoadError}</p> : null}
+          <div className="rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#111] p-5 shadow-sm">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Update Plan</h3>
+            {snapshotLoading ? <p className="text-sm text-gray-500 dark:text-gray-400">Loading current plan...</p> : null}
+            {planLoadError ? <p className="text-sm text-red-500">{planLoadError}</p> : null}
 
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                 Plan
                 <select
                   value={planCode}
                   onChange={(e) => setPlanCode(e.target.value as typeof planCode)}
-                  className="mt-2 w-full rounded-xl border border-outline/30 bg-surface-container-high px-3 py-2 text-sm focus:ring-2 focus:ring-primary/35"
+                  className="mt-2 w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-black px-3 py-2.5 text-sm text-gray-900 dark:text-white shadow-sm focus:ring-2 focus:ring-gray-900 dark:focus:ring-white/30 focus:outline-none"
                 >
                   {planOptions.map((o) => (
                     <option key={o.value} value={o.value}>
@@ -456,12 +470,12 @@ export default function AdminPlansPage() {
                 </select>
               </label>
 
-              <label className="block text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                 Status
                 <select
                   value={planStatus}
                   onChange={(e) => setPlanStatus(e.target.value as typeof planStatus)}
-                  className="mt-2 w-full rounded-xl border border-outline/30 bg-surface-container-high px-3 py-2 text-sm focus:ring-2 focus:ring-primary/35"
+                  className="mt-2 w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-black px-3 py-2.5 text-sm text-gray-900 dark:text-white shadow-sm focus:ring-2 focus:ring-gray-900 dark:focus:ring-white/30 focus:outline-none"
                 >
                   {statusOptions.map((o) => (
                     <option key={o.value} value={o.value}>
@@ -471,59 +485,62 @@ export default function AdminPlansPage() {
                 </select>
               </label>
 
-              <label className="block text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                Period start (optional)
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                Period Start (optional)
                 <input
                   type="datetime-local"
                   value={periodStart}
                   onChange={(e) => setPeriodStart(e.target.value)}
-                  className="mt-2 w-full rounded-xl border border-outline/30 bg-surface-container-high px-3 py-2 text-sm focus:ring-2 focus:ring-primary/35"
+                  className="mt-2 w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-black px-3 py-2 text-sm text-gray-900 dark:text-white shadow-sm focus:ring-2 focus:ring-gray-900 dark:focus:ring-white/30 focus:outline-none"
                 />
               </label>
 
-              <label className="block text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                Period end (optional)
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                Period End (optional)
                 <input
                   type="datetime-local"
                   value={periodEnd}
                   onChange={(e) => setPeriodEnd(e.target.value)}
-                  className="mt-2 w-full rounded-xl border border-outline/30 bg-surface-container-high px-3 py-2 text-sm focus:ring-2 focus:ring-primary/35"
+                  className="mt-2 w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-black px-3 py-2 text-sm text-gray-900 dark:text-white shadow-sm focus:ring-2 focus:ring-gray-900 dark:focus:ring-white/30 focus:outline-none"
                 />
               </label>
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center gap-3">
+            <div className="mt-5 flex flex-wrap items-center gap-4 border-t border-gray-100 dark:border-white/10 pt-5">
               <button
                 type="button"
                 onClick={() => void applyPlan()}
                 disabled={savingPlan || !selectedUserId}
-                className="rounded-xl bg-primary px-4 py-2 text-sm font-bold text-on-primary disabled:opacity-60"
+                className="rounded-xl bg-gray-900 dark:bg-white px-5 py-2.5 text-sm font-bold text-white dark:text-black shadow-sm disabled:opacity-50 hover:opacity-90 transition-opacity"
               >
-                {savingPlan ? "Saving..." : "Apply plan"}
+                {savingPlan ? "Saving..." : "Apply Plan"}
               </button>
               <button
                 type="button"
                 onClick={() => void applyQuickPlan("early_adopter")}
                 disabled={savingPlan || !selectedUserId}
-                className="rounded-xl border border-outline/30 bg-surface-container-high px-4 py-2 text-sm font-bold text-on-surface disabled:opacity-60"
+                className="rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-black px-5 py-2.5 text-sm font-bold text-gray-700 dark:text-gray-300 shadow-sm disabled:opacity-50 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
               >
                 Quick Upgrade → Early Adopter
               </button>
               {latest ? (
-                <p className="text-xs text-on-surface-variant">
-                  Current latest: <strong>{latest.plan_code}</strong> / <strong>{latest.status}</strong>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Current latest: <strong className="text-gray-900 dark:text-white">{latest.plan_code}</strong> / <strong className="text-gray-900 dark:text-white">{latest.status}</strong>
                 </p>
               ) : null}
             </div>
           </div>
 
-          <details className="rounded-2xl border border-outline/30 bg-surface-container-low p-4 sm:p-5">
-            <summary className="cursor-pointer text-sm font-bold text-on-surface">Advanced: Lookup by user ID</summary>
-            <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto]">
+          <details className="rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#111] p-4 sm:p-5 shadow-sm group">
+            <summary className="cursor-pointer text-sm font-bold text-gray-900 dark:text-white select-none list-none flex items-center justify-between">
+              Advanced: Lookup by User ID
+              <span className="material-symbols-outlined text-gray-400 group-open:-scale-100 transition-transform">expand_more</span>
+            </summary>
+            <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto]">
               <input
                 value={advancedUserId}
                 onChange={(e) => setAdvancedUserId(e.target.value)}
-                className="w-full rounded-xl border border-outline/30 bg-surface-container-high px-3 py-2 text-sm focus:ring-2 focus:ring-primary/35"
+                className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-black px-3 py-2 text-sm text-gray-900 dark:text-white shadow-sm focus:ring-2 focus:ring-gray-900 dark:focus:ring-white/30 focus:outline-none"
                 placeholder="internal user id"
               />
               <button
@@ -533,49 +550,58 @@ export default function AdminPlansPage() {
                   if (!id) return;
                   setSelectedUserId(id);
                 }}
-                className="rounded-xl bg-primary px-4 py-2 text-sm font-bold text-on-primary"
+                className="rounded-xl bg-gray-900 dark:bg-white px-5 py-2 text-sm font-bold text-white dark:text-black shadow-sm hover:opacity-90"
               >
-                Open user
+                Open User
               </button>
             </div>
           </details>
 
-          <div className="rounded-2xl border border-outline/30 bg-surface-container-low p-4 sm:p-5">
-            <h3 className="text-lg font-bold text-on-surface">Subscription history</h3>
-            {snapshotLoading ? (
-              <p className="mt-2 text-sm text-on-surface-variant">Loading history...</p>
-            ) : snapshot?.subscriptions.length ? (
-              <div className="mt-3 overflow-auto">
-                <table className="w-full min-w-[680px] text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-outline/25 text-xs uppercase tracking-wider text-on-surface-variant">
-                      <th className="px-2 py-2">Plan</th>
-                      <th className="px-2 py-2">Status</th>
-                      <th className="px-2 py-2">Start</th>
-                      <th className="px-2 py-2">End</th>
-                      <th className="px-2 py-2">Updated</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {snapshot.subscriptions.map((s) => (
-                      <tr key={s.id} className="border-b border-outline/10">
-                        <td className="px-2 py-2 font-semibold">{s.plan_code}</td>
-                        <td className="px-2 py-2">{s.status}</td>
-                        <td className="px-2 py-2">{fmtDate(s.period_start)}</td>
-                        <td className="px-2 py-2">{fmtDate(s.period_end)}</td>
-                        <td className="px-2 py-2">{fmtDate(s.updated_at)}</td>
+          <div className="rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#111] p-0 shadow-sm overflow-hidden">
+            <div className="p-5 border-b border-gray-100 dark:border-white/5">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Subscription History</h3>
+            </div>
+            <div className="p-0">
+              {snapshotLoading ? (
+                <p className="p-5 text-sm text-gray-500 dark:text-gray-400">Loading history...</p>
+              ) : snapshot?.subscriptions.length ? (
+                <div className="overflow-x-auto custom-scrollbar">
+                  <table className="w-full min-w-[680px] text-left text-sm">
+                    <thead className="bg-gray-50 dark:bg-black/50 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      <tr>
+                        <th className="px-5 py-3">Plan</th>
+                        <th className="px-5 py-3">Status</th>
+                        <th className="px-5 py-3">Start</th>
+                        <th className="px-5 py-3">End</th>
+                        <th className="px-5 py-3">Updated</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="mt-2 text-sm text-on-surface-variant">No subscriptions found for this user.</p>
-            )}
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                      {snapshot.subscriptions.map((s) => (
+                        <tr key={s.id} className="hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition-colors">
+                          <td className="px-5 py-3 font-semibold text-gray-900 dark:text-white">{s.plan_code}</td>
+                          <td className="px-5 py-3 text-gray-600 dark:text-gray-400">
+                             <span className={`inline-flex px-2 rounded-full text-[10px] font-bold uppercase ${
+                               s.status === 'active' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-300'
+                             }`}>
+                               {s.status}
+                             </span>
+                          </td>
+                          <td className="px-5 py-3 text-gray-600 dark:text-gray-400 font-mono text-[11px]">{fmtDate(s.period_start)}</td>
+                          <td className="px-5 py-3 text-gray-600 dark:text-gray-400 font-mono text-[11px]">{fmtDate(s.period_end)}</td>
+                          <td className="px-5 py-3 text-gray-600 dark:text-gray-400 font-mono text-[11px]">{fmtDate(s.updated_at)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="p-5 text-sm text-gray-500 dark:text-gray-400">No subscriptions found for this user.</p>
+              )}
+            </div>
           </div>
         </section>
       </div>
-    </AdminPageShell>
+    </div>
   );
 }
-

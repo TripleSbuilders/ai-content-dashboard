@@ -183,19 +183,39 @@ export async function callGeminiAPI(
         }
 
         const json = parseJsonFromModelText(modelText);
+        const rawUsage = parsedBody?.usageMetadata;
         let usage =
-          parsedBody?.usageMetadata &&
-          typeof parsedBody.usageMetadata.promptTokenCount === "number" &&
-          typeof parsedBody.usageMetadata.candidatesTokenCount === "number" &&
-          typeof parsedBody.usageMetadata.totalTokenCount === "number"
+          rawUsage &&
+          typeof rawUsage.promptTokenCount === "number" &&
+          typeof rawUsage.candidatesTokenCount === "number" &&
+          typeof rawUsage.totalTokenCount === "number"
             ? {
-                promptTokenCount: parsedBody.usageMetadata.promptTokenCount,
-                candidatesTokenCount: parsedBody.usageMetadata.candidatesTokenCount,
-                totalTokenCount: parsedBody.usageMetadata.totalTokenCount,
+                promptTokenCount: rawUsage.promptTokenCount,
+                candidatesTokenCount: rawUsage.candidatesTokenCount,
+                totalTokenCount: rawUsage.totalTokenCount,
               }
             : undefined;
 
         if (!usage) {
+          if (rawUsage === undefined) {
+            console.warn(
+              JSON.stringify({
+                event: "gemini_usage_metadata_missing",
+                model: settings.model,
+                hint: "generateContent returned no usageMetadata; using countTokens fallback",
+              })
+            );
+          } else {
+            console.warn(
+              JSON.stringify({
+                event: "gemini_usage_metadata_incomplete",
+                model: settings.model,
+                received: rawUsage,
+                hint: "expected promptTokenCount, candidatesTokenCount, totalTokenCount as numbers; using countTokens fallback",
+              })
+            );
+          }
+
           const promptTokens = await countTokensSafe(settings, parts);
           const completionTokens = await countTokensSafe(settings, [{ text: modelText }]);
           if (typeof promptTokens === "number" && typeof completionTokens === "number") {
@@ -204,6 +224,24 @@ export async function callGeminiAPI(
               candidatesTokenCount: completionTokens,
               totalTokenCount: promptTokens + completionTokens,
             };
+            console.warn(
+              JSON.stringify({
+                event: "gemini_usage_fallback_ok",
+                model: settings.model,
+                promptTokenCount: promptTokens,
+                candidatesTokenCount: completionTokens,
+                totalTokenCount: usage.totalTokenCount,
+              })
+            );
+          } else {
+            console.warn(
+              JSON.stringify({
+                event: "gemini_usage_fallback_failed",
+                model: settings.model,
+                promptTokens,
+                completionTokens,
+              })
+            );
           }
         }
 

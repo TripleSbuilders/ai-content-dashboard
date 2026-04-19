@@ -1,6 +1,19 @@
 import type { BriefForm, KitSummary } from "../types";
 import { apiUrl, ApiError, buildHeaders, parseErrorMessage } from "./httpClient";
 
+export type KitGenerationStreamStatus =
+  | "starting"
+  | "generating"
+  | "hydrating"
+  | "persisting"
+  | "completed";
+
+export type KitGenerationStreamEvent =
+  | { type: "status"; status: KitGenerationStreamStatus; message?: string }
+  | { type: "partial"; progress: number; section?: string; snapshot: Record<string, unknown> }
+  | { type: "complete"; kit: KitSummary }
+  | { type: "error"; message: string };
+
 export async function generateKit(brief: BriefForm, idempotencyKey: string): Promise<KitSummary> {
   const res = await fetch(apiUrl("/api/kits/generate"), {
     method: "POST",
@@ -9,6 +22,94 @@ export async function generateKit(brief: BriefForm, idempotencyKey: string): Pro
   });
   if (!res.ok) throw new ApiError(await parseErrorMessage(res, res.statusText), res.status);
   return res.json() as Promise<KitSummary>;
+}
+
+function parseSseFrames(buffer: string): { frames: string[]; rest: string } {
+  const frames: string[] = [];
+  let start = 0;
+  while (true) {
+    const idx = buffer.indexOf("\n\n", start);
+    if (idx === -1) break;
+    frames.push(buffer.slice(start, idx));
+    start = idx + 2;
+  }
+  return { frames, rest: buffer.slice(start) };
+}
+
+function decodeSseFrame(frame: string): { event: string; data: string } | null {
+  const lines = frame.split("\n");
+  let event = "message";
+  const dataParts: string[] = [];
+  for (const line of lines) {
+    if (line.startsWith("event:")) event = line.slice(6).trim();
+    if (line.startsWith("data:")) dataParts.push(line.slice(5).trim());
+  }
+  if (!dataParts.length) return null;
+  return { event, data: dataParts.join("\n") };
+}
+
+export async function generateKitStream(
+  brief: BriefForm,
+  idempotencyKey: string,
+  onEvent: (event: KitGenerationStreamEvent) => void
+): Promise<KitSummary> {
+  const res = await fetch(apiUrl("/api/kits/generate?stream=1"), {
+    method: "POST",
+    headers: buildHeaders({ "Idempotency-Key": idempotencyKey }),
+    body: JSON.stringify({ ...brief, submitted_at: new Date().toISOString() }),
+  });
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res, res.statusText), res.status);
+  if (!res.body) throw new ApiError("Streaming response body is missing.", 502);
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let finalKit: KitSummary | null = null;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const { frames, rest } = parseSseFrames(buffer);
+    buffer = rest;
+    for (const frame of frames) {
+      const parsed = decodeSseFrame(frame);
+      if (!parsed) continue;
+      try {
+        const payload = JSON.parse(parsed.data) as Record<string, unknown>;
+        if (parsed.event === "status") {
+          onEvent({
+            type: "status",
+            status: String(payload.status ?? "generating") as KitGenerationStreamStatus,
+            message: typeof payload.message === "string" ? payload.message : undefined,
+          });
+        } else if (parsed.event === "partial") {
+          onEvent({
+            type: "partial",
+            progress: Number(payload.progress ?? 0),
+            section: typeof payload.section === "string" ? payload.section : undefined,
+            snapshot:
+              payload.snapshot && typeof payload.snapshot === "object" && !Array.isArray(payload.snapshot)
+                ? (payload.snapshot as Record<string, unknown>)
+                : {},
+          });
+        } else if (parsed.event === "complete") {
+          const kit = payload.kit as KitSummary;
+          finalKit = kit;
+          onEvent({ type: "complete", kit });
+        } else if (parsed.event === "error") {
+          const message = typeof payload.message === "string" ? payload.message : "Streaming generation failed.";
+          onEvent({ type: "error", message });
+          throw new ApiError(message, 500);
+        }
+      } catch (err) {
+        if (err instanceof ApiError) throw err;
+      }
+    }
+  }
+
+  if (!finalKit) throw new ApiError("Streaming completed without final kit payload.", 502);
+  return finalKit;
 }
 
 export async function listKits(adminMode = false): Promise<KitSummary[]> {

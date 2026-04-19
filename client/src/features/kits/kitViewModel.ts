@@ -83,6 +83,13 @@ export function buildKitViewModel(kit: KitSummary) {
   const contentIdeasPackage = data ? parseContentIdeasPackage(data[CONTENT_IDEAS_PACKAGE_KEY]) : null;
   const hasStrategyBlock = Boolean(marketingStrategy || salesSystem || offerOptimization);
   const painPoints = asStringArray(salesSystem?.pain_points);
+  const hasCriticalPosts = posts.length > 0;
+  const hasCriticalImages = Boolean(imageSection && imageSection.items.length > 0);
+  const hasCriticalVideos = Boolean(videoSection && videoSection.items.length > 0);
+  const missingCriticalSections: string[] = [];
+  if (!hasCriticalPosts) missingCriticalSections.push("posts");
+  if (!hasCriticalImages) missingCriticalSections.push("image_designs");
+  if (!hasCriticalVideos) missingCriticalSections.push("video_prompts");
   const hasStructuredPreview =
     posts.length > 0 || !!imageSection || !!videoSection || Boolean(contentIdeasPackage?.ideas.length);
 
@@ -98,5 +105,9 @@ export function buildKitViewModel(kit: KitSummary) {
     painPoints,
     hasStructuredPreview,
     contentIdeasPackage,
+    hasCriticalPosts,
+    hasCriticalImages,
+    hasCriticalVideos,
+    missingCriticalSections,
   };
 }

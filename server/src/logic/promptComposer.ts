@@ -158,6 +158,7 @@ export function buildClientContextBlock(snapshot: SubmissionSnapshot): string {
 export function buildOutputPolicyBlock(mode: CampaignMode): string {
   return [
     "Return strict JSON matching the response schema exactly.",
+    "Preserve response property order exactly as schema-defined (light fields first).",
     "Use `post_ar` and `post_en` for social post copy (do not return legacy `post`). Both versions must carry the same meaning and persuasion level.",
     "Each social post must be long-form, rich, and detailed (not short snippets) in both languages.",
     "Each image design item must include `caption_ar` and `caption_en` that match that exact visual concept.",

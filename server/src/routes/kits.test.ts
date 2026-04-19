@@ -75,6 +75,42 @@ describe("kits routes device header enforcement", () => {
     );
   });
 
+  it("streams progress events when stream=1", async () => {
+    const deviceId = "8e46f65c-c7d7-4b5e-a860-f48e183f3a24";
+    generateKitService.mockResolvedValueOnce({
+      status: 201,
+      body: {
+        id: "k-stream",
+        result_json: {
+          narrative_summary: "summary",
+          diagnosis_plan: { quickWin24h: "win" },
+          posts: [{ platform: "ig" }],
+        },
+      },
+    });
+    const res = await appRequest("/api/kits/generate?stream=1", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": "idem-stream",
+        "X-Device-ID": deviceId,
+      },
+      body: JSON.stringify({ brand_name: "Stream", industry: "SaaS" }),
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/event-stream");
+    const text = await res.text();
+    expect(text).toContain("event: status");
+    expect(text).toContain("event: partial");
+    expect(text).toContain("event: complete");
+    expect(text).toContain("\"id\":\"k-stream\"");
+    const narrativeIdx = text.indexOf("\"section\":\"narrative_summary\"");
+    const postsIdx = text.indexOf("\"section\":\"posts\"");
+    expect(narrativeIdx).toBeGreaterThan(-1);
+    expect(postsIdx).toBeGreaterThan(-1);
+    expect(narrativeIdx).toBeLessThan(postsIdx);
+  });
+
   it("accepts array payload fields for generate route", async () => {
     const deviceId = "6b813b44-522f-4a53-9522-4a43ceadb523";
     generateKitService.mockResolvedValueOnce({ status: 201, body: { id: "k2" } });

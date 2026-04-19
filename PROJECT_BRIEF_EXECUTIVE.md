@@ -30,6 +30,16 @@ Social Geni solves this by generating one coherent kit per submission and allowi
 
 ---
 
+## Deliverable & intake (snapshot)
+
+**The kit (what ships to the customer):** Each run produces one stored **JSON artifact** with **eight required blocks**—social posts, image briefs, video plans, plus marketing strategy, sales system, offer optimization, a short diagnosis plan, and a narrative summary—so the product is a **defined deliverable**, not a chat log. Optional add-ons include KPI scaffolding and a **content-ideas package** (ideas, hooks, templates); bilingual caption/post fields support Arabic/English execution without breaking the UI contract.
+
+**The wizard (how context is captured):** **Four to six guided steps** depending on campaign path (**social**, **offer**, or **deep**) and whether the session uses the optional **“quick diagnosis”** first screen (~A/B). Users move through **cards, pills, and structured selects** with **per-step validation**, **auto-saved drafts**, and a clear final commit; generation is **synchronous** (~10–30 seconds) into the kit above.
+
+**Where to read details when the full brief does not fit in context:** start with **[`docs/CONTEXT_INDEX.md`](docs/CONTEXT_INDEX.md)** — it routes to **§5.2** / **§10.4** in [`PROJECT_BRIEF.md`](PROJECT_BRIEF.md), [`docs/DATABASE.md`](docs/DATABASE.md) (tables/columns), and [`docs/GEMINI_PROMPTS.md`](docs/GEMINI_PROMPTS.md) (prompt excerpts + file map). **Scope and stack locks:** [`SCOPE.md`](SCOPE.md), [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
+---
+
 ## Current phase: Paid Beta
 
 The product is running a **Paid Beta** model:
@@ -86,4 +96,4 @@ Short-to-mid term focus:
 - **Database**: PostgreSQL (Drizzle)
 - **Generation**: Gemini
 
-For technical details, see `PROJECT_BRIEF.md` and `README.md`.
+For technical details: [`README.md`](README.md) (run, API, quality gates), [`PROJECT_BRIEF.md`](PROJECT_BRIEF.md) (full narrative + §10), and the index [`docs/CONTEXT_INDEX.md`](docs/CONTEXT_INDEX.md). Agent collaboration rules: [`AGENTS.md`](AGENTS.md).

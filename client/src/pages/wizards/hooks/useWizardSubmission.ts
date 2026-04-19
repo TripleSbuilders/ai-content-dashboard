@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ApiError } from "../../../api";
-import { generateKit } from "../../../api";
+import { generateKitStream, type KitGenerationStreamEvent } from "../../../api";
 import type { WizardEventPayload, WizardType } from "../../../lib/wizardAnalytics";
 import type { BriefForm } from "../../../types";
 
@@ -18,6 +18,10 @@ export function useWizardSubmission(params: {
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [streamStatus, setStreamStatus] = useState<string>("starting");
+  const [streamMessage, setStreamMessage] = useState<string>("");
+  const [streamProgress, setStreamProgress] = useState(0);
+  const [streamSnapshot, setStreamSnapshot] = useState<Record<string, unknown> | null>(null);
 
   const onValidSubmit = async (form: BriefForm) => {
     setError(null);
@@ -32,7 +36,21 @@ export function useWizardSubmission(params: {
     });
     try {
       const payload = params.clampCounts(form);
-      const kit = await generateKit(payload, params.createIdempotencyKey());
+      const kit = await generateKitStream(payload, params.createIdempotencyKey(), (evt: KitGenerationStreamEvent) => {
+        if (evt.type === "status") {
+          setStreamStatus(evt.status);
+          if (evt.message) setStreamMessage(evt.message);
+          return;
+        }
+        if (evt.type === "partial") {
+          setStreamProgress(Math.max(0, Math.min(1, evt.progress)));
+          setStreamSnapshot(evt.snapshot);
+          return;
+        }
+        if (evt.type === "error") {
+          setError(evt.message);
+        }
+      });
       params.clearDraft();
       params.emit({
         name: "kit_created_success",
@@ -57,5 +75,14 @@ export function useWizardSubmission(params: {
     }
   };
 
-  return { loading, error, setError, onValidSubmit };
+  return {
+    loading,
+    error,
+    setError,
+    onValidSubmit,
+    streamStatus,
+    streamMessage,
+    streamProgress,
+    streamSnapshot,
+  };
 }

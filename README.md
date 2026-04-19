@@ -30,6 +30,12 @@
 
 ---
 
+## Documentation map
+
+**New agent / handoff:** [`AI_HANDOFF.md`](AI_HANDOFF.md). For full doc routing (scope, architecture, DB, prompts, tasking), use **[`docs/CONTEXT_INDEX.md`](docs/CONTEXT_INDEX.md)**. Collaboration rules: [`AGENTS.md`](AGENTS.md).
+
+---
+
 ## Dependency Note (Drizzle)
 
 - The project is currently pinned to the **Drizzle beta stack** for security compliance and tooling compatibility:
@@ -126,15 +132,81 @@ Required production env guard:
 
 ---
 
-## Output Contract Highlights
+## Kit JSON schema (`result_json`)
 
-- Social items now return bilingual long-form fields: `post_ar` and `post_en`.
-- Each `image_designs[]` item includes bilingual captions: `caption_ar` and `caption_en`.
-- Each `video_prompts[]` item includes bilingual captions: `caption_ar` and `caption_en`.
-- Visual safety rule is injected into prompt instructions:
-  - no Arabic typography/text overlays inside image prompts or video visuals
-  - spoken scripts and external captions can still be Arabic
-- Backward compatibility remains enabled in UI for historical kits using legacy `post` / `caption`.
+The model output stored on each kit row follows the **Gemini response schema** defined in code:
+
+- **Source of truth:** `server/src/logic/responseSchema.ts` (`getGeminiResponseSchema()`)
+
+### Top-level shape (required keys)
+
+| Key | Type | Notes |
+|-----|------|--------|
+| `posts` | `object[]` | Social posts: `platform`, `format`, `goal`, **`post_ar`**, **`post_en`**, `hashtags[]`, `cta` |
+| `image_designs` | `object[]` | Image briefs: `platform_format`, `design_type`, `goal`, `visual_scene`, `headline_text_overlay`, `supporting_copy`, `full_ai_image_prompt`, **`caption_ar`**, **`caption_en`**, `text_policy`, `conversion_trigger` |
+| `video_prompts` | `object[]` | Video briefs: `platform`, `duration`, `style`, `hook_type`, `scenes[]` (`time`, `label`, `visual`, `text`, `audio`), **`caption_ar`**, **`caption_en`**, `ai_tool_instructions`, `why_this_converts` |
+| `marketing_strategy` | `object` | `content_mix_plan`, `weekly_posting_plan`, `platform_strategy`, `key_messaging_angles[]`, `brand_positioning_statement` |
+| `sales_system` | `object` | `pain_points[]`, `offer_structuring`, `funnel_plan`, `ad_angles[]`, `objection_handling[]` (`objection`, `response`), `cta_strategy` |
+| `offer_optimization` | `object` | `rewritten_offer`, `urgency_or_scarcity`, `alternative_offers[]` |
+| `diagnosis_plan` | `object` | `quickWin24h`, `focus7d`, `priority`, `rationale` |
+| `narrative_summary` | `string` | Single narrative block |
+
+### Optional top-level keys
+
+| Key | Type | Notes |
+|-----|------|--------|
+| `kpi_tracking` | `object?` | `top_kpis[]`, `benchmarks`, `optimization_actions`, `ab_tests_week1[]` (allowed by schema; may be empty or omitted depending on model) |
+| `content_ideas_package` | `object?` | **Not** in the base Gemini schema; merged when the **content package** chain is enabled. Shape consumed by the UI: `ideas[]` (`id`, `title`, `description`), `hooks[]` (`idea_id`, `variant_index`, `hook_text`), `templates[]` (`idea_id`, `template_format`). See `client/src/features/kits/kitViewModel.ts`. |
+
+### Prompt / safety notes (bilingual + visuals)
+
+- Posts and captions are **bilingual** (`*_ar` / `*_en`). Legacy single-field `post` / `caption` may exist on older kits; the viewer normalizes where needed.
+- Prompt instructions enforce **no Arabic text burned into** image/video **visuals**; Arabic is fine for scripts and external captions.
+
+### Viewer compatibility (legacy key aliases)
+
+`buildKitViewModel` may resolve older or alternate keys for images/videos (e.g. `image_prompts`, `video_assets`). New generations use `image_designs` and `video_prompts` as above.
+
+---
+
+## Content Wizard — routes and steps
+
+Three campaign modes, each with its own route and draft key (auto-saved in `localStorage`).
+
+| Mode | Route | Draft key suffix | Default `campaign_mode` |
+|------|--------|------------------|-------------------------|
+| Social-first | `/wizard/social` | `wizard-draft:social:v1` | `social` |
+| Offer / product | `/wizard/offer` | `wizard-draft:offer:v1` | `offer` |
+| Deep content | `/wizard/deep` | `wizard-draft:deep:v1` | `deep` |
+
+**Experiment (Variant B — “Quick diagnosis” first):** About **20%** of sessions get **Variant B** unless overridden. Force with query param **`?wizard_exp=B`** (or `A`). Stored under `ai-content-dashboard:wizard-exp:v1`.
+
+### Step order by mode
+
+Step **ids** match `stepOrder` in each wizard file; labels are the **chip titles** shown in the UI.
+
+**Social Campaign** (`SocialCampaignWizard.tsx`)
+
+| Variant | Step order (ids → chip title) |
+|---------|-------------------------------|
+| **A** | `brand` → Brand & industry → `audience` → Audience & goals → `channels` → Channels & tone → `creative` → Creative direction → `volume` → Output volumes |
+| **B** | `diagnosis` → Quick diagnosis → then same as A from `brand` … `volume` |
+
+**Offer / Product** (`OfferProductWizard.tsx`)
+
+| Variant | Step order |
+|---------|------------|
+| **A** | `brand` → Brand & industry → `offer` → Offer & positioning → `audience` → Audience & goals → `volume` → Output volumes |
+| **B** | `diagnosis` → Quick diagnosis → `brand` → … → `volume` |
+
+**Deep Content** (`DeepContentWizard.tsx`)
+
+| Variant | Step order |
+|---------|------------|
+| **A** | `brand` → Brand & industry → `audience` → Audience & goals → `creative` → Creative direction → `volume` → Output volumes |
+| **B** | `diagnosis` → Quick diagnosis → `brand` → … → `volume` |
+
+Shared implementation: `client/src/pages/wizards/WizardCore.tsx`. After the last step, submission calls **`POST /api/kits/generate`** with the brief JSON and **`Idempotency-Key`**.
 
 ---
 
@@ -152,6 +224,7 @@ Authorization: Bearer <API_SECRET>
 | Method | Route | Purpose |
 |---|---|---|
 | `POST` | `/api/kits/generate` | Sync generation (**requires** `Idempotency-Key`) |
+| `POST` | `/api/kits/generate?stream=1` | SSE generation stream (`status` / `partial` / `complete`) |
 | `GET` | `/api/kits` | List kits (newest first) |
 | `GET` | `/api/kits/:id` | Kit detail |
 | `POST` | `/api/kits/:id/retry` | Retry only `failed_generation` with `{ brief_json, row_version }` |
@@ -165,6 +238,17 @@ It does **not** patch individual failed nodes in `result_json`.
 ### Partial regenerate semantics
 
 `/api/kits/:id/regenerate-item` regenerates a single target item (`post`, `image`, or `video`) and merges it back into `result_json` using optimistic concurrency via `row_version`.
+
+### Stream generate semantics (Phase 1)
+
+`/api/kits/generate?stream=1` is additive and does not replace the normal contract.
+
+- Stream emits SSE events in order:
+  - `status` (stage updates)
+  - `partial` (progressive `result_json` snapshots, light fields first)
+  - `complete` (final `KitSummary`)
+  - `error` (safe message)
+- Idempotency behavior remains the same as standard generate.
 
 ---
 

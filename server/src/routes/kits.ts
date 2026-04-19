@@ -74,6 +74,40 @@ function requireDeviceId(c: import("hono").Context): { ok: true; deviceId: strin
   return { ok: true, deviceId: parsed.data };
 }
 
+function buildHydrationSnapshots(resultJson: unknown): Array<{ section: string; progress: number; snapshot: Record<string, unknown> }> {
+  const source = resultJson && typeof resultJson === "object" && !Array.isArray(resultJson)
+    ? (resultJson as Record<string, unknown>)
+    : {};
+  const orderedKeys = [
+    "narrative_summary",
+    "diagnosis_plan",
+    "posts",
+    "image_designs",
+    "video_prompts",
+    "marketing_strategy",
+    "sales_system",
+    "offer_optimization",
+    "kpi_tracking",
+  ];
+  const snapshots: Array<{ section: string; progress: number; snapshot: Record<string, unknown> }> = [];
+  const current: Record<string, unknown> = {};
+  let emitted = 0;
+  for (const key of orderedKeys) {
+    if (!(key in source)) continue;
+    current[key] = source[key];
+    emitted += 1;
+    snapshots.push({
+      section: key,
+      progress: Math.min(1, emitted / orderedKeys.length),
+      snapshot: { ...current },
+    });
+  }
+  if (!snapshots.length) {
+    snapshots.push({ section: "result_json", progress: 1, snapshot: source });
+  }
+  return snapshots;
+}
+
 async function resolveOwner(c: import("hono").Context) {
   const device = requireDeviceId(c);
   if (!device.ok) return device;
@@ -116,17 +150,83 @@ export function createKitsRouter(mw: (c: import("hono").Context, next: Next) => 
       return c.json({ error: "Invalid JSON body." }, 400);
     }
 
-    try {
-      const result = await generateKitService({
-        idempotencyKey: c.req.header("Idempotency-Key")?.trim() || "",
-        body: body as Record<string, unknown>,
-        deviceId: ownerRes.owner.deviceId,
-        userId: ownerRes.owner.userId,
-      });
-      return c.json(result.body, result.status as 200 | 201);
-    } catch (err) {
-      return respondHttpError(c, err, "Unexpected error while generating kit.");
+    const streamMode = c.req.query("stream") === "1";
+    if (!streamMode) {
+      try {
+        const result = await generateKitService({
+          idempotencyKey: c.req.header("Idempotency-Key")?.trim() || "",
+          body: body as Record<string, unknown>,
+          deviceId: ownerRes.owner.deviceId,
+          userId: ownerRes.owner.userId,
+        });
+        return c.json(result.body, result.status as 200 | 201);
+      } catch (err) {
+        return respondHttpError(c, err, "Unexpected error while generating kit.");
+      }
     }
+
+    const stream = new ReadableStream({
+      async start(controller) {
+        const encoder = new TextEncoder();
+        const sendEvent = (event: string, payload: Record<string, unknown>) => {
+          const line = `event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`;
+          controller.enqueue(encoder.encode(line));
+        };
+
+        let stageTick = 0;
+        const stageMessages = [
+          "Preparing generation context",
+          "Generating structured kit",
+          "Hydrating progressive sections",
+          "Persisting final kit payload",
+        ];
+        sendEvent("status", { status: "starting", message: stageMessages[0] });
+        console.info("[kits_stream] start");
+        const heartbeat = setInterval(() => {
+          stageTick = (stageTick + 1) % stageMessages.length;
+          sendEvent("status", {
+            status: stageTick < 2 ? "generating" : "hydrating",
+            message: stageMessages[stageTick],
+          });
+        }, 1800);
+        try {
+          const result = await generateKitService({
+            idempotencyKey: c.req.header("Idempotency-Key")?.trim() || "",
+            body: body as Record<string, unknown>,
+            deviceId: ownerRes.owner.deviceId,
+            userId: ownerRes.owner.userId,
+          });
+          clearInterval(heartbeat);
+          sendEvent("status", { status: "hydrating", message: "Applying section hydration order" });
+          const snapshots = buildHydrationSnapshots(result.body.result_json);
+          for (const snap of snapshots) {
+            sendEvent("partial", snap);
+          }
+          sendEvent("status", { status: "persisting", message: "Final persistence complete" });
+          sendEvent("status", { status: "completed", message: "Generation completed" });
+          sendEvent("complete", { kit: result.body });
+          console.info("[kits_stream] complete", JSON.stringify({ kitId: result.body.id }));
+          controller.close();
+        } catch (err) {
+          clearInterval(heartbeat);
+          sendEvent("error", {
+            message:
+              err instanceof Error && err.message.trim()
+                ? err.message
+                : "Unexpected error while generating kit.",
+          });
+          console.warn("[kits_stream] error", String(err));
+          controller.close();
+        }
+      },
+    });
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+      },
+    });
   });
 
   app.get("/api/kits", async (c) => {

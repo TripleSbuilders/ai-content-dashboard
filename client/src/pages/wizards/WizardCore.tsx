@@ -399,6 +399,10 @@ export default function WizardCore(props: WizardCoreProps) {
   const onValidSubmit = submission.onValidSubmit;
   const loading = submission.loading;
   const err = submission.error;
+  const streamProgressPct = Math.round((submission.streamProgress ?? 0) * 100);
+  const partialSummary = typeof submission.streamSnapshot?.narrative_summary === "string"
+    ? submission.streamSnapshot.narrative_summary
+    : "";
 
   useEffect(() => {
     if (!loading || reduceMotion) return;
@@ -1154,8 +1158,40 @@ export default function WizardCore(props: WizardCoreProps) {
               <div className="wizard-indeterminate-track" aria-hidden>
                 <div className="wizard-indeterminate-bar" />
               </div>
+              <p className="wizard-loading-hint" style={{ marginBottom: "0.4rem" }}>
+                {submission.streamStatus === "persisting"
+                  ? "Persisting final kit..."
+                  : submission.streamStatus === "hydrating"
+                  ? "Hydrating generated sections..."
+                  : submission.streamStatus === "completed"
+                  ? "Finalizing..."
+                  : "Generating with progressive hydration..."}
+              </p>
+              <p className="wizard-loading-hint" style={{ marginBottom: "0.4rem" }}>
+                Progress: {streamProgressPct}%
+              </p>
+              {submission.streamMessage ? (
+                <p className="wizard-loading-hint" style={{ marginBottom: "0.4rem" }}>
+                  {submission.streamMessage}
+                </p>
+              ) : null}
               <h3>{WAITING_STAGES[tipIndex]!.title}</h3>
               <p className="wizard-loading-hint">{WAITING_STAGES[tipIndex]!.hint}</p>
+              {partialSummary ? (
+                <div
+                  className="wizard-loading-hint"
+                  style={{
+                    marginTop: "0.8rem",
+                    maxWidth: "34rem",
+                    textAlign: "start",
+                    padding: "0.6rem 0.8rem",
+                    borderRadius: "0.7rem",
+                    border: "1px solid rgba(255,255,255,0.2)",
+                  }}
+                >
+                  <strong>Live summary:</strong> {partialSummary}
+                </div>
+              ) : null}
             </div>
           )}
         </div>

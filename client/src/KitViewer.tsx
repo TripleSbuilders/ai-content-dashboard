@@ -1160,6 +1160,7 @@ export default function KitViewer({
     painPoints,
     hasStructuredPreview,
     contentIdeasPackage,
+    missingCriticalSections,
   } = useMemo(() => buildKitViewModel(kit), [kit]);
 
   const strategyOfferHeadline = useMemo(() => {
@@ -1322,6 +1323,15 @@ export default function KitViewer({
         <p className="rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm text-error" role="alert">
           {regenError}
         </p>
+      ) : null}
+
+      {missingCriticalSections.length > 0 ? (
+        <div className="rounded-xl border border-amber-400/40 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-300/30 dark:bg-amber-500/10 dark:text-amber-100">
+          <p className="font-semibold">Some core sections are missing from this kit.</p>
+          <p className="mt-1">
+            Missing: {missingCriticalSections.join(", ")}. You can regenerate specific assets from section cards.
+          </p>
+        </div>
       ) : null}
 
       {posts.length > 0 && (

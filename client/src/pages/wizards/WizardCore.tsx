@@ -218,6 +218,7 @@ export default function WizardCore(props: WizardCoreProps) {
   const [isOtherIndustry, setIsOtherIndustry] = useState(false);
   const [tipIndex, setTipIndex] = useState(0);
   const [reduceMotion, setReduceMotion] = useState(false);
+  const [displayProgress, setDisplayProgress] = useState(0);
 
   const {
     register,
@@ -417,7 +418,7 @@ export default function WizardCore(props: WizardCoreProps) {
   const onValidSubmit = submission.onValidSubmit;
   const loading = submission.loading;
   const err = submission.error;
-  const streamProgressPct = Math.round((submission.streamProgress ?? 0) * 100);
+  const displayProgressPct = Math.round(displayProgress * 100);
   const activeStreamStepIndex = Math.max(
     0,
     STREAM_STATUS_STEPS.findIndex((item) => item.key === submission.streamStatus)
@@ -431,9 +432,33 @@ export default function WizardCore(props: WizardCoreProps) {
 
   useEffect(() => {
     if (!loading || reduceMotion) return;
-    const id = window.setInterval(() => setTipIndex((i) => (i + 1) % WAITING_STAGES.length), 4500);
+    const intervalMs = submission.streamStatus === "hydrating" ? 2600 : 3400;
+    const id = window.setInterval(() => setTipIndex((i) => (i + 1) % WAITING_STAGES.length), intervalMs);
     return () => clearInterval(id);
-  }, [loading, reduceMotion]);
+  }, [loading, reduceMotion, submission.streamStatus]);
+
+  useEffect(() => {
+    if (!loading) {
+      setDisplayProgress(0);
+      return;
+    }
+    if (reduceMotion) {
+      setDisplayProgress(submission.streamProgress ?? 0);
+      return;
+    }
+    let raf = 0;
+    const target = Math.max(0, Math.min(1, submission.streamProgress ?? 0));
+    const tick = () => {
+      setDisplayProgress((prev) => {
+        const delta = target - prev;
+        if (Math.abs(delta) < 0.004) return target;
+        return prev + delta * 0.18;
+      });
+      raf = window.requestAnimationFrame(tick);
+    };
+    raf = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(raf);
+  }, [loading, reduceMotion, submission.streamProgress]);
 
   const currentStep = props.stepOrder[step]!;
   const isFinalStep = step === maxStep;
@@ -1233,15 +1258,18 @@ export default function WizardCore(props: WizardCoreProps) {
                   : "Generating with progressive hydration..."}
               </p>
               <p className="wizard-loading-hint" style={{ marginBottom: "0.4rem" }}>
-                Progress: {streamProgressPct}%
+                Progress: {displayProgressPct}%
               </p>
+              <div className="wizard-progress-track" aria-hidden>
+                <div className="wizard-progress-fill" style={{ width: `${Math.max(4, displayProgressPct)}%` }} />
+              </div>
               {submission.streamMessage ? (
-                <p className="wizard-loading-hint" style={{ marginBottom: "0.4rem" }}>
+                <p className="wizard-loading-hint wizard-fade-slide-in" style={{ marginBottom: "0.4rem" }}>
                   {submission.streamMessage}
                 </p>
               ) : null}
               {submission.streamSection ? (
-                <p className="wizard-loading-hint" style={{ marginBottom: "0.4rem" }}>
+                <p className="wizard-loading-hint wizard-fade-slide-in" style={{ marginBottom: "0.4rem" }}>
                   Current section:{" "}
                   <strong>{STREAM_SECTION_LABELS[submission.streamSection] ?? submission.streamSection.replace(/_/g, " ")}</strong>
                 </p>
@@ -1261,6 +1289,7 @@ export default function WizardCore(props: WizardCoreProps) {
                   {streamSectionBadges.map((label) => (
                     <span
                       key={label}
+                      className="wizard-fade-slide-in"
                       style={{
                         borderRadius: "999px",
                         border: "1px solid rgba(255,255,255,0.25)",
@@ -1278,7 +1307,7 @@ export default function WizardCore(props: WizardCoreProps) {
               <p className="wizard-loading-hint">{WAITING_STAGES[tipIndex]!.hint}</p>
               {partialSummary ? (
                 <div
-                  className="wizard-loading-hint"
+                  className="wizard-loading-hint wizard-loading-tip wizard-fade-slide-in"
                   style={{
                     marginTop: "0.8rem",
                     maxWidth: "34rem",

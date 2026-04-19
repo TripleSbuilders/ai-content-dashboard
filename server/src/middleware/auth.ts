@@ -6,14 +6,20 @@ function parseAllowedOrigins(raw: string): string[] {
   return value
     .split(",")
     .map((o) => o.trim())
+    .map((o) => o.replace(/\/+$/, ""))
     .filter(Boolean);
 }
 
 function isTrustedOriginRequest(c: Context, allowedOrigins: string[]): boolean {
   if (allowedOrigins.length === 0) return false;
-  const origin = (c.req.header("origin") ?? "").trim();
-  const referer = (c.req.header("referer") ?? "").trim();
-  return allowedOrigins.some((allowed) => origin === allowed || referer.startsWith(`${allowed}/`) || referer === allowed);
+  const origin = (c.req.header("origin") ?? "").trim().replace(/\/+$/, "");
+  const referer = (c.req.header("referer") ?? "").trim().replace(/\/+$/, "");
+  return allowedOrigins.some(
+    (allowed) =>
+      origin === allowed ||
+      referer === allowed ||
+      referer.startsWith(`${allowed}/`)
+  );
 }
 
 export async function bearerAuth(c: Context, next: Next) {

@@ -11,13 +11,15 @@ export class ApiError extends Error {
 }
 
 const base = import.meta.env.VITE_API_URL ?? "";
+const apiSecret = String(import.meta.env.VITE_API_SECRET ?? "").trim();
 
 export function buildHeaders(extra?: Record<string, string>): HeadersInit {
   const token = getAccessToken();
+  const authorization = token || apiSecret ? `Bearer ${token || apiSecret}` : undefined;
   return {
     "Content-Type": "application/json",
     "X-Device-ID": getDeviceId(),
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(authorization ? { Authorization: authorization } : {}),
     ...extra,
   };
 }

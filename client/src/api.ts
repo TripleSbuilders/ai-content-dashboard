@@ -1,6 +1,7 @@
 export { ApiError } from "./api/httpClient";
 export {
   generateKit,
+  generateKitAsync,
   generateKitStream,
   listKits,
   getKit,
@@ -34,6 +35,11 @@ export {
 export type { HelpTopicsResponse } from "./api/misc";
 export { getEntitlements, syncAuthDevice } from "./api/auth";
 export type { EntitlementsResponse } from "./api/auth";
+export {
+  loginAgencyAdmin,
+  validateAgencyAdminSession,
+  logoutAgencyAdmin,
+} from "./api/authAdmin";
 export {
   getAdminUserPlans,
   updateAdminUserPlan,

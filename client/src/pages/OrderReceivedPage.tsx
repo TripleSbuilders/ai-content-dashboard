@@ -1,0 +1,45 @@
+import { Link, useSearchParams } from "react-router-dom";
+
+export default function OrderReceivedPage() {
+  const [params] = useSearchParams();
+  const trackingKitId = params.get("kit") ?? "";
+
+  return (
+    <section className="mx-auto max-w-3xl">
+      <div className="rounded-3xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#111] p-8 sm:p-10 shadow-sm">
+        <div className="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 mb-5">
+          <span className="material-symbols-outlined">check_circle</span>
+        </div>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+          Your request has been received successfully
+        </h1>
+        <p className="mt-3 text-gray-600 dark:text-gray-300 leading-relaxed">
+          Our team is preparing your content package now. Sales will contact you shortly to coordinate delivery and next steps.
+        </p>
+
+        <div className="mt-6 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-black/25 px-4 py-3">
+          <p className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-semibold">Order status</p>
+          <p className="mt-1 text-sm text-gray-800 dark:text-gray-200">In progress with strategy team</p>
+          {trackingKitId ? (
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Reference: {trackingKitId}</p>
+          ) : null}
+        </div>
+
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Link
+            to="/"
+            className="inline-flex items-center justify-center rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-100"
+          >
+            Back to dashboard
+          </Link>
+          <Link
+            to="/wizard"
+            className="inline-flex items-center justify-center rounded-lg border border-gray-200 dark:border-white/10 px-5 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5"
+          >
+            Submit another request
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}

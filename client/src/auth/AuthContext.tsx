@@ -3,6 +3,7 @@ import type { Session } from "@supabase/supabase-js";
 import { getEntitlements, syncAuthDevice, type EntitlementsResponse } from "../api";
 import { setAccessToken } from "../lib/authToken";
 import { getDeviceId } from "../lib/deviceId";
+import { isAgencyEdition, isV1PublicDecommissionEnabled } from "../lib/appEdition";
 import { hasSupabaseAuth, supabase } from "./supabaseClient";
 
 type AuthState = {
@@ -15,6 +16,14 @@ type AuthState = {
 };
 
 const AuthCtx = createContext<AuthState | null>(null);
+
+function resolveAuthRedirectUrl(): string {
+  const configured = String(import.meta.env.VITE_AUTH_REDIRECT_URL ?? "").trim();
+  if (configured) return configured;
+  if (isAgencyEdition()) return `${window.location.origin}/wizard/social`;
+  if (isV1PublicDecommissionEnabled()) return `${window.location.origin}/admin/legacy-v1`;
+  return window.location.href;
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
@@ -78,10 +87,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refreshEntitlements,
       signInWithGoogle: async () => {
         if (!supabase) return;
+        // Force a fresh auth handshake so V2 never reuses stale V1 local sessions.
+        try {
+          await supabase.auth.signOut({ scope: "local" });
+        } catch {
+          // Best effort only; continue with OAuth flow.
+        }
         await supabase.auth.signInWithOAuth({
           provider: "google",
           options: {
-            redirectTo: window.location.href,
+            redirectTo: resolveAuthRedirectUrl(),
+            queryParams: {
+              prompt: "select_account consent",
+              ...(isAgencyEdition() ? {} : { access_type: "offline" }),
+            },
           },
         });
       },

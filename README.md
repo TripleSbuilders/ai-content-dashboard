@@ -34,6 +34,8 @@
 
 **New agent / handoff:** [`AI_HANDOFF.md`](AI_HANDOFF.md). For full doc routing (scope, architecture, DB, prompts, tasking), use **[`docs/CONTEXT_INDEX.md`](docs/CONTEXT_INDEX.md)**. Collaboration rules: [`AGENTS.md`](AGENTS.md).
 
+Agency pivot implementation details: [`docs/PIVOT_AGENCY_EXECUTION.md`](docs/PIVOT_AGENCY_EXECUTION.md).
+
 ---
 
 ## Dependency Note (Drizzle)
@@ -76,6 +78,16 @@ cp .env.example client/.env.local
 # optional demo mode
 # - server/.env: DEMO_MODE=true
 # - client/.env.local: VITE_DEMO_MODE=true
+
+# edition switches
+# - server/.env: APP_EDITION=self_serve|agency
+# - server/.env (agency admin auth): ADMIN_USERNAME=admin, ADMIN_PASSWORD, ADMIN_AUTH_SECRET
+# - client/.env.local: VITE_APP_EDITION=self_serve|agency
+# - optional auth callback override: VITE_AUTH_REDIRECT_URL=https://ai-content-dashboard-app-v2.onrender.com/wizard/social
+# - V1 cutover controls (self-serve deploy only):
+#   - VITE_V1_PUBLIC_DECOMMISSION=true
+#   - VITE_V2_CANONICAL_URL=https://ai-content-dashboard-app-v2.onrender.com/wizard/social
+# - optional team routing: TELEGRAM_WEBHOOK_URL or (TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID [+ TELEGRAM_THREAD_ID]), ADMIN_BASE_URL
 
 npm install
 npm run dev
@@ -240,6 +252,14 @@ Authorization: Bearer <API_SECRET>
 | `POST` | `/api/telemetry/interaction` | Fire-and-forget interaction telemetry with `{ kit_id, interaction_type, meta? }` |
 
 Generation quota usage (image/video prompt counters) is consumed only after a successful LLM response and successful kit persistence path.
+
+### Agency mode access behavior
+
+When `APP_EDITION=agency`:
+
+- Public/non-admin access to `/api/kits` and `/api/kits/:id` is blocked.
+- Admin access via `scope=all` remains available for internal operations.
+- Admin authentication can run without Supabase by using `POST /api/auth/agency-admin/login` (`ADMIN_USERNAME` + `ADMIN_PASSWORD`) and passing `X-Agency-Admin-Session` on admin requests.
 
 ### Phase 3 continuity behavior
 

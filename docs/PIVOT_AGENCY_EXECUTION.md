@@ -2,6 +2,28 @@
 
 This document records the Self-Serve to Agency pivot implementation while preserving the existing V1 flow.
 
+## Implementation phases (completed)
+
+1. **Phase 1 — Packaging & payment path**
+   - Switched from subscription language to one-time service packages.
+   - Added WhatsApp premium CTA flow via `VITE_WHATSAPP_SALES_NUMBER`.
+
+2. **Phase 2 — Client portal UX**
+   - Sidebar client portal: Overview, My Brands, Request Content, Pricing.
+   - Added `My Brands` extraction from historical `brief_json`.
+   - Added `Create Again` wizard prefill flow.
+
+3. **Phase 3 — Reliability fixes**
+   - Wizard reset/navigation fixes after submit.
+   - Double-submit prevention on frontend.
+   - Backend idempotency hardening with `brief_hash`.
+   - Charge-once usage guard with `usage_charged_at`.
+
+4. **Phase 4 — Admin kit operations**
+   - Added admin-only hard delete endpoint `DELETE /api/kits/:id`.
+   - Added admin dashboard delete action with confirm + optimistic UI removal.
+   - Related cleanup includes `kit_interactions` and idempotency rows.
+
 ## Deployment model
 
 - `v1` (Self-Serve): existing behavior, no functional removal.

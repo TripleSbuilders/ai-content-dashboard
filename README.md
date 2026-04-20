@@ -130,11 +130,13 @@ Required production env guard:
 
 ## Core Features
 
-- Visual wizard with auto-save draft in localStorage (`ai-content-dashboard:wizard-draft:v1`)
+- Visual wizard with per-path auto-save drafts in localStorage (`ai-content-dashboard:wizard-draft:social:v1`, `...:offer:v1`, `...:deep:v1`)
 - Idempotent synchronous kit generation
 - Dashboard list + searchable kit viewer
+- V2 client portal with sidebar navigation (Overview, My Brands, Request Content, Pricing)
 - Structured social/image/video rendering (with copy actions)
 - Retry flow for failed generation (full regenerate)
+- Admin-only hard delete for duplicate/junk kits (`DELETE /api/kits/:id`)
 - Prompt Catalog authoring as creative direction (client context auto-injected server-side)
 
 ---

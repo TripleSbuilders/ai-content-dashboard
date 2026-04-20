@@ -41,6 +41,7 @@
 | `device_id` | text | Default `''` |
 | `user_id` | text | Nullable |
 | `brief_json` | text | Stringified wizard payload |
+| `brief_hash` | text | Normalized brief fingerprint (idempotency) |
 | `target_audience_v2` | jsonb | `string[]` |
 | `platforms_v2` | jsonb | `string[]` |
 | `best_content_types_v2` | jsonb | `string[]` |
@@ -55,9 +56,19 @@
 | `prompt_tokens` | integer | Default 0 |
 | `completion_tokens` | integer | Default 0 |
 | `total_tokens` | integer | Default 0 |
+| `usage_charged_at` | timestamptz nullable | Charge-once guard marker for usage deduction |
 | `row_version` | integer | Optimistic concurrency |
 | `created_at` | timestamptz | |
 | `updated_at` | timestamptz | |
+
+### Admin-side delete behavior (Phase 4)
+
+- Admin delete endpoint: `DELETE /api/kits/:id` (admin-only).
+- Cleanup order in repository/service:
+  1) delete `kit_interactions` by `kit_id`
+  2) delete `idempotency_keys` by `kit_id`
+  3) delete `kits` row
+- This is hard delete for MVP operations.
 
 ---
 

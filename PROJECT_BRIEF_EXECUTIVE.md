@@ -40,14 +40,15 @@ Social Geni solves this by generating one coherent kit per submission and allowi
 
 ---
 
-## Current phase: Paid Beta
+## Current phase: V2 Agency Model
 
-The product is running a **Paid Beta** model:
+The product is running the **V2 agency-intake model**:
 
-- **Starter**: free trial entry to test output quality quickly.
-- **Early Adopter**: low-cost paid tier with practical monthly asset quotas.
+- **Free Sample package**: lead-magnet one-time sample.
+- **Premium Agency package**: paid one-time service package fulfilled by internal team.
+- **Checkout path**: WhatsApp redirection with prefilled Arabic payment message (manual payment ops).
 
-Goal: maximize first adoption, collect usage evidence, then optimize pricing and packaging.
+Goal: maximize qualified inbound requests, speed up fulfillment, and optimize package conversion/ops.
 
 ---
 
@@ -65,7 +66,8 @@ Admin workflows support:
 
 - user and role management (including privileged access),
 - prompt governance and quality tuning,
-- analytics and full-kit review for product iteration.
+- analytics and full-kit review for product iteration,
+- admin-side kit cleanup (hard delete for junk/duplicate requests).
 
 ---
 

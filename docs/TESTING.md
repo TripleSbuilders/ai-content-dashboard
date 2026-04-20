@@ -17,12 +17,22 @@ E2E runs dev servers in demo mode with a temporary DB (see [`README.md`](../READ
 - **UI / wizard / API contract changes:** run `npm run test:e2e` or extend Playwright coverage if a gap is found.
 - **Server-only logic:** unit/integration tests if present; at minimum `tsc` for `server`.
 
-## Phase 1 focused checks
+## Phase 1 focused checks (Auth Boundary Hardening)
 
-- **Streaming route:** verify `/api/kits/generate?stream=1` emits `status`, `partial`, `complete` in order.
-- **Hydration ordering:** verify light fields (`narrative_summary`, `diagnosis_plan`) are emitted before heavy arrays.
-- **Graceful degradation:** load kits with missing optional fields and confirm viewer does not crash.
-- **Critical missing sections:** confirm viewer surfaces local warning and keeps page interactive.
+Before -> after decision matrix for `bearerAuth`:
+
+- **Before:** `Origin`/`Referer` could allow pass-through without cryptographic auth.
+- **After:** only explicit trusted channels are allowed:
+  - `Authorization: Bearer <API_SECRET>` (service channel),
+  - JWT-shaped bearer token for user channel (verification happens in user middleware),
+  - `X-Agency-Admin-Session` valid session token (admin channel).
+
+Acceptance checks:
+
+- **Spoofed origin is rejected:** request without valid bearer/admin session must return `401` even if `Origin`/`Referer` are trusted-looking.
+- **JWT pass-through at gate:** request with JWT-like bearer is accepted by auth gate and can continue to user verification middleware.
+- **Malformed bearer is rejected:** non-secret/non-JWT bearer must return `401`.
+- **Production CORS guard:** startup fails when `NODE_ENV=production` and `CORS_ORIGIN=*`.
 
 ## Phase 2 focused checks
 
@@ -61,6 +71,13 @@ E2E runs dev servers in demo mode with a temporary DB (see [`README.md`](../READ
 - **Confirmation guard:** `window.confirm(...)` appears before delete request is sent.
 - **Optimistic UI:** deleted row is removed from table state without full page reload.
 - **Feedback:** success/error toasts appear accordingly.
+
+## Audit Phase 3 focused checks
+
+- **SSE error sanitization:** `POST /api/kits/generate?stream=1` must emit a generic `error.message` in production and must not leak raw exception text.
+- **Analytics summary guard:** `GET /api/analytics/wizard-summary` returns `401/403` for non-admin requests and returns `200` only for admin channels.
+- **Analytics ingestion continuity:** `POST /api/analytics/wizard-events` remains writable for client telemetry ingestion.
+- **Agency admin login throttling:** repeated calls to `POST /api/auth/agency-admin/login` from same source eventually return `429` with `Retry-After`.
 
 ## Agency pivot focused checks
 

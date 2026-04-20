@@ -207,3 +207,24 @@ export const authSyncDeviceRateLimit = createRateLimit({
     }
   },
 });
+
+/* ── /api/auth/agency-admin/login limiter ─────────────────────────── */
+const AGENCY_ADMIN_LOGIN_LIMIT = Math.max(
+  2,
+  Math.min(parseInt(process.env.AGENCY_ADMIN_LOGIN_RATE_LIMIT ?? "10", 10) || 10, 50),
+);
+
+const AGENCY_ADMIN_LOGIN_WINDOW_MS = Math.max(
+  60_000,
+  Math.min(
+    parseInt(process.env.AGENCY_ADMIN_LOGIN_RATE_WINDOW_MS ?? String(15 * 60_000), 10) || 15 * 60_000,
+    60 * 60_000,
+  ),
+);
+
+export const agencyAdminLoginRateLimit = createRateLimit({
+  limit: AGENCY_ADMIN_LOGIN_LIMIT,
+  windowMs: AGENCY_ADMIN_LOGIN_WINDOW_MS,
+  namespace: "auth-agency-admin-login",
+  keyLabel: "IP",
+});

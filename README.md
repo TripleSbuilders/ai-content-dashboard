@@ -122,9 +122,9 @@ npx tsc --noEmit -p server/tsconfig.json
 npm audit --audit-level=high
 ```
 
-Required production env guard:
-- `API_SECRET` must be present and non-empty in production.
-- If missing in production, API auth middleware now fails closed with a server misconfiguration response.
+Required production env guards:
+- `API_SECRET` must be present and non-empty in production (service bearer path).
+- `CORS_ORIGIN` cannot be `*` in production; startup now fails fast with a security error.
 
 ---
 
@@ -236,14 +236,15 @@ Shared implementation: `client/src/pages/wizards/WizardCore.tsx`. After the last
 
 ## API Reference
 
-All `/api/*` routes require:
+Auth boundary contract for guarded routes:
 
-```http
-Authorization: Bearer <API_SECRET>
-```
+- `Authorization: Bearer <API_SECRET>` for internal service-to-service calls.
+- `Authorization: Bearer <JWT>` for user/browser channels (JWT-shaped bearer is accepted at gate, then verified in user auth middleware).
+- `X-Agency-Admin-Session: <session-token>` for agency admin channels.
 
-> The bearer token is added by the server-side flow and local test harnesses where needed.
-> Frontend runtime no longer reads any `VITE_API_SECRET`.
+Rejected by default:
+- Requests that rely only on `Origin`/`Referer` (no longer trusted as auth signals).
+- Production runtime with `CORS_ORIGIN=*`.
 
 | Method | Route | Purpose |
 |---|---|---|
@@ -255,6 +256,8 @@ Authorization: Bearer <API_SECRET>
 | `POST` | `/api/kits/:id/regenerate-item` | Regenerate one item only with `{ item_type, index, row_version, feedback? }` |
 | `PATCH` | `/api/kits/:id/ui-preferences` | Persist viewer UI state with `{ ui_preferences }` (`lang`, section/panel maps) |
 | `POST` | `/api/telemetry/interaction` | Fire-and-forget interaction telemetry with `{ kit_id, interaction_type, meta? }` |
+| `GET` | `/api/analytics/wizard-summary` | Admin-only wizard telemetry aggregate (`total`, `byName`) |
+| `POST` | `/api/auth/agency-admin/login` | Agency admin login (rate-limited; returns `429` + `Retry-After` on throttle) |
 
 Generation quota usage (image/video prompt counters) is consumed only after a successful LLM response and successful kit persistence path.
 
@@ -307,6 +310,7 @@ It does **not** patch individual failed nodes in `result_json`.
   - `error` (safe message)
 - Idempotency behavior remains the same as standard generate.
 - `reasoning` is best-effort and never persisted in `result_json`.
+- In production, SSE `error` events are sanitized and do not expose raw server exception text.
 
 ---
 

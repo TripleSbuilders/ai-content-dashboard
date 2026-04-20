@@ -1,5 +1,11 @@
 import { Hono } from "hono";
 import { z } from "zod";
+import type { Next } from "hono";
+import { isAgencyAdminRequest } from "../middleware/agencyAdminAuth.js";
+import { getAuthUser } from "../middleware/userAuth.js";
+import { db } from "../db/index.js";
+import { users } from "../db/schema.js";
+import { eq } from "drizzle-orm";
 
 const eventSchema = z.object({
   name: z.string().min(1),
@@ -26,8 +32,29 @@ type StoredEvent = z.infer<typeof eventSchema>;
 const memoryStore: StoredEvent[] = [];
 const MAX_EVENTS = 5000;
 
-export function createAnalyticsRouter() {
+async function requireAdminAccess(c: import("hono").Context): Promise<Response | null> {
+  if (await isAgencyAdminRequest(c)) return null;
+  const authUser = getAuthUser(c);
+  if (!authUser) return c.json({ error: "Unauthorized" }, 401);
+  const current = (
+    await db
+      .select({
+        isAdmin: users.isAdmin,
+      })
+      .from(users)
+      .where(eq(users.supabaseUserId, authUser.supabaseUserId))
+      .limit(1)
+  )[0];
+  if (!current?.isAdmin) return c.json({ error: "Admin access required." }, 403);
+  return null;
+}
+
+export function createAnalyticsRouter(mw?: (c: import("hono").Context, next: Next) => Promise<void | Response>) {
   const app = new Hono();
+
+  if (mw) {
+    app.use("/analytics/*", mw);
+  }
 
   app.post("/analytics/wizard-events", async (c) => {
     let body: z.infer<typeof payloadSchema>;
@@ -45,7 +72,9 @@ export function createAnalyticsRouter() {
     return c.json({ ok: true, accepted: body.events.length }, 202);
   });
 
-  app.get("/analytics/wizard-summary", (c) => {
+  app.get("/analytics/wizard-summary", async (c) => {
+    const blocked = await requireAdminAccess(c);
+    if (blocked) return blocked;
     const total = memoryStore.length;
     const byName = memoryStore.reduce<Record<string, number>>((acc, e) => {
       acc[e.name] = (acc[e.name] ?? 0) + 1;

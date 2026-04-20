@@ -15,6 +15,7 @@ import { optionalSupabaseUser } from "./middleware/userAuth.js";
 import { rateLimit } from "./middleware/rateLimit.js";
 import { startIdempotencyCleanupJob } from "./services/kitGenerationService.js";
 import type { Context, Next } from "hono";
+import { assertSafeCorsOriginForRuntime } from "./config/runtimeGuards.js";
 
 async function main() {
   const migrationStartedAt = Date.now();
@@ -32,10 +33,7 @@ async function main() {
   app.use("*", secureHeaders());
 
   const origin = String(process.env.CORS_ORIGIN ?? "*").trim() || "*";
-  const isProd = String(process.env.NODE_ENV ?? "").toLowerCase() === "production";
-  if (isProd && origin === "*") {
-    console.warn("[SECURITY] CORS_ORIGIN is '*' in production. Restrict it to trusted domains.");
-  }
+  assertSafeCorsOriginForRuntime(process.env.NODE_ENV, origin);
   app.use(
     "*",
     cors({
@@ -86,7 +84,7 @@ async function main() {
 
   const kitsApp = createKitsRouter(kitsGuard);
   const featuresApp = createFeaturesRouter(kitsGuard);
-  const analyticsApp = createAnalyticsRouter();
+  const analyticsApp = createAnalyticsRouter(adminGuard);
   const authApp = createAuthRouter(kitsGuard);
   const adminPlansApp = createAdminPlansRouter(adminGuard);
   const telemetryApp = createTelemetryRouter(kitsGuard);

@@ -6,6 +6,8 @@ const getKitByIdService = vi.fn();
 const regenerateKitItemService = vi.fn();
 const retryKitService = vi.fn();
 const patchKitUiPreferencesService = vi.fn();
+const deleteKitService = vi.fn();
+const isAgencyAdminRequest = vi.fn();
 
 vi.mock("../services/kitGenerationService.js", () => ({
   generateKitService,
@@ -14,6 +16,11 @@ vi.mock("../services/kitGenerationService.js", () => ({
   regenerateKitItemService,
   retryKitService,
   patchKitUiPreferencesService,
+  deleteKitService,
+}));
+
+vi.mock("../middleware/agencyAdminAuth.js", () => ({
+  isAgencyAdminRequest,
 }));
 
 async function appRequest(path: string, init?: RequestInit) {
@@ -25,6 +32,7 @@ async function appRequest(path: string, init?: RequestInit) {
 describe("kits routes device header enforcement", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    isAgencyAdminRequest.mockResolvedValue(false);
   });
 
   it("rejects list endpoint without X-Device-ID", async () => {
@@ -124,6 +132,31 @@ describe("kits routes device header enforcement", () => {
     expect(narrativeIdx).toBeLessThan(postsIdx);
   });
 
+  it("sanitizes SSE error message in production mode", async () => {
+    const prevNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    try {
+      const deviceId = "8e46f65c-c7d7-4b5e-a860-f48e183f3a24";
+      generateKitService.mockRejectedValueOnce(new Error("raw internal error details"));
+      const res = await appRequest("/api/kits/generate?stream=1", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": "idem-stream-error",
+          "X-Device-ID": deviceId,
+        },
+        body: JSON.stringify({ brand_name: "Stream", industry: "SaaS" }),
+      });
+      expect(res.status).toBe(200);
+      const text = await res.text();
+      expect(text).toContain("event: error");
+      expect(text).toContain("\"message\":\"Unexpected error while generating kit.\"");
+      expect(text).not.toContain("raw internal error details");
+    } finally {
+      process.env.NODE_ENV = prevNodeEnv;
+    }
+  });
+
   it("accepts array payload fields for generate route", async () => {
     const deviceId = "6b813b44-522f-4a53-9522-4a43ceadb523";
     generateKitService.mockResolvedValueOnce({ status: 201, body: { id: "k2" } });
@@ -193,6 +226,41 @@ describe("kits routes device header enforcement", () => {
       id: "k-pref",
       owner: { deviceId, userId: null },
       uiPreferences: { lang: "en", open_map: { "kit-section-posts": true } },
+    });
+  });
+
+  it("requires delete reason query parameter", async () => {
+    isAgencyAdminRequest.mockImplementation(async (c: { set: (k: string, v: unknown) => void }) => {
+      c.set("agencyAdminSession", { username: "ops-admin" });
+      return true;
+    });
+
+    const res = await appRequest("/api/kits/k-del", {
+      method: "DELETE",
+    });
+
+    expect(res.status).toBe(400);
+    expect(deleteKitService).not.toHaveBeenCalled();
+  });
+
+  it("passes audit actor and reason into delete service", async () => {
+    isAgencyAdminRequest.mockImplementation(async (c: { set: (k: string, v: unknown) => void }) => {
+      c.set("agencyAdminSession", { username: "ops-admin" });
+      return true;
+    });
+    deleteKitService.mockResolvedValueOnce({ status: 200, body: { ok: true, id: "k-del" } });
+
+    const res = await appRequest("/api/kits/k-del?reason=duplicate+cleanup", {
+      method: "DELETE",
+    });
+
+    expect(res.status).toBe(200);
+    expect(deleteKitService).toHaveBeenCalledWith({
+      id: "k-del",
+      actorType: "admin_session",
+      actorId: "ops-admin",
+      reason: "duplicate cleanup",
+      metadata: { source: "admin_api" },
     });
   });
 });

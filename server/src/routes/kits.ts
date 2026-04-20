@@ -103,6 +103,17 @@ function isAgencyModeEnabled() {
   return String(process.env.APP_EDITION ?? "").trim().toLowerCase() === "agency";
 }
 
+function sanitizeSseErrorMessage(err: unknown): string {
+  const fallback = "Unexpected error while generating kit.";
+  if (String(process.env.NODE_ENV ?? "").trim().toLowerCase() === "production") {
+    return fallback;
+  }
+  if (err instanceof Error && err.message.trim()) {
+    return err.message;
+  }
+  return fallback;
+}
+
 function buildHydrationSnapshots(resultJson: unknown): Array<{ section: string; progress: number; snapshot: Record<string, unknown> }> {
   const source = resultJson && typeof resultJson === "object" && !Array.isArray(resultJson)
     ? (resultJson as Record<string, unknown>)
@@ -209,6 +220,7 @@ async function requireAdminAccess(c: import("hono").Context): Promise<Response |
       .limit(1)
   )[0];
   if (!current?.isAdmin) return c.json({ error: "Admin access required." }, 403);
+  c.set("adminActorUserId", current.id);
   return null;
 }
 
@@ -320,10 +332,7 @@ export function createKitsRouter(mw: (c: import("hono").Context, next: Next) => 
         } catch (err) {
           clearInterval(heartbeat);
           sendEvent("error", {
-            message:
-              err instanceof Error && err.message.trim()
-                ? err.message
-                : "Unexpected error while generating kit.",
+            message: sanitizeSseErrorMessage(err),
           });
           console.warn("[kits_stream] error", String(err));
           controller.close();
@@ -463,8 +472,26 @@ export function createKitsRouter(mw: (c: import("hono").Context, next: Next) => 
   app.delete("/api/kits/:id", async (c) => {
     const blocked = await requireAdminAccess(c);
     if (blocked) return blocked;
+    const reason = String(c.req.query("reason") ?? "").trim();
+    if (!reason) {
+      return c.json({ error: "Delete reason is required." }, 400);
+    }
+    const agencySession = (c as any).get("agencyAdminSession") as { username?: string } | undefined;
+    const actorType = agencySession?.username ? "admin_session" : "admin_user";
+    const actorId = agencySession?.username
+      ? String(agencySession.username)
+      : String((c as any).get("adminActorUserId") ?? "").trim();
+    if (!actorId) {
+      return c.json({ error: "Unable to resolve delete actor." }, 403);
+    }
     try {
-      const result = await deleteKitService(c.req.param("id"));
+      const result = await deleteKitService({
+        id: c.req.param("id"),
+        actorType,
+        actorId,
+        reason,
+        metadata: { source: "admin_api" },
+      });
       return c.json(result.body, result.status);
     } catch (err) {
       return respondHttpError(c, err, "Unexpected error while deleting kit.");

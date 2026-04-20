@@ -7,6 +7,7 @@ import {
   authSyncRateLimit,
   authSyncUserRateLimit,
   authSyncDeviceRateLimit,
+  agencyAdminLoginRateLimit,
 } from "../middleware/rateLimit.js";
 import {
   ensureUserFromSupabase,
@@ -124,7 +125,7 @@ export function createAuthRouter(mw: (c: import("hono").Context, next: Next) => 
     });
   });
 
-  app.post("/api/auth/agency-admin/login", async (c) => {
+  app.post("/api/auth/agency-admin/login", async (c, next) => await agencyAdminLoginRateLimit(c, next), async (c) => {
     if (!isAgencyEdition()) return c.json({ error: "Not available in this edition." }, 404);
     let body: z.infer<typeof agencyAdminLoginSchema>;
     try {

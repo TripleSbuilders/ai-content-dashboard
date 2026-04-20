@@ -182,6 +182,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_usage_device_period
 
 CREATE TABLE IF NOT EXISTS social_geni.notifications (
   id TEXT PRIMARY KEY NOT NULL,
+  user_id TEXT,
   title TEXT NOT NULL,
   body TEXT NOT NULL,
   kind TEXT NOT NULL,
@@ -190,7 +191,24 @@ CREATE TABLE IF NOT EXISTS social_geni.notifications (
   created_at TIMESTAMPTZ NOT NULL
 );
 
+ALTER TABLE social_geni.notifications
+ADD COLUMN IF NOT EXISTS user_id TEXT;
+
 CREATE INDEX IF NOT EXISTS idx_notifications_created ON social_geni.notifications (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON social_geni.notifications (user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS social_geni.kit_delete_audit (
+  id TEXT PRIMARY KEY NOT NULL,
+  kit_id TEXT NOT NULL,
+  actor_type TEXT NOT NULL,
+  actor_id TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  deleted_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_kit_delete_audit_kit_deleted
+  ON social_geni.kit_delete_audit (kit_id, deleted_at DESC);
 
 CREATE TABLE IF NOT EXISTS social_geni.user_profile (
   id TEXT PRIMARY KEY NOT NULL,
@@ -284,6 +302,77 @@ CREATE TABLE IF NOT EXISTS social_geni.industry_prompts (
 
 CREATE INDEX IF NOT EXISTS idx_industry_prompts_industry ON social_geni.industry_prompts (industry_id);
 CREATE INDEX IF NOT EXISTS idx_industry_prompts_status ON social_geni.industry_prompts (status);
+
+-- -------------------------------------------------------------------
+-- Row Level Security hardening (Phase 4)
+-- NOTE:
+-- - Policies are primarily effective for JWT-scoped PostgREST paths.
+-- - Service-role / bypass-RLS connections can still access all rows.
+-- -------------------------------------------------------------------
+
+ALTER TABLE social_geni.kits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE social_geni.kit_interactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE social_geni.notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE social_geni.monthly_usage_counters ENABLE ROW LEVEL SECURITY;
+ALTER TABLE social_geni.kit_delete_audit ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'social_geni'
+      AND tablename = 'kits'
+      AND policyname = 'kits_owner_rw'
+  ) THEN
+    EXECUTE 'CREATE POLICY kits_owner_rw ON social_geni.kits
+      USING (user_id = auth.uid()::text)
+      WITH CHECK (user_id = auth.uid()::text)';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'social_geni'
+      AND tablename = 'kit_interactions'
+      AND policyname = 'kit_interactions_owner_rw'
+  ) THEN
+    EXECUTE 'CREATE POLICY kit_interactions_owner_rw ON social_geni.kit_interactions
+      USING (user_id = auth.uid()::text)
+      WITH CHECK (user_id = auth.uid()::text)';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'social_geni'
+      AND tablename = 'notifications'
+      AND policyname = 'notifications_owner_rw'
+  ) THEN
+    EXECUTE 'CREATE POLICY notifications_owner_rw ON social_geni.notifications
+      USING (user_id = auth.uid()::text)
+      WITH CHECK (user_id = auth.uid()::text)';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'social_geni'
+      AND tablename = 'monthly_usage_counters'
+      AND policyname = 'monthly_usage_owner_rw'
+  ) THEN
+    EXECUTE 'CREATE POLICY monthly_usage_owner_rw ON social_geni.monthly_usage_counters
+      USING (user_id = auth.uid()::text)
+      WITH CHECK (user_id = auth.uid()::text)';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'social_geni'
+      AND tablename = 'kit_delete_audit'
+      AND policyname = 'kit_delete_audit_admin_read'
+  ) THEN
+    EXECUTE 'CREATE POLICY kit_delete_audit_admin_read ON social_geni.kit_delete_audit
+      FOR SELECT
+      USING (COALESCE((auth.jwt() ->> ''is_admin'')::boolean, false))';
+  END IF;
+END $$;
 `;
 
 function splitDdlStatements(sql: string): string[] {

@@ -156,5 +156,9 @@ export function snapshotToBriefJson(snapshot: SubmissionSnapshot): string {
 }
 
 export function briefFingerprint(snapshot: SubmissionSnapshot): string {
-  return createHash("sha256").update(snapshotToBriefJson(snapshot)).digest("hex");
+  const normalized = {
+    ...snapshot,
+    submitted_at: "stable",
+  };
+  return createHash("sha256").update(JSON.stringify(normalized)).digest("hex");
 }

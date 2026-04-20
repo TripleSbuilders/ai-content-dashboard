@@ -17,7 +17,7 @@ import { runContentPackageChain } from "./contentPackageOrchestrator.js";
 import { parseReferenceImageFromDataUrl } from "./imageProcessor.js";
 import { notifyTelegramNewLead } from "./telegramNotifier.js";
 import {
-  consumeGeneratedAssets,
+  consumeGeneratedAssetsOnceForKit,
   consumeUsage,
   enforceGenerateEntitlements,
   enforceRegenerateEntitlements,
@@ -27,6 +27,7 @@ import {
 import {
   finalizeIdempotencyKey,
   hashIdempotencyKey,
+  hasPendingIdempotencyForBriefHash,
   IDEMPOTENCY_PENDING_KIT,
   pruneExpiredIdempotency,
   reserveIdempotencyKey,
@@ -35,6 +36,7 @@ import {
   getKitById,
   getKitByIdAny,
   getLatestSuccessfulKitForOwner,
+  getPendingKitByBriefHash,
   listAllKits,
   listKits,
   patchKitUiPreferences,
@@ -94,6 +96,13 @@ function withDeps(deps?: KitGenerationDependencies) {
 
 function isContentPackageChainFailureMessage(message: string): boolean {
   return message.includes("content_package_chain");
+}
+
+function generatedAssetsUsageFromContent(aiContent: Record<string, unknown>): { videoPromptsUsed: number; imagePromptsUsed: number } {
+  return {
+    videoPromptsUsed: Array.isArray(aiContent.video_prompts) ? (aiContent.video_prompts as unknown[]).length : 0,
+    imagePromptsUsed: Array.isArray(aiContent.image_designs) ? (aiContent.image_designs as unknown[]).length : 0,
+  };
 }
 
 function logGenerationTelemetry(meta: {
@@ -201,6 +210,7 @@ async function persistGenerationFailure(params: {
   promptVersionId?: string | null;
   isFallback?: boolean;
   tokenUsage?: GenerationUsageTotals;
+  briefHash?: string;
 }) {
   return persistKit(params.db, params.snapshot, null, params.owner, {
     deliveryStatus: "failed_generation",
@@ -209,6 +219,7 @@ async function persistGenerationFailure(params: {
     correlationId: params.correlationId,
     promptVersionId: params.promptVersionId,
     isFallback: params.isFallback,
+    briefHash: params.briefHash,
     tokenUsage: params.tokenUsage,
   });
 }
@@ -235,6 +246,9 @@ export async function generateKitService(input: {
   });
   const fp = briefFingerprint(snapshot);
   const keyHash = hashIdempotencyKey(idemHeader);
+  if (await hasPendingIdempotencyForBriefHash(d.db, fp)) {
+    throw new HttpError(409, "An identical request is already in progress.");
+  }
   const reserved = await reserveIdempotencyKey(d.db, { keyHash, briefHash: fp });
   if (!reserved) {
     const existingKey = (await d.db.select().from(idempotencyKeys).where(eq(idempotencyKeys.keyHash, keyHash)).limit(1))[0];
@@ -271,17 +285,13 @@ export async function generateKitService(input: {
       correlationId,
       promptVersionId: resolved.promptVersionId,
       isFallback: resolved.isFallback,
+      briefHash: fp,
     });
     await d.notify(row);
     await d.notifyTelegram({ snapshot, kitId: row.id, correlationId });
-    await finalizeIdempotencyKey(d.db, { keyHash, briefHash: fp, kitId: row.id });
-    await consumeGeneratedAssets(d.db, owner, {
-      videoPromptsUsed: Array.isArray((aiContent as Record<string, unknown>).video_prompts)
-        ? ((aiContent as Record<string, unknown>).video_prompts as unknown[]).length
-        : 0,
-      imagePromptsUsed: Array.isArray((aiContent as Record<string, unknown>).image_designs)
-        ? ((aiContent as Record<string, unknown>).image_designs as unknown[]).length
-        : 0,
+    await d.db.transaction(async (tx) => {
+      await finalizeIdempotencyKey(tx, { keyHash, briefHash: fp, kitId: row.id });
+      await consumeGeneratedAssetsOnceForKit(tx, row.id, owner, generatedAssetsUsageFromContent(aiContent));
     });
     return { status: 200, body: serializeKit(row) };
   }
@@ -296,6 +306,7 @@ export async function generateKitService(input: {
       correlationId,
       promptVersionId: resolved.promptVersionId,
       isFallback: resolved.isFallback,
+      briefHash: fp,
     });
     await d.notify(row);
     await d.notifyTelegram({ snapshot, kitId: row.id, correlationId });
@@ -326,6 +337,7 @@ export async function generateKitService(input: {
       correlationId,
       promptVersionId: resolved.promptVersionId,
       isFallback: resolved.isFallback,
+      briefHash: fp,
       tokenUsage: usage,
     });
     logGenerationTelemetry({
@@ -339,14 +351,9 @@ export async function generateKitService(input: {
       kitId: row.id,
     });
     await d.notify(row);
-    await finalizeIdempotencyKey(d.db, { keyHash, briefHash: fp, kitId: row.id });
-    await consumeGeneratedAssets(d.db, owner, {
-      videoPromptsUsed: Array.isArray((aiContent as Record<string, unknown>).video_prompts)
-        ? ((aiContent as Record<string, unknown>).video_prompts as unknown[]).length
-        : 0,
-      imagePromptsUsed: Array.isArray((aiContent as Record<string, unknown>).image_designs)
-        ? ((aiContent as Record<string, unknown>).image_designs as unknown[]).length
-        : 0,
+    await d.db.transaction(async (tx) => {
+      await finalizeIdempotencyKey(tx, { keyHash, briefHash: fp, kitId: row.id });
+      await consumeGeneratedAssetsOnceForKit(tx, row.id, owner, generatedAssetsUsageFromContent(aiContent));
     });
     return { status: 201, body: serializeKit(row) };
   } catch (err) {
@@ -360,6 +367,7 @@ export async function generateKitService(input: {
       correlationId,
       promptVersionId: resolved.promptVersionId,
       isFallback: resolved.isFallback,
+      briefHash: fp,
       tokenUsage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
     });
     await logKitFailure(d.db, {
@@ -390,11 +398,14 @@ export async function generateKitService(input: {
 }
 
 export async function enqueueAgencyKitGenerationService(input: {
+  idempotencyKey: string;
   body: Record<string, unknown>;
   deviceId: string;
   userId?: string | null;
 }, deps?: KitGenerationDependencies) {
   const d = withDeps(deps);
+  const idemHeader = input.idempotencyKey?.trim();
+  if (!idemHeader) throw new HttpError(400, "Idempotency-Key header is required.");
   const snapshot = buildSubmissionSnapshot(input.body);
   const owner = { deviceId: input.deviceId, userId: input.userId ?? null };
   const access = await resolveAccessContext(d.db, owner);
@@ -407,6 +418,27 @@ export async function enqueueAgencyKitGenerationService(input: {
 
   const settings = loadGeminiSettingsFromEnv();
   const correlationId = nanoid();
+  const fp = briefFingerprint(snapshot);
+  const keyHash = hashIdempotencyKey(idemHeader);
+  const existingPending = await getPendingKitByBriefHash(d.db, owner, fp);
+  if (existingPending) {
+    return { status: 202 as const, body: serializeKit(existingPending) };
+  }
+  if (await hasPendingIdempotencyForBriefHash(d.db, fp)) {
+    throw new HttpError(409, "An identical request is already in progress.");
+  }
+  const reserved = await reserveIdempotencyKey(d.db, { keyHash, briefHash: fp });
+  if (!reserved) {
+    const existingKey = (await d.db.select().from(idempotencyKeys).where(eq(idempotencyKeys.keyHash, keyHash)).limit(1))[0];
+    if (existingKey) {
+      if (existingKey.briefHash !== fp) throw new HttpError(409, "Idempotency-Key already used with a different brief.");
+      if (existingKey.kitId !== IDEMPOTENCY_PENDING_KIT) {
+        const existingKit = (await d.db.select().from(kits).where(eq(kits.id, existingKey.kitId)).limit(1))[0];
+        if (existingKit) return { status: 200 as const, body: serializeKit(existingKit) };
+      }
+      throw new HttpError(409, "A request with the same Idempotency-Key is already in progress.");
+    }
+  }
   const bv = await fetchBrandVoiceContext(d.db, input.userId);
   const latestSuccessfulKit = await getLatestSuccessfulKitForOwner(d.db, owner);
   const historicalContext = buildHistoricalContextFromResultJson(latestSuccessfulKit?.resultJson ?? null);
@@ -422,6 +454,7 @@ export async function enqueueAgencyKitGenerationService(input: {
     correlationId,
     promptVersionId: resolved.promptVersionId,
     isFallback: resolved.isFallback,
+    briefHash: fp,
     rowVersion: 0,
     tokenUsage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
   });
@@ -445,19 +478,14 @@ export async function enqueueAgencyKitGenerationService(input: {
           correlationId,
           promptVersionId: resolved.promptVersionId,
           isFallback: resolved.isFallback,
+          briefHash: fp,
           rowVersion: 1,
         });
         if (done) {
           await d.notify(done);
-          await consumeGeneratedAssets(d.db, owner, {
-            videoPromptsUsed: Array.isArray((aiContent as Record<string, unknown>).video_prompts)
-              ? ((aiContent as Record<string, unknown>).video_prompts as unknown[]).length
-              : 0,
-            imagePromptsUsed: Array.isArray((aiContent as Record<string, unknown>).image_designs)
-              ? ((aiContent as Record<string, unknown>).image_designs as unknown[]).length
-              : 0,
-          });
+          await consumeGeneratedAssetsOnceForKit(d.db, done.id, owner, generatedAssetsUsageFromContent(aiContent));
         }
+        await finalizeIdempotencyKey(d.db, { keyHash, briefHash: fp, kitId: pending.id });
         return;
       }
 
@@ -469,9 +497,11 @@ export async function enqueueAgencyKitGenerationService(input: {
           correlationId,
           promptVersionId: resolved.promptVersionId,
           isFallback: resolved.isFallback,
+          briefHash: fp,
           rowVersion: 1,
         });
         if (failed) await d.notify(failed);
+        await finalizeIdempotencyKey(d.db, { keyHash, briefHash: fp, kitId: pending.id });
         return;
       }
 
@@ -498,20 +528,15 @@ export async function enqueueAgencyKitGenerationService(input: {
         correlationId,
         promptVersionId: resolved.promptVersionId,
         isFallback: resolved.isFallback,
+        briefHash: fp,
         rowVersion: 1,
         tokenUsage: usage,
       });
       if (done) {
         await d.notify(done);
-        await consumeGeneratedAssets(d.db, owner, {
-          videoPromptsUsed: Array.isArray((aiContent as Record<string, unknown>).video_prompts)
-            ? ((aiContent as Record<string, unknown>).video_prompts as unknown[]).length
-            : 0,
-          imagePromptsUsed: Array.isArray((aiContent as Record<string, unknown>).image_designs)
-            ? ((aiContent as Record<string, unknown>).image_designs as unknown[]).length
-            : 0,
-        });
+        await consumeGeneratedAssetsOnceForKit(d.db, done.id, owner, generatedAssetsUsageFromContent(aiContent));
       }
+      await finalizeIdempotencyKey(d.db, { keyHash, briefHash: fp, kitId: pending.id });
     } catch (error) {
       const reason = safeClientError(error);
       const failed = await updateKit(d.db, pending.id, snapshot, null, {
@@ -521,6 +546,7 @@ export async function enqueueAgencyKitGenerationService(input: {
         correlationId,
         promptVersionId: resolved.promptVersionId,
         isFallback: resolved.isFallback,
+        briefHash: fp,
         rowVersion: 1,
       });
       if (failed) await d.notify(failed);
@@ -532,6 +558,7 @@ export async function enqueueAgencyKitGenerationService(input: {
         correlationId,
         modelUsed: settings.model,
       });
+      await finalizeIdempotencyKey(d.db, { keyHash, briefHash: fp, kitId: pending.id });
     }
   })().catch((error) => {
     console.warn("[agency_background_generation_unhandled]", String(error));

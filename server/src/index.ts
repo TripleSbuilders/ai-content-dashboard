@@ -17,7 +17,13 @@ import { startIdempotencyCleanupJob } from "./services/kitGenerationService.js";
 import type { Context, Next } from "hono";
 
 async function main() {
+  const migrationStartedAt = Date.now();
+  console.info("[startup] Running DB migrations...");
   await runMigrations();
+  console.info(
+    "[startup] DB migrations finished",
+    JSON.stringify({ elapsed_ms: Date.now() - migrationStartedAt })
+  );
   const cleanupTimer = startIdempotencyCleanupJob();
   cleanupTimer.unref();
 
@@ -58,7 +64,13 @@ async function main() {
     })
   );
 
-  app.get("/health", (c) => c.json({ ok: true, db: Boolean(db) }));
+  app.get("/health", (c) =>
+    c.json({
+      ok: true,
+      db: Boolean(db),
+      migrations_on_boot: true,
+    })
+  );
 
   async function kitsGuard(c: Context, next: Next) {
     return await rateLimit(c, async () => {

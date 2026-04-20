@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS social_geni.kits (
   device_id TEXT NOT NULL DEFAULT '',
   user_id TEXT,
   brief_json TEXT NOT NULL,
+  brief_hash TEXT NOT NULL DEFAULT '',
   target_audience_v2 JSONB NOT NULL DEFAULT '[]'::jsonb,
   platforms_v2 JSONB NOT NULL DEFAULT '[]'::jsonb,
   best_content_types_v2 JSONB NOT NULL DEFAULT '[]'::jsonb,
@@ -22,6 +23,7 @@ CREATE TABLE IF NOT EXISTS social_geni.kits (
   prompt_tokens INTEGER NOT NULL DEFAULT 0,
   completion_tokens INTEGER NOT NULL DEFAULT 0,
   total_tokens INTEGER NOT NULL DEFAULT 0,
+  usage_charged_at TIMESTAMPTZ,
   row_version INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL
@@ -32,6 +34,12 @@ ADD COLUMN IF NOT EXISTS device_id TEXT NOT NULL DEFAULT '';
 
 ALTER TABLE social_geni.kits
 ADD COLUMN IF NOT EXISTS user_id TEXT;
+
+ALTER TABLE social_geni.kits
+ADD COLUMN IF NOT EXISTS brief_hash TEXT NOT NULL DEFAULT '';
+
+ALTER TABLE social_geni.kits
+ADD COLUMN IF NOT EXISTS usage_charged_at TIMESTAMPTZ;
 
 ALTER TABLE social_geni.kits
 ADD COLUMN IF NOT EXISTS target_audience_v2 JSONB NOT NULL DEFAULT '[]'::jsonb;
@@ -106,6 +114,7 @@ CREATE INDEX IF NOT EXISTS idx_kit_failure_logs_phase ON social_geni.kit_failure
 CREATE INDEX IF NOT EXISTS idx_kits_created ON social_geni.kits (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_kits_device_created ON social_geni.kits (device_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_kits_user_created ON social_geni.kits (user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_kits_brief_hash ON social_geni.kits (brief_hash);
 
 CREATE TABLE IF NOT EXISTS social_geni.users (
   id TEXT PRIMARY KEY NOT NULL,

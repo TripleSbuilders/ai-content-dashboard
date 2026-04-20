@@ -1,10 +1,20 @@
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { getWhatsAppSalesUrl } from "../lib/whatsappSales";
+
+const SOCIAL_DRAFT_KEY = "ai-content-dashboard:wizard-draft:social:v1";
 
 export default function OrderReceivedPage() {
   const [params] = useSearchParams();
+  const navigate = useNavigate();
   const trackingKitId = params.get("kit") ?? "";
   const whatsappUrl = getWhatsAppSalesUrl();
+  const clearWizardDraft = () => {
+    try {
+      localStorage.removeItem(SOCIAL_DRAFT_KEY);
+    } catch {
+      // ignore
+    }
+  };
 
   return (
     <section className="mx-auto max-w-3xl">
@@ -38,18 +48,26 @@ export default function OrderReceivedPage() {
               إتمام الدفع عبر واتساب
             </a>
           ) : null}
-          <Link
-            to="/"
+          <button
+            type="button"
+            onClick={() => {
+              clearWizardDraft();
+              navigate("/");
+            }}
             className="inline-flex items-center justify-center rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-100"
           >
             Back to dashboard
-          </Link>
-          <Link
-            to="/wizard"
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              clearWizardDraft();
+              navigate("/wizard/social?step=1");
+            }}
             className="inline-flex items-center justify-center rounded-lg border border-gray-200 dark:border-white/10 px-5 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5"
           >
             Submit another request
-          </Link>
+          </button>
         </div>
       </div>
     </section>

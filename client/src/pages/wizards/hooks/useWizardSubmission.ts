@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ApiError } from "../../../api";
 import { generateKitAsync, generateKitStream, type KitGenerationStreamEvent } from "../../../api";
 import type { WizardEventPayload, WizardType } from "../../../lib/wizardAnalytics";
@@ -26,6 +26,8 @@ export function useWizardSubmission(params: {
   emit: (event: Omit<WizardEventPayload, "ts">) => void;
   getElapsedMs: () => number;
 }) {
+  const inFlightRef = useRef(false);
+  const inFlightIdempotencyKeyRef = useRef<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [streamStatus, setStreamStatus] = useState<string>("starting");
@@ -37,6 +39,8 @@ export function useWizardSubmission(params: {
   const [reasoningTrace, setReasoningTrace] = useState<Array<{ index: number; section?: string; line: string }>>([]);
 
   const onValidSubmit = async (form: BriefForm) => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
     setError(null);
     setLoading(true);
     setStreamStatus("starting");
@@ -60,9 +64,11 @@ export function useWizardSubmission(params: {
         source_mode: isAgencyEdition() ? "agency" : "self_serve",
       } satisfies BriefForm;
       const submitAsAgency = isAgencyEdition();
+      const idempotencyKey = inFlightIdempotencyKeyRef.current ?? params.createIdempotencyKey();
+      inFlightIdempotencyKeyRef.current = idempotencyKey;
       const kit = submitAsAgency
-        ? await generateKitAsync(payload, params.createIdempotencyKey())
-        : await generateKitStream(payload, params.createIdempotencyKey(), (evt: KitGenerationStreamEvent) => {
+        ? await generateKitAsync(payload, idempotencyKey)
+        : await generateKitStream(payload, idempotencyKey, (evt: KitGenerationStreamEvent) => {
         if (evt.type === "status") {
           setStreamStatus(evt.status);
           if (evt.message) setStreamMessage(evt.message);
@@ -111,6 +117,8 @@ export function useWizardSubmission(params: {
         elapsed_time_ms: params.getElapsedMs(),
       });
     } finally {
+      inFlightRef.current = false;
+      inFlightIdempotencyKeyRef.current = null;
       setLoading(false);
       setStreamSection("");
     }

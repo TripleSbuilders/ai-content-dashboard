@@ -234,6 +234,7 @@ export function createKitsRouter(mw: (c: import("hono").Context, next: Next) => 
     if (asyncMode && agencyRequest) {
       try {
         const result = await enqueueAgencyKitGenerationService({
+          idempotencyKey: c.req.header("Idempotency-Key")?.trim() || "",
           body: body as Record<string, unknown>,
           deviceId: ownerRes.owner.deviceId,
           userId: ownerRes.owner.userId,

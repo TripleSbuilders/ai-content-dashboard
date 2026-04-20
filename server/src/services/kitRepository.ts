@@ -82,6 +82,7 @@ export async function persistKit(
     isFallback?: boolean;
     tokenUsage?: GenerationUsageTotals;
     rowVersion?: number;
+    briefHash?: string;
   }
 ) {
   const { nanoid } = await import("nanoid");
@@ -95,6 +96,7 @@ export async function persistKit(
       deviceId: owner.deviceId,
       userId: owner.userId ?? null,
       briefJson,
+      briefHash: meta.briefHash ?? "",
       targetAudienceV2: normalizeArray(snapshot.target_audience),
       platformsV2: normalizeArray(snapshot.platforms),
       bestContentTypesV2: normalizeArray(snapshot.best_content_types),
@@ -132,6 +134,7 @@ export async function updateKit(
     isFallback?: boolean;
     tokenUsage?: GenerationUsageTotals;
     rowVersion: number;
+    briefHash?: string;
   }
 ) {
   const now = new Date();
@@ -140,6 +143,7 @@ export async function updateKit(
     .update(kits)
     .set({
       briefJson,
+      briefHash: meta.briefHash ?? "",
       targetAudienceV2: normalizeArray(snapshot.target_audience),
       platformsV2: normalizeArray(snapshot.platforms),
       bestContentTypesV2: normalizeArray(snapshot.best_content_types),
@@ -220,6 +224,28 @@ export async function getLatestSuccessfulKitForOwner(
       return Boolean(status) && status !== "failed_generation" && status !== "retry_in_progress";
     }) ?? null
   );
+}
+
+export async function getPendingKitByBriefHash(
+  db: any,
+  owner: { deviceId: string; userId?: string | null },
+  briefHash: string
+) {
+  const row = (
+    await db
+      .select()
+      .from(kits)
+      .where(
+        and(
+          owner.userId ? eq(kits.userId, owner.userId) : eq(kits.deviceId, owner.deviceId),
+          eq(kits.briefHash, briefHash),
+          eq(kits.deliveryStatus, "retry_in_progress")
+        )
+      )
+      .orderBy(desc(kits.createdAt))
+      .limit(1)
+  )[0];
+  return row ?? null;
 }
 
 export async function patchKitUiPreferences(

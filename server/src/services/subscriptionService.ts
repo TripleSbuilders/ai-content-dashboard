@@ -283,7 +283,7 @@ export function enforceRegenerateEntitlements(access: AccessContext) {
 }
 
 export async function consumeUsage(
-  db: typeof dbType,
+  db: any,
   owner: { userId: string | null; deviceId: string },
   kind: UsageKind
 ): Promise<void> {
@@ -310,7 +310,7 @@ export async function consumeUsage(
 }
 
 export async function consumeGeneratedAssets(
-  db: typeof dbType,
+  db: any,
   owner: { userId: string | null; deviceId: string },
   usage: { videoPromptsUsed: number; imagePromptsUsed: number }
 ): Promise<void> {
@@ -326,4 +326,25 @@ export async function consumeGeneratedAssets(
       updatedAt: new Date(),
     })
     .where(eq(monthlyUsageCounters.id, row.id));
+}
+
+export async function consumeGeneratedAssetsOnceForKit(
+  db: any,
+  kitId: string,
+  owner: { userId: string | null; deviceId: string },
+  usage: { videoPromptsUsed: number; imagePromptsUsed: number }
+): Promise<boolean> {
+  const charged = (
+    await db
+      .update(kits)
+      .set({
+        usageChargedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(kits.id, kitId), isNull(kits.usageChargedAt)))
+      .returning({ id: kits.id })
+  )[0];
+  if (!charged) return false;
+  await consumeGeneratedAssets(db, owner, usage);
+  return true;
 }

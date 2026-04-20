@@ -337,6 +337,12 @@ export function createKitsRouter(mw: (c: import("hono").Context, next: Next) => 
     });
   });
 
+  app.get("/api/kits/mine", async (c) => {
+    const ownerRes = await resolveOwner(c);
+    if (!ownerRes.ok) return ownerRes.response;
+    return c.json(await listKitsService(ownerRes.owner, { includeUsage: false }));
+  });
+
   app.get("/api/kits", async (c) => {
     const scopeAll = c.req.query("scope") === "all";
     if (isAgencyModeEnabled() && !scopeAll) {

@@ -4,6 +4,7 @@ export {
   generateKitAsync,
   generateKitStream,
   listKits,
+  listMyKits,
   getKit,
   retryKit,
   regenerateKitItem,

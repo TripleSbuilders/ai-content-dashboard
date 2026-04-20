@@ -154,6 +154,12 @@ export async function listKits(adminMode = false): Promise<KitSummary[]> {
   return res.json() as Promise<KitSummary[]>;
 }
 
+export async function listMyKits(): Promise<KitSummary[]> {
+  const res = await fetch(apiUrl("/api/kits/mine"), { headers: buildHeaders() });
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res, "Failed to list your kits"), res.status);
+  return res.json() as Promise<KitSummary[]>;
+}
+
 export async function getKit(id: string, adminMode = false): Promise<KitSummary> {
   const qs = adminMode ? "?scope=all" : "";
   const res = await fetch(apiUrl(`/api/kits/${id}${qs}`), { headers: buildHeaders() });

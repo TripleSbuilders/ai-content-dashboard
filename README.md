@@ -87,6 +87,9 @@ cp .env.example client/.env.local
 # - V1 cutover controls (self-serve deploy only):
 #   - VITE_V1_PUBLIC_DECOMMISSION=true
 #   - VITE_V2_CANONICAL_URL=https://ai-content-dashboard-app-v2.onrender.com/wizard/social
+# - MVP productized-service payment flow:
+#   - VITE_WHATSAPP_SALES_NUMBER=201025364905
+#   - Premium package CTA routes to WhatsApp (wa.me) with prefilled Arabic payment message
 # - optional team routing: TELEGRAM_WEBHOOK_URL or (TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID [+ TELEGRAM_THREAD_ID]), ADMIN_BASE_URL
 
 npm install

@@ -24,22 +24,8 @@ const roleByEmailBodySchema = z.object({
   is_admin: z.boolean(),
 });
 
-function parseBearerToken(c: import("hono").Context): string {
-  const auth = c.req.header("authorization") ?? "";
-  if (!auth.toLowerCase().startsWith("bearer ")) return "";
-  return auth.slice(7).trim();
-}
-
-function isApiSecretToken(token: string): boolean {
-  const secret = String(process.env.API_SECRET ?? "").trim();
-  return Boolean(secret) && token === secret;
-}
-
 async function requireAdminAccess(c: import("hono").Context): Promise<Response | null> {
   if (await isAgencyAdminRequest(c)) return null;
-  const token = parseBearerToken(c);
-  if (isApiSecretToken(token)) return null;
-
   const authUser = getAuthUser(c);
   if (!authUser) return c.json({ error: "Unauthorized" }, 401);
 

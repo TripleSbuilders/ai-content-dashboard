@@ -1,5 +1,5 @@
 import { and, desc, eq } from "drizzle-orm";
-import { idempotencyKeys, kitInteractions, kits, type KitRow } from "../db/schema.js";
+import { idempotencyKeys, kitDeleteAudit, kitInteractions, kits, type KitRow } from "../db/schema.js";
 import { getStatusBadgeLabel, getStatusBadgePalette } from "../logic/status.js";
 import type { GenerationUsageTotals } from "./aiGenerationProvider.js";
 
@@ -278,5 +278,41 @@ export async function deleteKitById(db: any, id: string): Promise<string | null>
   await db.delete(kitInteractions).where(eq(kitInteractions.kitId, id));
   await db.delete(idempotencyKeys).where(eq(idempotencyKeys.kitId, id));
   await db.delete(kits).where(eq(kits.id, id));
+  return existing.id;
+}
+
+export async function deleteKitByIdWithAudit(
+  db: any,
+  input: {
+    id: string;
+    actorType: string;
+    actorId: string;
+    reason: string;
+    metadata?: Record<string, unknown>;
+  }
+): Promise<string | null> {
+  const existing = (
+    await db
+      .select({ id: kits.id })
+      .from(kits)
+      .where(eq(kits.id, input.id))
+      .limit(1)
+  )[0];
+  if (!existing) return null;
+
+  const { nanoid } = await import("nanoid");
+  await db.insert(kitDeleteAudit).values({
+    id: nanoid(),
+    kitId: input.id,
+    actorType: input.actorType,
+    actorId: input.actorId,
+    reason: input.reason,
+    metadata: input.metadata ?? {},
+    deletedAt: new Date(),
+  });
+
+  await db.delete(kitInteractions).where(eq(kitInteractions.kitId, input.id));
+  await db.delete(idempotencyKeys).where(eq(idempotencyKeys.kitId, input.id));
+  await db.delete(kits).where(eq(kits.id, input.id));
   return existing.id;
 }

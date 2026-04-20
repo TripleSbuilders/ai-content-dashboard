@@ -114,12 +114,23 @@ export type KitRow = typeof kits.$inferSelect;
 
 export const notifications = socialGeni.table("notifications", {
   id: text("id").primaryKey(),
+  userId: text("user_id"),
   title: text("title").notNull(),
   body: text("body").notNull(),
   kind: text("kind").notNull(),
   kitId: text("kit_id"),
   readAt: timestamp("read_at", { withTimezone: true, mode: "date" }),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull(),
+});
+
+export const kitDeleteAudit = socialGeni.table("kit_delete_audit", {
+  id: text("id").primaryKey(),
+  kitId: text("kit_id").notNull(),
+  actorType: text("actor_type").notNull(),
+  actorId: text("actor_id").notNull(),
+  reason: text("reason").notNull(),
+  metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+  deletedAt: timestamp("deleted_at", { withTimezone: true, mode: "date" }).notNull(),
 });
 
 export const userProfile = socialGeni.table("user_profile", {

@@ -112,35 +112,59 @@ export function createFeaturesRouter(mw: (c: import("hono").Context, next: Next)
   app.use("*", mw);
 
   app.get("/notifications", async (c) => {
-    const authUser = getAuthUser(c);
-    const _userId = authUser?.supabaseUserId; // fixed property name
-    // For now, keep as is or add userId to notifications if needed.
-    const rows = await db.select().from(notifications).orderBy(desc(notifications.createdAt)).limit(100);
-    return c.json({
-      items: rows.map((r) => ({
-        id: r.id,
-        title: r.title,
-        body: r.body,
-        kind: r.kind,
-        kit_id: r.kitId,
-        read: Boolean(r.readAt),
-        created_at: r.createdAt.toISOString(),
-      })),
-    });
+    try {
+      const userId = await getUserId(c);
+      const rows = await db
+        .select()
+        .from(notifications)
+        .where(eq(notifications.userId, userId))
+        .orderBy(desc(notifications.createdAt))
+        .limit(100);
+      return c.json({
+        items: rows.map((r) => ({
+          id: r.id,
+          title: r.title,
+          body: r.body,
+          kind: r.kind,
+          kit_id: r.kitId,
+          read: Boolean(r.readAt),
+          created_at: r.createdAt.toISOString(),
+        })),
+      });
+    } catch (e) {
+      return c.json({ error: (e as Error).message }, 401);
+    }
   });
 
   app.patch("/notifications/read-all", async (c) => {
-    const now = new Date();
-    await db.update(notifications).set({ readAt: now }).where(isNull(notifications.readAt));
-    return c.json({ ok: true });
+    try {
+      const userId = await getUserId(c);
+      const now = new Date();
+      await db
+        .update(notifications)
+        .set({ readAt: now })
+        .where(and(eq(notifications.userId, userId), isNull(notifications.readAt)));
+      return c.json({ ok: true });
+    } catch (e) {
+      return c.json({ error: (e as Error).message }, 401);
+    }
   });
 
   app.patch("/notifications/:id/read", async (c) => {
-    const id = c.req.param("id");
-    const now = new Date();
-    const updated = await db.update(notifications).set({ readAt: now }).where(eq(notifications.id, id)).returning();
-    if (!updated.length) return c.json({ error: "Not found" }, 404);
-    return c.json({ ok: true });
+    try {
+      const userId = await getUserId(c);
+      const id = c.req.param("id");
+      const now = new Date();
+      const updated = await db
+        .update(notifications)
+        .set({ readAt: now })
+        .where(and(eq(notifications.id, id), eq(notifications.userId, userId)))
+        .returning();
+      if (!updated.length) return c.json({ error: "Not found" }, 404);
+      return c.json({ ok: true });
+    } catch (e) {
+      return c.json({ error: (e as Error).message }, 401);
+    }
   });
 
   app.get("/profile", async (c) => {

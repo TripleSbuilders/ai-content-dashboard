@@ -250,6 +250,17 @@ Generation quota usage (image/video prompt counters) is consumed only after a su
 - Generation prompt can include an optional **Historical Context** block derived from the latest successful kit for the same owner (bounded/truncated to protect token budget).
 - Interaction telemetry is stored first-party in `social_geni.kit_interactions` and is non-blocking (telemetry failures never block core UI actions).
 
+### Phase 4 premium polish behavior
+
+- Viewer card transitions use calibrated motion timing (`framer-motion`) with reduced-motion-safe fallbacks.
+- Short-form copy now supports an enhanced Unicode export path (for social platforms like LinkedIn) while preserving normal copy for long-form readability.
+- Viewer hotkeys are available in scope:
+  - `Cmd/Ctrl + C` copy active block
+  - `Cmd/Ctrl + R` regenerate active item
+  - `Cmd/Ctrl + Enter` approve/save action context
+- Heavy list surfaces (grouped posts + media prompts) use progressive rendering windows to stay responsive on larger kits.
+- Expanded card flows preserve focus and scroll context when collapsing back.
+
 ### Retry semantics
 
 `/api/kits/:id/retry` performs a full end-to-end regeneration from stored `brief_json`.  

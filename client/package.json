@@ -7,12 +7,14 @@
     "lint": "tsc -b --pretty false",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
+    "test": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:competitor": "playwright test --config=playwright.competitor.config.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
     "@supabase/supabase-js": "^2.103.0",
+    "framer-motion": "^12.38.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.54.2",
@@ -32,6 +34,7 @@
     "postcss": "^8.5.8",
     "tailwindcss": "^3.4.19",
     "typescript": "~5.7.2",
-    "vite": "^6.0.6"
+    "vite": "^6.0.6",
+    "vitest": "^4.1.4"
   }
 }

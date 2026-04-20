@@ -1,4 +1,5 @@
 import {
+  memo,
   useCallback,
   useEffect,
   useId,
@@ -19,32 +20,56 @@ import {
 import { useKitRegenerate } from "./features/kits/useKitRegenerate";
 import RegenerateFeedbackDialog from "./features/kits/RegenerateFeedbackDialog";
 import { submitKitInteractionTelemetry, updateKitUiPreferences } from "./api";
+import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from "framer-motion";
+import {
+  normalizeCopyText,
+  shouldUseUnicodeClipboard,
+  toUnicodeClipboardText,
+} from "./lib/unicodeClipboard";
+import { useViewerHotkeys } from "./lib/useViewerHotkeys";
+import { getVisibleRangeCount } from "./lib/virtualization";
 
 const TOC_ID = "kit-plan-toc";
 const SCROLL_MARGIN = "6rem";
+const POLISH_TRANSITION = {
+  duration: 0.46,
+  ease: [0.22, 1, 0.36, 1] as const,
+};
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
 /** Copy with brief success state on the control itself */
-function CopyFieldButton({ text, label }: { text: string; label: string }) {
+function CopyFieldButton({
+  text,
+  label,
+  onCopied,
+  hint,
+}: {
+  text: string;
+  label: string;
+  onCopied?: () => void;
+  hint?: string;
+}) {
   const [done, setDone] = useState(false);
   const copy = useCallback(async () => {
-    if (!text) return;
+    const normalized = normalizeCopyText(text);
+    if (!normalized) return;
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(normalized);
       window.dispatchEvent(
         new CustomEvent("kit-copy-action", {
-          detail: { label },
+          detail: { label, text: normalized },
         })
       );
+      onCopied?.();
       setDone(true);
       window.setTimeout(() => setDone(false), 2000);
     } catch {
       /* ignore */
     }
-  }, [text]);
+  }, [label, onCopied, text]);
   return (
     <button
       type="button"
@@ -57,7 +82,7 @@ function CopyFieldButton({ text, label }: { text: string; label: string }) {
         void copy();
       }}
       className="relative z-10 inline-flex shrink-0 touch-manipulation items-center gap-1 rounded-lg border border-brand-sand/30 bg-earth-card px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-on-surface transition hover:bg-earth-alt dark:border-outline/25 dark:bg-surface-container-high dark:hover:bg-surface-container-highest focus-visible:ring-2 focus-visible:ring-primary/40"
-      title={label}
+      title={hint ? `${label} (${hint})` : label}
       aria-label={label}
     >
       <span className="material-symbols-outlined text-sm">{done ? "check" : "content_copy"}</span>
@@ -87,6 +112,45 @@ function RegenerateButton({
         {loading ? "autorenew" : "refresh"}
       </span>
       {loading ? "Regenerating..." : "Regenerate"}
+    </button>
+  );
+}
+
+function UnicodeCopyButton({ text, label }: { text: string; label: string }) {
+  const [done, setDone] = useState(false);
+  const enabled = shouldUseUnicodeClipboard(text);
+  const onCopy = useCallback(async () => {
+    if (!enabled) return;
+    try {
+      await navigator.clipboard.writeText(toUnicodeClipboardText(normalizeCopyText(text)));
+      window.dispatchEvent(
+        new CustomEvent("kit-copy-action", {
+          detail: { label: `${label}:unicode`, text: toUnicodeClipboardText(normalizeCopyText(text)) },
+        })
+      );
+      setDone(true);
+      window.setTimeout(() => setDone(false), 2000);
+    } catch {
+      /* ignore */
+    }
+  }, [enabled, label, text]);
+
+  if (!enabled) return null;
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        void onCopy();
+      }}
+      className="inline-flex items-center gap-1 rounded-lg border border-tertiary/35 bg-tertiary/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-on-surface transition hover:bg-tertiary/20 focus-visible:ring-2 focus-visible:ring-tertiary/35"
+      title="Copy optimized Unicode style for short-form social posts"
+      aria-label="Copy optimized Unicode style"
+    >
+      <span className="material-symbols-outlined text-sm">{done ? "check" : "format_bold"}</span>
+      {done ? "Copied" : "Copy LinkedIn"}
     </button>
   );
 }
@@ -594,10 +658,14 @@ function VideoBlueprintCard({
   regenerating: boolean;
   showTechnical: boolean;
 }) {
+  const reduceMotion = useReducedMotion();
   const uid = useId();
   const toggleId = `${uid}-toggle`;
   const panelId = `${uid}-panel`;
   const [expanded, setExpanded] = useState(false);
+  const toggleRef = useRef<HTMLButtonElement | null>(null);
+  const expandScrollRef = useRef(0);
+  const expandFocusRef = useRef<HTMLElement | null>(null);
   const jsonFull = JSON.stringify(item, null, 2);
   const brief = videoBlueprintFormattedCopy(item);
   const caption = pickByLang(item, lang, "caption_ar", "caption_en", "caption");
@@ -605,17 +673,40 @@ function VideoBlueprintCard({
     [typeof item.platform === "string" ? item.platform : null, typeof item.style === "string" ? item.style : null]
       .filter(Boolean)
       .join(" · ") || `Video ${index + 1}`;
+  const onToggleExpanded = () => {
+    if (!expanded) {
+      expandScrollRef.current = window.scrollY;
+      expandFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      setExpanded(true);
+      return;
+    }
+    setExpanded(false);
+    window.requestAnimationFrame(() => {
+      if (expandFocusRef.current && expandFocusRef.current.isConnected) {
+        expandFocusRef.current.focus();
+      } else {
+        toggleRef.current?.focus();
+      }
+      window.scrollTo({ top: expandScrollRef.current, behavior: "auto" });
+    });
+  };
 
   return (
-    <article className={kitArticleShellClass(expanded)}>
+    <motion.article
+      layout={!reduceMotion}
+      transition={POLISH_TRANSITION}
+      className={kitArticleShellClass(expanded)}
+      style={expanded ? { borderRadius: 16, boxShadow: "0 12px 32px rgba(0,0,0,0.14)" } : undefined}
+    >
       <div className="flex items-center gap-2">
         <button
+          ref={toggleRef}
           type="button"
           className="flex min-w-0 flex-1 touch-manipulation items-center justify-between gap-2 rounded-lg px-1 py-2 text-start transition hover:bg-surface-container-high/20"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            setExpanded((v) => !v);
+            onToggleExpanded();
           }}
           aria-expanded={expanded}
           id={toggleId}
@@ -641,8 +732,14 @@ function VideoBlueprintCard({
           }}
         />
       </div>
-      {expanded ? (
-        <div
+      <AnimatePresence initial={false}>
+        {expanded ? (
+        <motion.div
+          layout={!reduceMotion}
+          initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+          animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+          exit={reduceMotion ? undefined : { opacity: 0, y: -8 }}
+          transition={POLISH_TRANSITION}
           id={panelId}
           className="mt-1 min-w-0 max-w-full space-y-4 border-t border-outline/15 pt-4"
           role="region"
@@ -670,9 +767,10 @@ function VideoBlueprintCard({
               <p className="text-xs text-on-surface-variant">For tools, APIs, or archiving.</p>
             </FieldBlock>
           ) : null}
-        </div>
+        </motion.div>
       ) : null}
-    </article>
+      </AnimatePresence>
+    </motion.article>
   );
 }
 
@@ -694,10 +792,14 @@ function ImageDesignCard({
   regenerating: boolean;
   showTechnical: boolean;
 }) {
+  const reduceMotion = useReducedMotion();
   const uid = useId();
   const toggleId = `${uid}-toggle`;
   const panelId = `${uid}-panel`;
   const [expanded, setExpanded] = useState(false);
+  const toggleRef = useRef<HTMLButtonElement | null>(null);
+  const expandScrollRef = useRef(0);
+  const expandFocusRef = useRef<HTMLElement | null>(null);
   const jsonFull = JSON.stringify(item, null, 2);
   const brief = imageDesignFormattedCopy(item);
   const caption = pickByLang(item, lang, "caption_ar", "caption_en", "caption");
@@ -708,17 +810,40 @@ function ImageDesignCard({
     ]
       .filter(Boolean)
       .join(" · ") || getKitMediaItemTitle(item, index, "image");
+  const onToggleExpanded = () => {
+    if (!expanded) {
+      expandScrollRef.current = window.scrollY;
+      expandFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      setExpanded(true);
+      return;
+    }
+    setExpanded(false);
+    window.requestAnimationFrame(() => {
+      if (expandFocusRef.current && expandFocusRef.current.isConnected) {
+        expandFocusRef.current.focus();
+      } else {
+        toggleRef.current?.focus();
+      }
+      window.scrollTo({ top: expandScrollRef.current, behavior: "auto" });
+    });
+  };
 
   return (
-    <article className={kitArticleShellClass(expanded)}>
+    <motion.article
+      layout={!reduceMotion}
+      transition={POLISH_TRANSITION}
+      className={kitArticleShellClass(expanded)}
+      style={expanded ? { borderRadius: 16, boxShadow: "0 12px 32px rgba(0,0,0,0.14)" } : undefined}
+    >
       <div className="flex items-center gap-2">
         <button
+          ref={toggleRef}
           type="button"
           className="flex min-w-0 flex-1 touch-manipulation items-center justify-between gap-2 rounded-lg px-1 py-2 text-start transition hover:bg-surface-container-high/20"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            setExpanded((v) => !v);
+            onToggleExpanded();
           }}
           aria-expanded={expanded}
           id={toggleId}
@@ -744,8 +869,14 @@ function ImageDesignCard({
           }}
         />
       </div>
-      {expanded ? (
-        <div
+      <AnimatePresence initial={false}>
+        {expanded ? (
+        <motion.div
+          layout={!reduceMotion}
+          initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+          animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+          exit={reduceMotion ? undefined : { opacity: 0, y: -8 }}
+          transition={POLISH_TRANSITION}
           id={panelId}
           className="mt-1 min-w-0 max-w-full space-y-4 border-t border-outline/15 pt-4"
           role="region"
@@ -773,9 +904,10 @@ function ImageDesignCard({
               <p className="text-xs text-on-surface-variant">For tools, APIs, or archiving.</p>
             </FieldBlock>
           ) : null}
-        </div>
+        </motion.div>
       ) : null}
-    </article>
+      </AnimatePresence>
+    </motion.article>
   );
 }
 
@@ -797,26 +929,51 @@ function KitPromptCard({
   regenerating: boolean;
   copyLabel: string;
 }) {
+  const reduceMotion = useReducedMotion();
   const uid = useId();
   const toggleId = `${uid}-toggle`;
   const panelId = `${uid}-panel`;
   const [expanded, setExpanded] = useState(false);
+  const toggleRef = useRef<HTMLButtonElement | null>(null);
+  const expandScrollRef = useRef(0);
+  const expandFocusRef = useRef<HTMLElement | null>(null);
+  const onToggleExpanded = () => {
+    if (!expanded) {
+      expandScrollRef.current = window.scrollY;
+      expandFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      setExpanded(true);
+      return;
+    }
+    setExpanded(false);
+    window.requestAnimationFrame(() => {
+      if (expandFocusRef.current && expandFocusRef.current.isConnected) {
+        expandFocusRef.current.focus();
+      } else {
+        toggleRef.current?.focus();
+      }
+      window.scrollTo({ top: expandScrollRef.current, behavior: "auto" });
+    });
+  };
 
   return (
-    <article
+    <motion.article
+      layout={!reduceMotion}
+      transition={POLISH_TRANSITION}
       className={
         "relative isolate min-h-0 min-w-0 max-w-full overflow-x-clip overflow-y-visible rounded-uniform border border-brand-sand/30 bg-earth-card/90 p-3 sm:p-4 dark:border-outline/25 dark:bg-surface-container-lowest/60 " +
         (expanded ? "z-20 shadow-lg shadow-surface/30" : "z-0")
       }
+      style={expanded ? { borderRadius: 16, boxShadow: "0 12px 32px rgba(0,0,0,0.14)" } : undefined}
     >
       <div className="flex items-center gap-2">
         <button
+          ref={toggleRef}
           type="button"
           className="flex min-w-0 flex-1 touch-manipulation items-center justify-between gap-2 rounded-lg px-1 py-2 text-start transition hover:bg-surface-container-high/20"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            setExpanded((v) => !v);
+            onToggleExpanded();
           }}
           aria-expanded={expanded}
           id={toggleId}
@@ -842,8 +999,14 @@ function KitPromptCard({
           }}
         />
       </div>
-      {expanded ? (
-        <div
+      <AnimatePresence initial={false}>
+        {expanded ? (
+        <motion.div
+          layout={!reduceMotion}
+          initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+          animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+          exit={reduceMotion ? undefined : { opacity: 0, y: -8 }}
+          transition={POLISH_TRANSITION}
           id={panelId}
           className="mt-1 min-w-0 max-w-full border-t border-outline/15 pt-3"
           role="region"
@@ -868,9 +1031,10 @@ function KitPromptCard({
               </pre>
             </FieldBlock>
           </div>
-        </div>
+        </motion.div>
       ) : null}
-    </article>
+      </AnimatePresence>
+    </motion.article>
   );
 }
 
@@ -890,10 +1054,14 @@ function PostCard({
   onRegenerate: (index: number) => void;
   regenerating: boolean;
 }) {
+  const reduceMotion = useReducedMotion();
   const uid = useId();
   const toggleId = `${uid}-toggle`;
   const panelId = `${uid}-panel`;
   const [expanded, setExpanded] = useState(false);
+  const toggleRef = useRef<HTMLButtonElement | null>(null);
+  const expandScrollRef = useRef(0);
+  const expandFocusRef = useRef<HTMLElement | null>(null);
   const postText = pickByLang(post, lang, "post_ar", "post_en", "post") || post.caption || "—";
   const hashtags = Array.isArray(post.hashtags) && post.hashtags.length ? post.hashtags.join(" ") : "";
   const cta = post.cta ?? "";
@@ -906,22 +1074,43 @@ function PostCard({
   ]
     .filter(Boolean)
     .join("\n\n");
+  const onToggleExpanded = () => {
+    if (!expanded) {
+      expandScrollRef.current = window.scrollY;
+      expandFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      setExpanded(true);
+      return;
+    }
+    setExpanded(false);
+    window.requestAnimationFrame(() => {
+      if (expandFocusRef.current && expandFocusRef.current.isConnected) {
+        expandFocusRef.current.focus();
+      } else {
+        toggleRef.current?.focus();
+      }
+      window.scrollTo({ top: expandScrollRef.current, behavior: "auto" });
+    });
+  };
 
   return (
-    <article
+    <motion.article
+      layout={!reduceMotion}
+      transition={POLISH_TRANSITION}
       className={
         "relative isolate min-h-0 min-w-0 max-w-full overflow-x-clip overflow-y-visible rounded-uniform border border-brand-sand/30 bg-earth-card/90 p-3 sm:p-4 dark:border-outline/25 dark:bg-surface-container-lowest/60 " +
         (expanded ? "z-20 shadow-lg shadow-surface/30" : "z-0")
       }
+      style={expanded ? { borderRadius: 16, boxShadow: "0 12px 32px rgba(0,0,0,0.14)" } : undefined}
     >
       <div className="flex items-center gap-2">
         <button
+          ref={toggleRef}
           type="button"
           className="flex min-w-0 flex-1 touch-manipulation items-center justify-between gap-2 rounded-lg px-1 py-2 text-start transition hover:bg-surface-container-high/20"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            setExpanded((v) => !v);
+            onToggleExpanded();
           }}
           aria-expanded={expanded}
           id={toggleId}
@@ -953,8 +1142,17 @@ function PostCard({
           }}
         />
       </div>
-      {expanded ? (
-        <div
+      <div className="mt-1 flex justify-end">
+        <UnicodeCopyButton text={postText} label={`post-${index + 1}`} />
+      </div>
+      <AnimatePresence initial={false}>
+        {expanded ? (
+        <motion.div
+          layout={!reduceMotion}
+          initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+          animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+          exit={reduceMotion ? undefined : { opacity: 0, y: -8 }}
+          transition={POLISH_TRANSITION}
           id={panelId}
           className="mt-1 min-w-0 max-w-full space-y-4 border-t border-outline/15 pt-4"
           role="region"
@@ -992,9 +1190,10 @@ function PostCard({
               One copy with goal, post, hashtags, and CTA — for pasting into your scheduler or doc.
             </p>
           </FieldBlock>
-        </div>
+        </motion.div>
       ) : null}
-    </article>
+      </AnimatePresence>
+    </motion.article>
   );
 }
 
@@ -1018,12 +1217,15 @@ function GroupedPostsPanel({
   onDayToggle?: (platform: string, day: string, open: boolean) => void;
 }) {
   return (
+    <LayoutGroup id="posts-layout-group">
     <div className="space-y-3">
       {groups.map((group) => {
         const platformKey = group.platformLabel.toLowerCase();
         const platformOpen = openPlatforms[platformKey] ?? true;
         return (
-          <section
+          <motion.section
+            layout
+            transition={POLISH_TRANSITION}
             key={platformKey}
             className="rounded-xl border border-brand-sand/25 bg-earth-card/80 p-3 dark:border-outline/20 dark:bg-surface-container-high/20"
           >
@@ -1040,12 +1242,20 @@ function GroupedPostsPanel({
             </button>
 
             {platformOpen ? (
-              <div className="mt-3 space-y-3">
-                {group.days.map((day) => {
+              <div className="mt-3">
+                <VirtualizedList
+                  items={group.days}
+                  initialVisible={8}
+                  increment={8}
+                  itemLabel="days"
+                  getKey={(day) => `${platformKey}-${day.dayLabel}`}
+                  renderItem={(day) => {
                   const dayKey = `${platformKey}-${day.dayLabel}`;
                   const dayOpen = openDays[dayKey] ?? false;
                   return (
-                    <div
+                    <motion.div
+                      layout
+                      transition={POLISH_TRANSITION}
                       key={dayKey}
                       className="rounded-lg border border-brand-sand/20 bg-earth-alt/40 p-2 dark:border-outline/15 dark:bg-surface-container-high/15"
                     >
@@ -1061,8 +1271,13 @@ function GroupedPostsPanel({
                         </span>
                       </button>
                       {dayOpen ? (
-                        <div className="mt-2">
-                          <PostCard
+                        <motion.div
+                          className="mt-2"
+                          layout
+                          transition={POLISH_TRANSITION}
+                          layoutId={`post-day-${dayKey}`}
+                        >
+                          <MemoPostCard
                             post={day.post}
                             index={day.globalIndex}
                             lang={lang}
@@ -1070,16 +1285,65 @@ function GroupedPostsPanel({
                             onRegenerate={(idx) => openRegenerateDialog("post", idx)}
                             regenerating={regeneratingKey === `post-${day.globalIndex}`}
                           />
-                        </div>
+                        </motion.div>
                       ) : null}
-                    </div>
+                    </motion.div>
                   );
-                })}
+                }}
+                />
               </div>
             ) : null}
-          </section>
+          </motion.section>
         );
       })}
+    </div>
+    </LayoutGroup>
+  );
+}
+
+const MemoPostCard = memo(PostCard);
+const MemoImageDesignCard = memo(ImageDesignCard);
+const MemoVideoBlueprintCard = memo(VideoBlueprintCard);
+const MemoKitPromptCard = memo(KitPromptCard);
+
+function VirtualizedList<T>({
+  items,
+  initialVisible = 8,
+  increment = 8,
+  renderItem,
+  getKey,
+  itemLabel,
+}: {
+  items: T[];
+  initialVisible?: number;
+  increment?: number;
+  renderItem: (item: T, index: number) => ReactNode;
+  getKey: (item: T, index: number) => string;
+  itemLabel: string;
+}) {
+  const [visibleCount, setVisibleCount] = useState(initialVisible);
+  const boundedVisible = getVisibleRangeCount(items.length, visibleCount);
+  const visibleItems = useMemo(() => items.slice(0, boundedVisible), [boundedVisible, items]);
+  const remaining = Math.max(items.length - boundedVisible, 0);
+
+  useEffect(() => {
+    setVisibleCount(initialVisible);
+  }, [initialVisible, items.length]);
+
+  return (
+    <div className="space-y-3">
+      {visibleItems.map((item, index) => (
+        <div key={getKey(item, index)}>{renderItem(item, index)}</div>
+      ))}
+      {remaining > 0 ? (
+        <button
+          type="button"
+          className="rounded-lg border border-brand-sand/35 bg-earth-alt px-3 py-2 text-xs font-semibold text-on-surface transition hover:bg-earth-card dark:border-outline/30 dark:bg-surface-container-high dark:hover:bg-surface-container-highest"
+          onClick={() => setVisibleCount((prev) => prev + increment)}
+        >
+          Load {Math.min(increment, remaining)} more {itemLabel}
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -1258,8 +1522,11 @@ function CollapsibleSection({
   children: ReactNode;
   tocLabel: string;
 }) {
+  const reduceMotion = useReducedMotion();
   return (
-    <section
+    <motion.section
+      layout={!reduceMotion}
+      transition={POLISH_TRANSITION}
       id={id}
       className={
         "scroll-mt-24 overflow-x-clip overflow-y-visible rounded-uniform border border-brand-sand/30 bg-earth-card/90 dark:border-outline/30 dark:bg-surface-container-low/40 " +
@@ -1300,8 +1567,15 @@ function CollapsibleSection({
         </span>
       </button>
 
+      <AnimatePresence initial={false}>
       {open ? (
-        <div
+        <motion.div
+          layout={!reduceMotion}
+          initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+          animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+          exit={reduceMotion ? undefined : { opacity: 0, y: -8 }}
+          transition={POLISH_TRANSITION}
+          layoutId={`${id}-layout-panel`}
           id={id + "-panel"}
           className="min-w-0 max-w-full border-t border-brand-sand/25 px-5 pb-5 pt-2 dark:border-outline/20"
           role="region"
@@ -1318,9 +1592,10 @@ function CollapsibleSection({
               Back to index
             </a>
           </div>
-        </div>
+        </motion.div>
       ) : null}
-    </section>
+      </AnimatePresence>
+    </motion.section>
   );
 }
 
@@ -1337,6 +1612,11 @@ export default function KitViewer({
   const preferencesDebounceRef = useRef<number | null>(null);
   const hydratedPrefsRef = useRef(false);
   const lastSavedPrefsRef = useRef("");
+  const lastActiveCopyTextRef = useRef("");
+  const [activeRegenerateTarget, setActiveRegenerateTarget] = useState<{
+    itemType: "post" | "image" | "video";
+    index: number;
+  } | null>(null);
   const sendInteractionTelemetry = useCallback(
     (interactionType: string, meta?: Record<string, unknown>, debounceKey?: string) => {
       const submit = () => {
@@ -1404,6 +1684,14 @@ export default function KitViewer({
     closeFeedbackModal,
     submitRegenerate,
   } = useKitRegenerate({ kit, onKitUpdate });
+
+  const openRegenerateTracked = useCallback(
+    (itemType: "post" | "image" | "video", index: number) => {
+      setActiveRegenerateTarget({ itemType, index });
+      openRegenerateDialog(itemType, index);
+    },
+    [openRegenerateDialog]
+  );
 
   const tocItems = useMemo((): TocItem[] => {
     const items: TocItem[] = [];
@@ -1539,7 +1827,10 @@ export default function KitViewer({
 
   useEffect(() => {
     const onCopy = (evt: Event) => {
-      const custom = evt as CustomEvent<{ label?: string }>;
+      const custom = evt as CustomEvent<{ label?: string; text?: string }>;
+      if (typeof custom.detail?.text === "string") {
+        lastActiveCopyTextRef.current = custom.detail.text;
+      }
       sendInteractionTelemetry(
         "copy_action",
         { label: custom.detail?.label ?? "copy" },
@@ -1549,6 +1840,36 @@ export default function KitViewer({
     window.addEventListener("kit-copy-action", onCopy as EventListener);
     return () => window.removeEventListener("kit-copy-action", onCopy as EventListener);
   }, [sendInteractionTelemetry]);
+
+  useViewerHotkeys({
+    onCopy: () => {
+      const fallback = posts[0]
+        ? pickByLang(posts[0], lang, "post_ar", "post_en", "post") || posts[0].caption || ""
+        : "";
+      const text = lastActiveCopyTextRef.current || fallback;
+      if (!text) return;
+      void navigator.clipboard.writeText(normalizeCopyText(text));
+      sendInteractionTelemetry("hotkey_copy", { hasText: true }, "hk:copy");
+    },
+    onRegenerate: () => {
+      if (!activeRegenerateTarget) return;
+      openRegenerateTracked(activeRegenerateTarget.itemType, activeRegenerateTarget.index);
+      sendInteractionTelemetry(
+        "hotkey_regenerate",
+        { itemType: activeRegenerateTarget.itemType, index: activeRegenerateTarget.index },
+        "hk:regen"
+      );
+    },
+    onApproveOrSave: () => {
+      if (feedbackOpen && !regeneratingKey) {
+        void submitRegenerate();
+        sendInteractionTelemetry("hotkey_approve_save", { mode: "feedback_submit" }, "hk:approve");
+        return;
+      }
+      scrollToToc();
+      sendInteractionTelemetry("hotkey_approve_save", { mode: "scroll_toc" }, "hk:approve");
+    },
+  });
 
   if (!data) return null;
 
@@ -1596,6 +1917,12 @@ export default function KitViewer({
             </div>
           </div>
         </div>
+        <p className="mb-3 text-[11px] text-on-surface-variant">
+          Shortcuts: <kbd className="rounded border border-outline/35 px-1 py-0.5">Ctrl/Cmd + C</kbd>{" "}
+          copy active block, <kbd className="rounded border border-outline/35 px-1 py-0.5">Ctrl/Cmd + R</kbd>{" "}
+          regenerate active item, <kbd className="rounded border border-outline/35 px-1 py-0.5">Ctrl/Cmd + Enter</kbd>{" "}
+          approve/save.
+        </p>
         <ul className="flex flex-wrap gap-2">
           {tocItems.map((item) => (
             <li key={item.id}>
@@ -1669,7 +1996,7 @@ export default function KitViewer({
             groups={groupedPosts}
             lang={lang}
             regeneratingKey={regeneratingKey}
-            openRegenerateDialog={openRegenerateDialog}
+            openRegenerateDialog={openRegenerateTracked}
             onPlatformToggle={(platform, open) =>
               setOpenPlatforms((prev) => {
                 const platformKey = platform.toLowerCase();
@@ -1701,18 +2028,23 @@ export default function KitViewer({
           onToggle={() => toggle("kit-section-image")}
           tocLabel="Image and visual prompts"
         >
-          <div className="grid grid-cols-1 gap-4">
-            {imageSection.items.map((item, i) => {
+          <VirtualizedList
+            items={imageSection.items}
+            initialVisible={6}
+            increment={6}
+            itemLabel="image prompts"
+            getKey={(_, i) => `${kit.id}-image-${i}`}
+            renderItem={(item, i) => {
               const rec = isRecord(item) ? item : {};
               if (isVideoBlueprint(rec)) {
                 return (
-                  <VideoBlueprintCard
+                  <MemoVideoBlueprintCard
                     key={`${kit.id}-image-${i}`}
                     item={rec}
                     index={i}
                     lang={lang}
                     strategy={imageStrategy[i] ?? null}
-                    onRegenerate={(idx) => openRegenerateDialog("image", idx)}
+                    onRegenerate={(idx) => openRegenerateTracked("image", idx)}
                     regenerating={regeneratingKey === `image-${i}`}
                     showTechnical={showTechnical}
                   />
@@ -1720,13 +2052,13 @@ export default function KitViewer({
               }
               if (isRichImageDesign(rec)) {
                 return (
-                  <ImageDesignCard
+                  <MemoImageDesignCard
                     key={`${kit.id}-image-${i}`}
                     item={rec}
                     index={i}
                     lang={lang}
                     strategy={imageStrategy[i] ?? null}
-                    onRegenerate={(idx) => openRegenerateDialog("image", idx)}
+                    onRegenerate={(idx) => openRegenerateTracked("image", idx)}
                     regenerating={regeneratingKey === `image-${i}`}
                     showTechnical={showTechnical}
                   />
@@ -1736,19 +2068,18 @@ export default function KitViewer({
               const body = getKitMediaPlainBody(rec, "image");
               const caption = pickByLang(rec, lang, "caption_ar", "caption_en", "caption");
               return (
-                <KitPromptCard
-                  key={`${kit.id}-image-${i}`}
+                <MemoKitPromptCard
                   title={title}
                   body={body}
                   caption={caption || undefined}
                   strategy={imageStrategy[i] ?? null}
-                  onRegenerate={() => openRegenerateDialog("image", i)}
+                  onRegenerate={() => openRegenerateTracked("image", i)}
                   regenerating={regeneratingKey === `image-${i}`}
                   copyLabel="Copy prompt"
                 />
               );
-            })}
-          </div>
+            }}
+          />
         </CollapsibleSection>
       )}
 
@@ -1763,18 +2094,23 @@ export default function KitViewer({
           onToggle={() => toggle("kit-section-video")}
           tocLabel="Video prompts"
         >
-          <div className="grid grid-cols-1 gap-4">
-            {videoSection.items.map((item, i) => {
+          <VirtualizedList
+            items={videoSection.items}
+            initialVisible={6}
+            increment={6}
+            itemLabel="video prompts"
+            getKey={(_, i) => `${kit.id}-video-${i}`}
+            renderItem={(item, i) => {
               const rec = isRecord(item) ? item : {};
               if (isVideoBlueprint(rec)) {
                 return (
-                  <VideoBlueprintCard
+                  <MemoVideoBlueprintCard
                     key={`${kit.id}-video-${i}`}
                     item={rec}
                     index={i}
                     lang={lang}
                     strategy={videoStrategy[i] ?? null}
-                    onRegenerate={(idx) => openRegenerateDialog("video", idx)}
+                    onRegenerate={(idx) => openRegenerateTracked("video", idx)}
                     regenerating={regeneratingKey === `video-${i}`}
                     showTechnical={showTechnical}
                   />
@@ -1784,19 +2120,18 @@ export default function KitViewer({
               const body = getKitMediaPlainBody(rec, "video");
               const caption = pickByLang(rec, lang, "caption_ar", "caption_en", "caption");
               return (
-                <KitPromptCard
-                  key={`${kit.id}-video-${i}`}
+                <MemoKitPromptCard
                   title={title}
                   body={body}
                   caption={caption || undefined}
                   strategy={videoStrategy[i] ?? null}
-                  onRegenerate={() => openRegenerateDialog("video", i)}
+                  onRegenerate={() => openRegenerateTracked("video", i)}
                   regenerating={regeneratingKey === `video-${i}`}
                   copyLabel="Copy video prompt"
                 />
               );
-            })}
-          </div>
+            }}
+          />
         </CollapsibleSection>
       )}
 

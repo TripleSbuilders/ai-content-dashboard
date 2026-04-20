@@ -51,6 +51,16 @@ E2E runs dev servers in demo mode with a temporary DB (see [`README.md`](../READ
 - **Historical context injection:** verify generation includes bounded historical context only when a prior successful kit exists; malformed legacy `result_json` is ignored safely.
 - **Backward compatibility:** historical kits missing `ui_preferences` still render with defaults and no crash.
 
+## Phase 4 focused checks
+
+- **Motion calibration:** card expand/collapse transitions feel consistent (moderate easing/duration) and no abrupt jumps appear between sections/cards.
+- **Reduced motion:** with `prefers-reduced-motion: reduce`, transition animations are disabled for wizard/loading polish and viewer remains fully usable.
+- **Unicode copy guardrails:** short markdown-like snippets (`**bold**`, `*italic*`, `` `inline` ``) convert in enhanced copy path; long text remains unchanged.
+- **Shared expansion context:** collapsing expanded cards restores focus and preserves previous scroll context.
+- **Hotkeys safety:** `Cmd/Ctrl + C`, `Cmd/Ctrl + R`, `Cmd/Ctrl + Enter` work in viewer context and do **not** fire while typing in editable fields.
+- **Large payload responsiveness:** grouped posts/media lists render progressively (windowed "load more"), avoiding UI freeze on large kits.
+- **Regression pass:** verify copy/regenerate/language toggles + persisted `ui_preferences` behavior still match Phase 3 expectations.
+
 ## Self-review checklist (before merge)
 
 - [ ] **Behavior:** matches acceptance criteria; edge cases considered (empty input, errors).

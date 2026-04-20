@@ -53,3 +53,7 @@ This document records the Phase 3 implementation baseline:
 - Telemetry is fire-and-forget from UI; failures are swallowed.
 - Historical context block is optional and ignored on malformed legacy data.
 - Kits without `ui_preferences` still render with fallback defaults.
+
+## Continuation
+
+Phase 4 implementation details are documented in [`docs/PHASE4_EXECUTION.md`](./PHASE4_EXECUTION.md).

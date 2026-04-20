@@ -3,7 +3,7 @@ import type { Session } from "@supabase/supabase-js";
 import { getEntitlements, syncAuthDevice, type EntitlementsResponse } from "../api";
 import { setAccessToken } from "../lib/authToken";
 import { getDeviceId } from "../lib/deviceId";
-import { isAgencyEdition } from "../lib/appEdition";
+import { isAgencyEdition, isV1PublicDecommissionEnabled } from "../lib/appEdition";
 import { hasSupabaseAuth, supabase } from "./supabaseClient";
 
 type AuthState = {
@@ -21,6 +21,7 @@ function resolveAuthRedirectUrl(): string {
   const configured = String(import.meta.env.VITE_AUTH_REDIRECT_URL ?? "").trim();
   if (configured) return configured;
   if (isAgencyEdition()) return `${window.location.origin}/wizard/social`;
+  if (isV1PublicDecommissionEnabled()) return `${window.location.origin}/admin/legacy-v1`;
   return window.location.href;
 }
 
@@ -98,6 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             redirectTo: resolveAuthRedirectUrl(),
             queryParams: {
               prompt: "select_account consent",
+              ...(isAgencyEdition() ? {} : { access_type: "offline" }),
             },
           },
         });

@@ -84,6 +84,9 @@ cp .env.example client/.env.local
 # - server/.env (agency admin auth): ADMIN_USERNAME=admin, ADMIN_PASSWORD, ADMIN_AUTH_SECRET
 # - client/.env.local: VITE_APP_EDITION=self_serve|agency
 # - optional auth callback override: VITE_AUTH_REDIRECT_URL=https://ai-content-dashboard-app-v2.onrender.com/wizard/social
+# - V1 cutover controls (self-serve deploy only):
+#   - VITE_V1_PUBLIC_DECOMMISSION=true
+#   - VITE_V2_CANONICAL_URL=https://ai-content-dashboard-app-v2.onrender.com/wizard/social
 # - optional team routing: TELEGRAM_WEBHOOK_URL or (TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID [+ TELEGRAM_THREAD_ID]), ADMIN_BASE_URL
 
 npm install

@@ -32,10 +32,20 @@ E2E runs dev servers in demo mode with a temporary DB (see [`README.md`](../READ
 - **Wizard UX balance:** verify reasoning trace appears during loading while progress/status behavior remains smooth.
 - **Legacy compatibility:** verify historical kits without new Phase 2 fields still render with no crash/no noisy warnings.
 
+## UX/Bugfix batch checks
+
+- **Wizard persistence:** change fields + step, refresh, verify exact step/form restoration from `localStorage`.
+- **Brand step contract:** verify `business_links` appears in UI and is present in submitted generate payload.
+- **Wizard options:** verify brand tone list is emoji-free and includes `حديث وعصري`; content types include Product Demo + Problem Solving.
+- **Platform selector visuals:** verify platform pills render recognizable logos for Facebook/Instagram/X/LinkedIn/TikTok/YouTube.
+- **Step transition behavior:** clicking Next scrolls viewport to top smoothly.
+- **Viewer posts UX:** verify posts are grouped by platform first then day, and CTA text renders without hardcoded `CTA:` prefix.
+- **Quota semantics:** verify failed generation paths do not consume image/video usage counters; success path consumes after persistence success.
+
 ## Self-review checklist (before merge)
 
-- [ ] **Behavior:** matches acceptance criteria; edge cases considered (empty input, errors).
-- [ ] **Security:** no secrets in client bundle; auth/env assumptions documented (`API_SECRET`, etc.).
-- [ ] **API boundaries:** request/response shapes consistent with existing routes and schemas.
-- [ ] **DB:** migrations/schema aligned if tables or columns changed (`server/src/db/schema.ts`).
-- [ ] **Docs:** for substantive changes (schema, API, prompts, env, security, stack), update the files required by [`docs/TASKING.md`](TASKING.md) → Documentation sync; optionally adjust routing in [`docs/CONTEXT_INDEX.md`](CONTEXT_INDEX.md) if doc map changes.
+- [x] **Behavior:** matches acceptance criteria; edge cases considered (empty input, errors).
+- [x] **Security:** no secrets in client bundle; auth/env assumptions documented (`API_SECRET`, etc.).
+- [x] **API boundaries:** request/response shapes consistent with existing routes and schemas.
+- [x] **DB:** migrations/schema aligned if tables or columns changed (`server/src/db/schema.ts`).
+- [x] **Docs:** for substantive changes (schema, API, prompts, env, security, stack), update the files required by [`docs/TASKING.md`](TASKING.md) → Documentation sync; optionally adjust routing in [`docs/CONTEXT_INDEX.md`](CONTEXT_INDEX.md) if doc map changes.

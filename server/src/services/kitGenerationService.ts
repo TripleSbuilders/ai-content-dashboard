@@ -183,6 +183,7 @@ export async function generateKitService(input: {
       isFallback: resolved.isFallback,
     });
     await d.notify(row);
+    await finalizeIdempotencyKey(d.db, { keyHash, briefHash: fp, kitId: row.id });
     await consumeGeneratedAssets(d.db, owner, {
       videoPromptsUsed: Array.isArray((aiContent as Record<string, unknown>).video_prompts)
         ? ((aiContent as Record<string, unknown>).video_prompts as unknown[]).length
@@ -191,7 +192,6 @@ export async function generateKitService(input: {
         ? ((aiContent as Record<string, unknown>).image_designs as unknown[]).length
         : 0,
     });
-    await finalizeIdempotencyKey(d.db, { keyHash, briefHash: fp, kitId: row.id });
     return { status: 200, body: serializeKit(row) };
   }
 
@@ -247,6 +247,7 @@ export async function generateKitService(input: {
       kitId: row.id,
     });
     await d.notify(row);
+    await finalizeIdempotencyKey(d.db, { keyHash, briefHash: fp, kitId: row.id });
     await consumeGeneratedAssets(d.db, owner, {
       videoPromptsUsed: Array.isArray((aiContent as Record<string, unknown>).video_prompts)
         ? ((aiContent as Record<string, unknown>).video_prompts as unknown[]).length
@@ -255,7 +256,6 @@ export async function generateKitService(input: {
         ? ((aiContent as Record<string, unknown>).image_designs as unknown[]).length
         : 0,
     });
-    await finalizeIdempotencyKey(d.db, { keyHash, briefHash: fp, kitId: row.id });
     return { status: 201, body: serializeKit(row) };
   } catch (err) {
     const reason = safeClientError(err);

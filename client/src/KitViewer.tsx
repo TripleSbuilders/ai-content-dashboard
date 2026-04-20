@@ -10,6 +10,8 @@ import {
 import type { KitPostItem, KitSummary } from "./types";
 import {
   buildKitViewModel,
+  groupPostsByPlatformAndDay,
+  type GroupedPostsByPlatform,
   type KitContentIdeasPackageView,
   type KitStrategyMetadata,
 } from "./features/kits/kitViewModel";
@@ -861,7 +863,7 @@ function PostCard({
     goal && `Goal: ${goal}`,
     postText,
     hashtags && `Hashtags: ${hashtags}`,
-    cta && `CTA: ${cta}`,
+    cta && `Call to action: ${cta}`,
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -938,10 +940,7 @@ function PostCard({
           ) : null}
           {cta ? (
             <FieldBlock label="Call to action" copyText={cta} copyLabel="Copy CTA">
-              <p className="min-w-0 text-sm leading-relaxed text-on-surface [overflow-wrap:anywhere]">
-                <span className="font-semibold text-brand-accent dark:text-tertiary">CTA: </span>
-                {cta}
-              </p>
+              <p className="min-w-0 text-sm leading-relaxed text-on-surface [overflow-wrap:anywhere]">{cta}</p>
             </FieldBlock>
           ) : null}
           <FieldBlock
@@ -957,6 +956,87 @@ function PostCard({
         </div>
       ) : null}
     </article>
+  );
+}
+
+function GroupedPostsPanel({
+  groups,
+  lang,
+  regeneratingKey,
+  openRegenerateDialog,
+}: {
+  groups: GroupedPostsByPlatform[];
+  lang: ViewerLang;
+  regeneratingKey: string | null;
+  openRegenerateDialog: (itemType: "post" | "image" | "video", index: number) => void;
+}) {
+  const [openPlatforms, setOpenPlatforms] = useState<Record<string, boolean>>({});
+  const [openDays, setOpenDays] = useState<Record<string, boolean>>({});
+
+  return (
+    <div className="space-y-3">
+      {groups.map((group) => {
+        const platformKey = group.platformLabel.toLowerCase();
+        const platformOpen = openPlatforms[platformKey] ?? true;
+        return (
+          <section
+            key={platformKey}
+            className="rounded-xl border border-brand-sand/25 bg-earth-card/80 p-3 dark:border-outline/20 dark:bg-surface-container-high/20"
+          >
+            <button
+              type="button"
+              className="flex w-full items-center justify-between gap-2 text-start"
+              onClick={() => setOpenPlatforms((prev) => ({ ...prev, [platformKey]: !platformOpen }))}
+              aria-expanded={platformOpen}
+            >
+              <span className="text-sm font-bold text-on-surface">{group.platformLabel}</span>
+              <span className={"material-symbols-outlined text-on-surface-variant transition-transform " + (platformOpen ? "rotate-180" : "")}>
+                expand_more
+              </span>
+            </button>
+
+            {platformOpen ? (
+              <div className="mt-3 space-y-3">
+                {group.days.map((day) => {
+                  const dayKey = `${platformKey}-${day.dayLabel}`;
+                  const dayOpen = openDays[dayKey] ?? false;
+                  return (
+                    <div
+                      key={dayKey}
+                      className="rounded-lg border border-brand-sand/20 bg-earth-alt/40 p-2 dark:border-outline/15 dark:bg-surface-container-high/15"
+                    >
+                      <button
+                        type="button"
+                        className="flex w-full items-center justify-between gap-2 text-start"
+                        onClick={() => setOpenDays((prev) => ({ ...prev, [dayKey]: !dayOpen }))}
+                        aria-expanded={dayOpen}
+                      >
+                        <span className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">{day.dayLabel}</span>
+                        <span className={"material-symbols-outlined text-on-surface-variant transition-transform " + (dayOpen ? "rotate-180" : "")}>
+                          expand_more
+                        </span>
+                      </button>
+                      {dayOpen ? (
+                        <div className="mt-2">
+                          <PostCard
+                            post={day.post}
+                            index={day.globalIndex}
+                            lang={lang}
+                            strategy={day.strategy}
+                            onRegenerate={(idx) => openRegenerateDialog("post", idx)}
+                            regenerating={regeneratingKey === `post-${day.globalIndex}`}
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
+          </section>
+        );
+      })}
+    </div>
   );
 }
 
@@ -1000,6 +1080,7 @@ function buildContentPackageFullCopy(pkg: KitContentIdeasPackageView): string {
   }
   return lines.join("\n").trim();
 }
+
 
 function ContentIdeasPackagePanel({ pkg, kitId }: { pkg: KitContentIdeasPackageView; kitId: string }) {
   const hooksByIdea = new Map<number, KitContentIdeasPackageView["hooks"]>();
@@ -1278,6 +1359,10 @@ export default function KitViewer({
     showTechnical,
   ]);
 
+  const groupedPosts = useMemo<GroupedPostsByPlatform[]>(() => {
+    return groupPostsByPlatformAndDay(posts, postStrategy);
+  }, [posts, postStrategy]);
+
   const toggle = useCallback((id: string) => {
     setOpenMap((m) => ({ ...m, [id]: !m[id] }));
   }, []);
@@ -1439,24 +1524,12 @@ export default function KitViewer({
           onToggle={() => toggle("kit-section-posts")}
           tocLabel="Social posts and captions"
         >
-          {/*
-            Single-column post list: a 2-column grid here caused real hit-target overlap on some
-            browsers (wide RTL/longs strings + grid min-width), so taps on the right card could
-            activate controls on the left. Keep one column for reliable pointer isolation.
-          */}
-          <div className="grid grid-cols-1 gap-4">
-            {posts.map((p, i) => (
-              <PostCard
-                key={`${kit.id}-post-${i}`}
-                post={p}
-                index={i}
-                lang={lang}
-                strategy={postStrategy[i] ?? null}
-                onRegenerate={(idx) => openRegenerateDialog("post", idx)}
-                regenerating={regeneratingKey === `post-${i}`}
-              />
-            ))}
-          </div>
+          <GroupedPostsPanel
+            groups={groupedPosts}
+            lang={lang}
+            regeneratingKey={regeneratingKey}
+            openRegenerateDialog={openRegenerateDialog}
+          />
         </CollapsibleSection>
       )}
 

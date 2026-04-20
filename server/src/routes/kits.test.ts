@@ -131,6 +131,7 @@ describe("kits routes device header enforcement", () => {
       target_audience: ["youth", "entrepreneurs"],
       platforms: ["instagram", "tiktok"],
       best_content_types: ["educational", "testimonials"],
+      business_links: "https://example.com https://instagram.com/example",
     });
 
     const res = await appRequest("/api/kits/generate", {
@@ -148,6 +149,9 @@ describe("kits routes device header enforcement", () => {
       expect.objectContaining({
         idempotencyKey: "idem-2",
         deviceId,
+        body: expect.objectContaining({
+          business_links: "https://example.com https://instagram.com/example",
+        }),
       })
     );
   });

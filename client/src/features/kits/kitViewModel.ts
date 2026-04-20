@@ -39,6 +39,18 @@ export type KitStrategyMetadata = {
   algorithmic_advantage: string;
 };
 
+export type GroupedPostDay = {
+  dayLabel: string;
+  globalIndex: number;
+  post: KitPostItem;
+  strategy: KitStrategyMetadata | null;
+};
+
+export type GroupedPostsByPlatform = {
+  platformLabel: string;
+  days: GroupedPostDay[];
+};
+
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
@@ -86,6 +98,25 @@ function asStrategyMetadata(v: unknown): KitStrategyMetadata {
     strategic_rationale: rationale,
     algorithmic_advantage: typeof v.algorithmic_advantage === "string" ? v.algorithmic_advantage.trim() : "",
   };
+}
+
+export function groupPostsByPlatformAndDay(
+  posts: KitPostItem[],
+  postStrategy: KitStrategyMetadata[]
+): GroupedPostsByPlatform[] {
+  const byPlatform = new Map<string, GroupedPostDay[]>();
+  posts.forEach((post, globalIndex) => {
+    const platformLabel = (post.platform ?? "").trim() || "Unknown platform";
+    const existing = byPlatform.get(platformLabel) ?? [];
+    existing.push({
+      dayLabel: `Day ${existing.length + 1}`,
+      globalIndex,
+      post,
+      strategy: postStrategy[globalIndex] ?? null,
+    });
+    byPlatform.set(platformLabel, existing);
+  });
+  return Array.from(byPlatform.entries()).map(([platformLabel, days]) => ({ platformLabel, days }));
 }
 
 function pickFirstSection(data: Record<string, unknown> | null, keys: string[]) {

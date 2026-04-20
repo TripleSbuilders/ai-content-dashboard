@@ -208,6 +208,13 @@ Step **ids** match `stepOrder` in each wizard file; labels are the **chip titles
 
 Shared implementation: `client/src/pages/wizards/WizardCore.tsx`. After the last step, submission calls **`POST /api/kits/generate`** with the brief JSON and **`Idempotency-Key`**.
 
+### Wizard UX notes
+
+- Draft autosave is strict: current step + full form snapshot are persisted on each change and restored after refresh.
+- Brand step includes optional `business_links` (website/social links) and sends it in the generation brief.
+- Active platform pills include recognizable platform logos (Facebook, Instagram, X, LinkedIn, TikTok, YouTube).
+- Best content types include `product_demo` and `problem_solving`.
+
 ---
 
 ## API Reference
@@ -229,6 +236,8 @@ Authorization: Bearer <API_SECRET>
 | `GET` | `/api/kits/:id` | Kit detail |
 | `POST` | `/api/kits/:id/retry` | Retry only `failed_generation` with `{ brief_json, row_version }` |
 | `POST` | `/api/kits/:id/regenerate-item` | Regenerate one item only with `{ item_type, index, row_version, feedback? }` |
+
+Generation quota usage (image/video prompt counters) is consumed only after a successful LLM response and successful kit persistence path.
 
 ### Retry semantics
 

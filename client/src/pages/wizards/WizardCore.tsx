@@ -107,7 +107,7 @@ const STEP_FIELDS: Record<StepId, (keyof BriefForm)[]> = {
     "diagnostic_primary_blocker",
     "diagnostic_revenue_goal",
   ],
-  brand: ["brand_name", "industry"],
+  brand: ["brand_name", "industry", "business_links"],
   audience: ["target_audience", "main_goal"],
   channels: ["platforms", "brand_tone", "brand_colors"],
   offer: ["offer", "competitors"],
@@ -592,63 +592,76 @@ export default function WizardCore(props: WizardCoreProps) {
             )}
 
             {currentStep === "brand" && (
-              <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
-                <div>
-                  <label htmlFor="brand_name" className={labelCls}>Brand name</label>
-                  <div className={fieldShell}><input id="brand_name" className={inputCls} {...register("brand_name")} /></div>
-                  {errors.brand_name && <p className={errCls}>{errors.brand_name.message}</p>}
-                </div>
-                <div>
-                  <label htmlFor="industry" className={labelCls}>Industry</label>
-                  <div className={fieldShell}>
-                    <Controller
-                      name="industry"
-                      control={control}
-                      render={({ field }) => (
-                        <select
-                          id="industry"
-                          className={selectCls}
-                          value={isOtherIndustry ? "__other__" : (field.value || "")}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            if (v === "__other__") {
-                              setIsOtherIndustry(true);
-                              field.onChange("");
-                              return;
-                            }
-                            setIsOtherIndustry(false);
-                            field.onChange(v);
-                          }}
-                        >
-                          <option value="">Select industry…</option>
-                          {industryOptions.map((i) => (
-                            <option key={i.slug} value={i.slug}>
-                              {i.name}
-                            </option>
-                          ))}
-                          <option value="__other__">Other (write manually)</option>
-                        </select>
-                      )}
-                    />
+              <div className="space-y-4 sm:space-y-6">
+                <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="brand_name" className={labelCls}>Brand name</label>
+                    <div className={fieldShell}><input id="brand_name" className={inputCls} {...register("brand_name")} /></div>
+                    {errors.brand_name && <p className={errCls}>{errors.brand_name.message}</p>}
                   </div>
-                  {isOtherIndustry && (
-                    <div className={fieldShell + " mt-3"}>
+                  <div>
+                    <label htmlFor="industry" className={labelCls}>Industry</label>
+                    <div className={fieldShell}>
                       <Controller
                         name="industry"
                         control={control}
                         render={({ field }) => (
-                          <input
-                            id="industry_other"
-                            className={inputCls}
-                            value={field.value || ""}
-                            onChange={(e) => field.onChange(e.target.value)}
-                            placeholder="Write your industry..."
-                          />
+                          <select
+                            id="industry"
+                            className={selectCls}
+                            value={isOtherIndustry ? "__other__" : (field.value || "")}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              if (v === "__other__") {
+                                setIsOtherIndustry(true);
+                                field.onChange("");
+                                return;
+                              }
+                              setIsOtherIndustry(false);
+                              field.onChange(v);
+                            }}
+                          >
+                            <option value="">Select industry…</option>
+                            {industryOptions.map((i) => (
+                              <option key={i.slug} value={i.slug}>
+                                {i.name}
+                              </option>
+                            ))}
+                            <option value="__other__">Other (write manually)</option>
+                          </select>
                         )}
                       />
                     </div>
-                  )}
-                  {errors.industry && <p className={errCls}>{errors.industry.message}</p>}
+                    {isOtherIndustry && (
+                      <div className={fieldShell + " mt-3"}>
+                        <Controller
+                          name="industry"
+                          control={control}
+                          render={({ field }) => (
+                            <input
+                              id="industry_other"
+                              className={inputCls}
+                              value={field.value || ""}
+                              onChange={(e) => field.onChange(e.target.value)}
+                              placeholder="Write your industry..."
+                            />
+                          )}
+                        />
+                      </div>
+                    )}
+                    {errors.industry && <p className={errCls}>{errors.industry.message}</p>}
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="business_links" className={labelCls}>Business or social media links (optional)</label>
+                  <div className={fieldShell}>
+                    <textarea
+                      id="business_links"
+                      className={inputCls + " min-h-[90px] resize-y py-2.5"}
+                      placeholder="https://your-site.com, https://instagram.com/yourbrand"
+                      {...register("business_links")}
+                    />
+                  </div>
                 </div>
               </div>
             )}

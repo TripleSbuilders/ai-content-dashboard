@@ -24,28 +24,39 @@ export function useWizardDraft(params: {
 
   const [step, setStep] = useState(initialState.step);
   const [showDraftBanner, setShowDraftBanner] = useState(initialState.hadDraft);
-  const saveTimer = useRef<number | null>(null);
+  const isHydrated = useRef(false);
 
   useEffect(() => {
+    isHydrated.current = true;
     const sub = params.watch(() => {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = window.setTimeout(() => {
-        try {
-          const form = params.getValues();
-          if (!isWizardDirty(form, step, params.limits as any)) {
-            localStorage.removeItem(params.draftKey);
-            return;
-          }
-          localStorage.setItem(params.draftKey, JSON.stringify({ step, form }));
-        } catch {
-          // ignore
+      try {
+        const form = params.getValues();
+        if (!isWizardDirty(form, step, params.limits as any)) {
+          localStorage.removeItem(params.draftKey);
+          return;
         }
-      }, 400);
+        localStorage.setItem(params.draftKey, JSON.stringify({ step, form }));
+      } catch {
+        // ignore
+      }
     });
     return () => {
       sub.unsubscribe();
-      if (saveTimer.current) clearTimeout(saveTimer.current);
     };
+  }, [params, step]);
+
+  useEffect(() => {
+    if (!isHydrated.current) return;
+    try {
+      const form = params.getValues();
+      if (!isWizardDirty(form, step, params.limits as any)) {
+        localStorage.removeItem(params.draftKey);
+        return;
+      }
+      localStorage.setItem(params.draftKey, JSON.stringify({ step, form }));
+    } catch {
+      // ignore
+    }
   }, [params, step]);
 
   const clearStoredDraft = () => {

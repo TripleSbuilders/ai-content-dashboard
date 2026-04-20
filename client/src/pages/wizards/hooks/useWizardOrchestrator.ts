@@ -27,7 +27,15 @@ export function useWizardOrchestrator(params: Params) {
       }
     }
     params.onStepAdvance();
-    params.setStep((s) => Math.min(params.maxStep, s + 1));
+    params.setStep((s) => {
+      const nextStep = Math.min(params.maxStep, s + 1);
+      if (nextStep > s) {
+        window.requestAnimationFrame(() => {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+      }
+      return nextStep;
+    });
   }, [params]);
 
   return { next };

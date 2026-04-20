@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildKitViewModel } from "./kitViewModel";
+import { buildKitViewModel, groupPostsByPlatformAndDay } from "./kitViewModel";
 import type { KitSummary } from "../../types";
 
 function makeKit(result_json: unknown): KitSummary {
@@ -78,6 +78,30 @@ describe("buildKitViewModel strategy metadata", () => {
     expect(vm.imageStrategy[0]?.strategic_rationale).toBeNull();
     expect(vm.videoStrategy[0]?.strategic_rationale).toBeNull();
     expect(vm.missingCriticalSections).toEqual([]);
+  });
+});
+
+describe("groupPostsByPlatformAndDay", () => {
+  it("groups posts by platform and assigns day sequence per platform", () => {
+    const grouped = groupPostsByPlatformAndDay(
+      [
+        { platform: "instagram", post_ar: "a1" },
+        { platform: "instagram", post_ar: "a2" },
+        { platform: "facebook", post_ar: "b1" },
+        { platform: "", post_ar: "u1" },
+      ],
+      [{ strategic_rationale: null, algorithmic_advantage: "s1" }, { strategic_rationale: null, algorithmic_advantage: "s2" }]
+    );
+
+    expect(grouped).toHaveLength(3);
+    expect(grouped[0]?.platformLabel).toBe("instagram");
+    expect(grouped[0]?.days.map((d) => d.dayLabel)).toEqual(["Day 1", "Day 2"]);
+    expect(grouped[1]?.platformLabel).toBe("facebook");
+    expect(grouped[1]?.days[0]?.globalIndex).toBe(2);
+    expect(grouped[2]?.platformLabel).toBe("Unknown platform");
+    expect(grouped[0]?.days[0]?.strategy?.algorithmic_advantage).toBe("s1");
+    expect(grouped[0]?.days[1]?.strategy?.algorithmic_advantage).toBe("s2");
+    expect(grouped[1]?.days[0]?.strategy).toBeNull();
   });
 });
 

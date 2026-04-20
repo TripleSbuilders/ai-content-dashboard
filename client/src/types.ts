@@ -32,6 +32,7 @@ export type BriefForm = {
   email: string;
   brand_name: string;
   industry: string;
+  business_links: string;
   target_audience: string[];
   main_goal: string;
   platforms: string[];

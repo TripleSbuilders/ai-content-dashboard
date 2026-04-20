@@ -101,6 +101,7 @@ describe("promptComposer", () => {
     const snapshot = buildSubmissionSnapshot({
       brand_name: "Alpha Seeds",
       industry: "Agriculture",
+      business_links: "https://example.com/alpha",
       target_audience: "Farm owners",
       main_goal: "Increase inquiries",
       platforms: "Instagram, YouTube",
@@ -119,6 +120,7 @@ describe("promptComposer", () => {
     });
     expect(composed).toContain("Client Context (auto-injected)");
     expect(composed).toContain("Brand name: Alpha Seeds");
+    expect(composed).toContain("Business links: https://example.com/alpha");
     expect(composed).toContain("Use `post_ar` and `post_en`");
     expect(composed).toContain("equivalent versions in meaning");
     expect(composed).toContain("DO NOT include Arabic typography");

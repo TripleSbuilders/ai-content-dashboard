@@ -81,3 +81,15 @@ If reasoning trace causes noise/perf regressions:
 3. Retain schema metadata fields (non-breaking additive contract).
 4. Re-run Phase 2 validation checklist before re-enable.
 
+## 7) Post-Phase UX/Bugfix hardening
+
+Implemented after Phase 2 to stabilize generation UX and quota semantics:
+
+- Wizard now persists full form + exact step on every change and hydrates strictly after refresh.
+- Brand step now captures optional `business_links` and injects it into prompt client context.
+- Brand tone options are emoji-free and include `Modern & Contemporary` (`حديث وعصري`).
+- Active platform pills show recognizable brand logos; content types include Product Demo + Problem Solving.
+- Next-step navigation triggers smooth scroll-to-top for consistent wizard flow.
+- Kit viewer posts are grouped by `platform -> day` and CTA renders without hardcoded `CTA:` prefix.
+- Generate flow consumes quota usage only after successful LLM + persistence + idempotency finalization success path.
+

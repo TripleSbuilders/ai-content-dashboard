@@ -91,6 +91,7 @@ export function buildSubmissionSnapshot(source: Record<string, unknown> | null |
     email: extractFirstEmail(String(s.email ?? "")),
     brand_name: String(s.brand_name ?? "").trim(),
     industry: String(s.industry ?? "").trim(),
+    business_links: String(s.business_links ?? "").trim(),
     target_audience: normalizeStringArray(s.target_audience),
     main_goal: String(s.main_goal ?? "").trim(),
     platforms: normalizeStringArray(s.platforms),

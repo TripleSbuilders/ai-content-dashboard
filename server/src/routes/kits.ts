@@ -25,6 +25,7 @@ const generateBodySchema = z
     email: z.string().optional(),
     brand_name: z.string().optional().default(""),
     industry: z.string().optional().default(""),
+    business_links: z.string().optional().default(""),
     target_audience: z.union([z.string(), z.array(z.string())]).optional().default([]),
     diagnostic_role: z.string().optional().default(""),
     diagnostic_account_stage: z.string().optional().default(""),

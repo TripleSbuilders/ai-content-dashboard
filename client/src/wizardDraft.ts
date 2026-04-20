@@ -7,6 +7,7 @@ const BRIEF_KEYS: (keyof BriefForm)[] = [
   "email",
   "brand_name",
   "industry",
+  "business_links",
   "target_audience",
   "diagnostic_role",
   "diagnostic_account_stage",
@@ -20,6 +21,7 @@ const BRIEF_KEYS: (keyof BriefForm)[] = [
   "offer",
   "competitors",
   "visual_notes",
+  "reference_image",
   "campaign_duration",
   "budget_level",
   "best_content_types",
@@ -43,6 +45,7 @@ export function isWizardDirty(form: BriefForm, step: number, limits: WizardLimit
   if (
     form.brand_name.trim() ||
     form.industry.trim() ||
+    form.business_links.trim() ||
     form.email.trim() ||
     form.target_audience.length > 0 ||
     form.diagnostic_role.trim() ||
@@ -57,6 +60,7 @@ export function isWizardDirty(form: BriefForm, step: number, limits: WizardLimit
     form.offer.trim() ||
     form.competitors.trim() ||
     form.visual_notes.trim() ||
+    form.reference_image?.trim() ||
     form.campaign_duration.trim() ||
     form.budget_level.trim() ||
     form.best_content_types.length > 0
@@ -111,6 +115,7 @@ export function parseWizardDraft(raw: string, limits: WizardLimits, maxStep: num
       email: str(f.email),
       brand_name: str(f.brand_name),
       industry: str(f.industry),
+      business_links: str(f.business_links),
       target_audience: strArray(f.target_audience),
       diagnostic_role: str(f.diagnostic_role),
       diagnostic_account_stage: str(f.diagnostic_account_stage),
@@ -124,6 +129,7 @@ export function parseWizardDraft(raw: string, limits: WizardLimits, maxStep: num
       offer: str(f.offer),
       competitors: str(f.competitors),
       visual_notes: str(f.visual_notes),
+      reference_image: str(f.reference_image),
       campaign_duration: str(f.campaign_duration),
       budget_level: str(f.budget_level),
       best_content_types: strArray(f.best_content_types),

@@ -11,9 +11,10 @@ export const MAIN_GOAL_OPTIONS: readonly SelectionOption[] = [
 ] as const;
 
 export const BRAND_TONE_OPTIONS: readonly SelectionOption[] = [
-  { value: "formal_professional", labelAr: "رسمي واحترافي", icon: "👔" },
-  { value: "funny_trendy", labelAr: "فكاهي وتريند", icon: "😂" },
-  { value: "friendly_persuasive", labelAr: "ودي ومقنع", icon: "🤝" },
+  { value: "formal_professional", labelAr: "رسمي واحترافي" },
+  { value: "funny_trendy", labelAr: "فكاهي وتريند" },
+  { value: "friendly_persuasive", labelAr: "ودي ومقنع" },
+  { value: "modern_contemporary", labelAr: "حديث وعصري" },
 ] as const;
 
 export const TARGET_AUDIENCE_OPTIONS: readonly SelectionOption[] = [
@@ -24,10 +25,12 @@ export const TARGET_AUDIENCE_OPTIONS: readonly SelectionOption[] = [
 ] as const;
 
 export const PLATFORM_OPTIONS: readonly SelectionOption[] = [
-  { value: "facebook", labelAr: "Facebook", icon: "📘" },
-  { value: "instagram", labelAr: "Instagram", icon: "📸" },
-  { value: "tiktok", labelAr: "TikTok", icon: "🎵" },
-  { value: "youtube", labelAr: "YouTube", icon: "▶️" },
+  { value: "facebook", labelAr: "Facebook", icon: "facebook" },
+  { value: "instagram", labelAr: "Instagram", icon: "instagram" },
+  { value: "x", labelAr: "X", icon: "x" },
+  { value: "linkedin", labelAr: "LinkedIn", icon: "linkedin" },
+  { value: "tiktok", labelAr: "TikTok", icon: "tiktok" },
+  { value: "youtube", labelAr: "YouTube", icon: "youtube" },
 ] as const;
 
 export const BEST_CONTENT_TYPE_OPTIONS: readonly SelectionOption[] = [
@@ -37,6 +40,8 @@ export const BEST_CONTENT_TYPE_OPTIONS: readonly SelectionOption[] = [
   { value: "testimonials", labelAr: "آراء العملاء", icon: "🗣️" },
   { value: "offers_promotions", labelAr: "عروض وتخفيضات", icon: "🏷️" },
   { value: "faq", labelAr: "أسئلة شائعة", icon: "❓" },
+  { value: "product_demo", labelAr: "عرض المنتج", icon: "🧪" },
+  { value: "problem_solving", labelAr: "حل المشكلات", icon: "🛠️" },
 ] as const;
 
 export const OTHER_OPTION: SelectionOption = {

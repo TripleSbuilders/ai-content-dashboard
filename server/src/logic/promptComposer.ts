@@ -134,6 +134,7 @@ export function buildClientContextBlock(snapshot: SubmissionSnapshot): string {
   const lines = [
     `Brand name: ${cleanText(snapshot.brand_name)}`,
     `Industry: ${cleanText(snapshot.industry)}`,
+    `Business links: ${cleanText(snapshot.business_links)}`,
     `Target audience: ${cleanList(snapshot.target_audience)}`,
     `Main goal: ${cleanText(snapshot.main_goal)}`,
     `Platforms: ${cleanList(snapshot.platforms)}`,

@@ -24,6 +24,10 @@ const generateBodySchema = z
   .object({
     submitted_at: z.union([z.string(), z.number()]).optional(),
     email: z.string().optional(),
+    client_name: z.string().optional().default(""),
+    client_phone: z.string().optional().default(""),
+    client_email: z.string().optional().default(""),
+    source_mode: z.enum(["self_serve", "agency"]).optional().default("self_serve"),
     brand_name: z.string().optional().default(""),
     industry: z.string().optional().default(""),
     business_links: z.string().optional().default(""),
@@ -90,6 +94,10 @@ function requireDeviceId(c: import("hono").Context): { ok: true; deviceId: strin
     };
   }
   return { ok: true, deviceId: parsed.data };
+}
+
+function isAgencyModeEnabled() {
+  return String(process.env.APP_EDITION ?? "").trim().toLowerCase() === "agency";
 }
 
 function buildHydrationSnapshots(resultJson: unknown): Array<{ section: string; progress: number; snapshot: Record<string, unknown> }> {
@@ -312,6 +320,11 @@ export function createKitsRouter(mw: (c: import("hono").Context, next: Next) => 
 
   app.get("/api/kits", async (c) => {
     const scopeAll = c.req.query("scope") === "all";
+    if (isAgencyModeEnabled() && !scopeAll) {
+      const blocked = await requireAdminAccess(c);
+      if (blocked) return blocked;
+      return c.json(await listKitsService(undefined, { includeUsage: true }));
+    }
     if (scopeAll) {
       const blocked = await requireAdminAccess(c);
       if (blocked) return blocked;
@@ -324,6 +337,15 @@ export function createKitsRouter(mw: (c: import("hono").Context, next: Next) => 
 
   app.get("/api/kits/:id", async (c) => {
     const scopeAll = c.req.query("scope") === "all";
+    if (isAgencyModeEnabled() && !scopeAll) {
+      const blocked = await requireAdminAccess(c);
+      if (blocked) return blocked;
+      try {
+        return c.json(await getKitByIdService(c.req.param("id"), undefined, { includeUsage: true }));
+      } catch (err) {
+        return respondHttpError(c, err, "Unexpected error while loading kit.");
+      }
+    }
     let owner: { deviceId: string; userId?: string | null } | undefined;
     if (!scopeAll) {
       const ownerRes = await resolveOwner(c);

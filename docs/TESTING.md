@@ -61,6 +61,15 @@ E2E runs dev servers in demo mode with a temporary DB (see [`README.md`](../READ
 - **Large payload responsiveness:** grouped posts/media lists render progressively (windowed "load more"), avoiding UI freeze on large kits.
 - **Regression pass:** verify copy/regenerate/language toggles + persisted `ui_preferences` behavior still match Phase 3 expectations.
 
+## Agency pivot focused checks
+
+- **Edition routing:** with `VITE_APP_EDITION=agency`, wizard submit redirects to `/order-received` (not `/kits/:id`).
+- **Contact contract:** `client_name`, `client_phone`, `client_email` are required in agency wizard mode.
+- **Source tagging:** generated brief payload contains `source_mode: "agency"` in V2; V1 defaults remain `self_serve`.
+- **Admin-only kits:** with `APP_EDITION=agency`, non-admin requests to `/api/kits` and `/api/kits/:id` are blocked.
+- **Admin visibility:** admin kit list/detail surfaces source mode and client contact metadata.
+- **Webhook side effect:** successful generation triggers Telegram webhook when `TELEGRAM_WEBHOOK_URL` is configured; webhook failure must not fail generation.
+
 ## Self-review checklist (before merge)
 
 - [ ] **Behavior:** matches acceptance criteria; edge cases considered (empty input, errors).

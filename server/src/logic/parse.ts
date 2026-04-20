@@ -89,6 +89,10 @@ export function buildSubmissionSnapshot(source: Record<string, unknown> | null |
   return {
     submitted_at: submittedAt,
     email: extractFirstEmail(String(s.email ?? "")),
+    client_name: String(s.client_name ?? "").trim(),
+    client_phone: String(s.client_phone ?? "").trim(),
+    client_email: extractFirstEmail(String(s.client_email ?? "")),
+    source_mode: String(s.source_mode ?? "").trim().toLowerCase() === "agency" ? "agency" : "self_serve",
     brand_name: String(s.brand_name ?? "").trim(),
     industry: String(s.industry ?? "").trim(),
     business_links: String(s.business_links ?? "").trim(),

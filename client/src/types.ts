@@ -36,6 +36,11 @@ export function normalizeCampaignMode(v: unknown): CampaignMode {
 
 export type BriefForm = {
   email: string;
+  client_name: string;
+  client_phone: string;
+  client_email: string;
+  /** Differentiates kit origin between self-serve and agency intake. */
+  source_mode: "self_serve" | "agency";
   brand_name: string;
   industry: string;
   business_links: string;

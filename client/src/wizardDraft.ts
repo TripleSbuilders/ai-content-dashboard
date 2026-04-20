@@ -5,6 +5,10 @@ export const WIZARD_DRAFT_KEY = "ai-content-dashboard:wizard-draft:v1";
 
 const BRIEF_KEYS: (keyof BriefForm)[] = [
   "email",
+  "client_name",
+  "client_phone",
+  "client_email",
+  "source_mode",
   "brand_name",
   "industry",
   "business_links",
@@ -44,6 +48,9 @@ export function isWizardDirty(form: BriefForm, step: number, limits: WizardLimit
   if (step > 0) return true;
   if (
     form.brand_name.trim() ||
+    form.client_name.trim() ||
+    form.client_phone.trim() ||
+    form.client_email.trim() ||
     form.industry.trim() ||
     form.business_links.trim() ||
     form.email.trim() ||
@@ -90,6 +97,10 @@ export function parseWizardDraft(raw: string, limits: WizardLimits, maxStep: num
         if (k === "campaign_mode") continue;
         if (k === "include_content_package") continue;
         if (k === "content_package_idea_count") continue;
+        if (k === "client_name") continue;
+        if (k === "client_phone") continue;
+        if (k === "client_email") continue;
+        if (k === "source_mode") continue;
         return null;
       }
     }
@@ -113,6 +124,10 @@ export function parseWizardDraft(raw: string, limits: WizardLimits, maxStep: num
     };
     const form: BriefForm = {
       email: str(f.email),
+      client_name: str(f.client_name),
+      client_phone: str(f.client_phone),
+      client_email: str(f.client_email),
+      source_mode: str(f.source_mode).toLowerCase() === "agency" ? "agency" : "self_serve",
       brand_name: str(f.brand_name),
       industry: str(f.industry),
       business_links: str(f.business_links),

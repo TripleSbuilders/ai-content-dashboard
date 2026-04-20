@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { listKits } from "./api";
 import type { KitSummary } from "./types";
 import { useCompactTable } from "./layout/compactTableContext";
-import { briefBrand, briefIndustry } from "./kitSearchUtils";
+import { briefBrand, briefClientMeta, briefIndustry } from "./kitSearchUtils";
 import { statusKind } from "./kitUiFormatters";
 
 function initials(name: string, id: string): string {
@@ -64,6 +64,7 @@ export default function GeneratedKitsPage({ adminMode = false }: { adminMode?: b
             {latestKits.map((k) => {
               const brand = briefBrand(k.brief_json);
               const ind = briefIndustry(k.brief_json);
+              const meta = briefClientMeta(k.brief_json);
               const ini = initials(brand, k.id);
               const dt = new Date(k.created_at);
               return (
@@ -85,9 +86,14 @@ export default function GeneratedKitsPage({ adminMode = false }: { adminMode?: b
                       {dt.toLocaleDateString()} · {dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </p>
                     {adminMode && (
-                      <p className="mt-2 inline-flex w-fit rounded-full border border-gray-200 px-2 py-0.5 text-[11px] font-semibold text-gray-600 dark:border-white/10 dark:text-gray-300">
-                        Tokens: {formatTokens(k.total_tokens)}
-                      </p>
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        <p className="inline-flex w-fit rounded-full border border-gray-200 px-2 py-0.5 text-[11px] font-semibold text-gray-600 dark:border-white/10 dark:text-gray-300">
+                          Tokens: {formatTokens(k.total_tokens)}
+                        </p>
+                        <p className="inline-flex w-fit rounded-full border border-gray-200 px-2 py-0.5 text-[11px] font-semibold text-gray-600 dark:border-white/10 dark:text-gray-300">
+                          Source: {meta.sourceMode}
+                        </p>
+                      </div>
                     )}
                   </Link>
                 </li>
@@ -133,6 +139,7 @@ export default function GeneratedKitsPage({ adminMode = false }: { adminMode?: b
                 {kits.map((k) => {
                   const brand = briefBrand(k.brief_json);
                   const ind = briefIndustry(k.brief_json);
+                  const meta = briefClientMeta(k.brief_json);
                   const ini = initials(brand, k.id);
                   const sk = statusKind(k.status_badge);
                   const dt = new Date(k.created_at);
@@ -160,6 +167,9 @@ export default function GeneratedKitsPage({ adminMode = false }: { adminMode?: b
                       </td>
                       <td className={tdPad}>
                         <span className="text-sm text-gray-600 dark:text-gray-300">{ind}</span>
+                        {adminMode && meta.clientName && (
+                          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Client: {meta.clientName}</p>
+                        )}
                       </td>
                       <td className={tdPad}>
                         <div className="text-sm">
@@ -189,9 +199,14 @@ export default function GeneratedKitsPage({ adminMode = false }: { adminMode?: b
                       </td>
                       {adminMode && (
                         <td className={tdPad}>
-                          <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-                            {formatTokens(k.total_tokens)}
-                          </span>
+                          <div className="space-y-1">
+                            <span className="block text-sm font-semibold text-gray-700 dark:text-gray-200">
+                              {formatTokens(k.total_tokens)}
+                            </span>
+                            <span className="block text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                              {meta.sourceMode}
+                            </span>
+                          </div>
                         </td>
                       )}
                       <td className={tdPad + " text-end"}>

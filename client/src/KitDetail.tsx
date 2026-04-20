@@ -138,6 +138,11 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
       : "unknown";
   const blocker = String(brief.diagnostic_primary_blocker ?? "").trim();
   const target = String(brief.diagnostic_revenue_goal ?? "").trim();
+  const sourceModeRaw = String(brief.source_mode ?? "").trim().toLowerCase();
+  const sourceMode = sourceModeRaw === "agency" ? "agency" : sourceModeRaw === "self_serve" ? "self_serve" : "unknown";
+  const clientName = String(brief.client_name ?? "").trim();
+  const clientPhone = String(brief.client_phone ?? "").trim();
+  const clientEmail = String(brief.client_email ?? brief.email ?? "").trim();
   const recommendation =
     blocker === "inconsistent-execution"
       ? "Start with Quick win and publish one output today to rebuild momentum."
@@ -255,6 +260,26 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
             <div className="rounded-xl border border-outline/25 bg-surface-container-low p-3">
               <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Total tokens</p>
               <p className="mt-1 text-sm font-semibold text-on-surface">{(kit.total_tokens ?? 0).toLocaleString()}</p>
+            </div>
+          </div>
+        ) : null}
+
+        {showTechnical ? (
+          <div className="rounded-2xl border border-outline/25 bg-surface-container-low p-4">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Lead routing</p>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2 text-sm text-on-surface-variant">
+              <p>
+                <span className="font-semibold text-on-surface">Source:</span> {sourceMode}
+              </p>
+              <p>
+                <span className="font-semibold text-on-surface">Client:</span> {clientName || "-"}
+              </p>
+              <p>
+                <span className="font-semibold text-on-surface">Phone:</span> {clientPhone || "-"}
+              </p>
+              <p>
+                <span className="font-semibold text-on-surface">Email:</span> {clientEmail || "-"}
+              </p>
             </div>
           </div>
         ) : null}

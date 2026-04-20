@@ -1,12 +1,26 @@
-import { socialBriefSchema, socialBriefSchemaWithDiagnosis } from "../../briefSchema";
+import {
+  socialBriefSchema,
+  socialBriefSchemaAgency,
+  socialBriefSchemaWithDiagnosis,
+  socialBriefSchemaWithDiagnosisAgency,
+} from "../../briefSchema";
 import WizardCore from "./WizardCore";
 import { isWizardVariantB } from "../../lib/wizardExperiment";
+import { isAgencyEdition } from "../../lib/appEdition";
 
 export default function SocialCampaignWizard() {
   const variantB = isWizardVariantB();
+  const agencyEdition = isAgencyEdition();
+  const formSchema = variantB
+    ? agencyEdition
+      ? socialBriefSchemaWithDiagnosisAgency
+      : socialBriefSchemaWithDiagnosis
+    : agencyEdition
+      ? socialBriefSchemaAgency
+      : socialBriefSchema;
   return (
     <WizardCore
-      formSchema={variantB ? socialBriefSchemaWithDiagnosis : socialBriefSchema}
+      formSchema={formSchema}
       draftKey="ai-content-dashboard:wizard-draft:social:v1"
       title="Social Campaign Wizard"
       subtitle="Designed for social-first execution: clear audience intent, sharp channel mix, and strong posting output."

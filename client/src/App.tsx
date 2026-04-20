@@ -14,12 +14,15 @@ import ProfilePage from "./pages/ProfilePage";
 import BrandVoicePage from "./pages/BrandVoicePage";
 import HelpPage from "./pages/HelpPage";
 import IntegrationsPage from "./pages/IntegrationsPage";
+import OrderReceivedPage from "./pages/OrderReceivedPage";
 import { useAuth } from "./auth/AuthContext";
+import { isAgencyEdition } from "./lib/appEdition";
 
 const demoMode = import.meta.env.VITE_DEMO_MODE === "true";
 
 export default function App() {
   const { entitlements } = useAuth();
+  const agencyEdition = isAgencyEdition();
   const plan = entitlements?.plan_code ?? "starter";
   const modeLocked = plan === "starter";
   const LockedMode = ({ mode }: { mode: "offer" | "deep" }) => (
@@ -68,13 +71,14 @@ export default function App() {
         }
       >
         <Route path="/" element={<Dashboard />} />
-        <Route path="/generated-kits" element={<GeneratedKitsPage />} />
+        <Route path="/generated-kits" element={agencyEdition ? <Navigate to="/" replace /> : <GeneratedKitsPage />} />
         <Route path="/pricing" element={<PricingPage />} />
         <Route path="/wizard" element={<Navigate to="/wizard/social" replace />} />
         <Route path="/wizard/social" element={<SocialCampaignWizard />} />
         <Route path="/wizard/offer" element={modeLocked ? <LockedMode mode="offer" /> : <OfferProductWizard />} />
         <Route path="/wizard/deep" element={modeLocked ? <LockedMode mode="deep" /> : <DeepContentWizard />} />
-        <Route path="/kits/:id" element={<KitDetail />} />
+        <Route path="/kits/:id" element={agencyEdition ? <Navigate to="/order-received" replace /> : <KitDetail />} />
+        <Route path="/order-received" element={<OrderReceivedPage />} />
         <Route path="/help" element={<HelpPage />} />
         <Route path="/integrations" element={<IntegrationsPage />} />
         <Route path="/brand-voice" element={<BrandVoicePage />} />

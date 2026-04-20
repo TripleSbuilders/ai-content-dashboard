@@ -30,6 +30,7 @@ import { useWizardOrchestrator } from "./hooks/useWizardOrchestrator";
 import WizardStepChips from "./components/WizardStepChips";
 import WizardValuePreview from "./components/WizardValuePreview";
 import { isWizardVariantB } from "../../lib/wizardExperiment";
+import { isAgencyEdition } from "../../lib/appEdition";
 import { useAuth } from "../../auth/AuthContext";
 
 type StepId = "diagnosis" | "brand" | "audience" | "channels" | "offer" | "creative" | "volume";
@@ -107,7 +108,7 @@ const STEP_FIELDS: Record<StepId, (keyof BriefForm)[]> = {
     "diagnostic_primary_blocker",
     "diagnostic_revenue_goal",
   ],
-  brand: ["brand_name", "industry", "business_links"],
+  brand: ["client_name", "client_phone", "client_email", "brand_name", "industry", "business_links"],
   audience: ["target_audience", "main_goal"],
   channels: ["platforms", "brand_tone", "brand_colors"],
   offer: ["offer", "competitors"],
@@ -214,6 +215,7 @@ export default function WizardCore(props: WizardCoreProps) {
   const zodResolverMemo = useMemo(() => zodResolver(zodSchema), [zodSchema]);
   const industryOptions = FALLBACK_INDUSTRY_OPTIONS;
   const variantB = isWizardVariantB();
+  const agencyEdition = isAgencyEdition();
 
   const [isOtherIndustry, setIsOtherIndustry] = useState(false);
   const [tipIndex, setTipIndex] = useState(0);
@@ -297,6 +299,10 @@ export default function WizardCore(props: WizardCoreProps) {
     reset(initialState.form);
     setWizardData(initialState.form);
   }, [initialState.form, reset]);
+
+  useEffect(() => {
+    setValue("source_mode", agencyEdition ? "agency" : "self_serve", { shouldDirty: true });
+  }, [agencyEdition, setValue]);
 
   useEffect(() => {
     const subscription = watch((value) => {
@@ -400,7 +406,13 @@ export default function WizardCore(props: WizardCoreProps) {
     stepOrder: props.stepOrder,
     createIdempotencyKey: () => crypto.randomUUID(),
     clearDraft: () => localStorage.removeItem(props.draftKey),
-    navigateToKit: (kitId) => nav(`/kits/${kitId}`),
+    navigateToKit: (kitId) => {
+      if (agencyEdition) {
+        nav(`/order-received?kit=${encodeURIComponent(kitId)}`);
+        return;
+      }
+      nav(`/kits/${kitId}`);
+    },
     clampCounts: (form) => ({
       ...form,
       num_posts: clamp(form.num_posts, LIMITS.num_posts.min, LIMITS.num_posts.max),
@@ -478,7 +490,11 @@ export default function WizardCore(props: WizardCoreProps) {
     <div className="mx-auto w-full max-w-6xl px-2 sm:px-4">
       <div className="mb-8 md:mb-10">
         <h2 className="font-headline text-2xl font-extrabold tracking-tight text-on-surface sm:text-3xl md:text-4xl">{props.title}</h2>
-        <p className="mt-2 max-w-3xl text-on-surface-variant">{props.subtitle}</p>
+        <p className="mt-2 max-w-3xl text-on-surface-variant">
+          {agencyEdition
+            ? "Share your project details and our team will prepare a complete ready-to-execute content plan for you."
+            : props.subtitle}
+        </p>
       </div>
 
       {showDraftBanner && (
@@ -493,6 +509,21 @@ export default function WizardCore(props: WizardCoreProps) {
       <div className="wizard-root overflow-hidden rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#0c0c0e] sm:rounded-[2rem] shadow-sm" aria-busy={loading}>
         <div className={cn("wizard-body-wrap relative", loading && "wizard-body-wrap--loading")}>
           <div className="wizard-body p-5 sm:p-8 md:p-10 lg:p-12">
+            <div className={cn("grid gap-8", agencyEdition && "lg:grid-cols-[260px_minmax(0,1fr)] lg:items-start")}>
+              {agencyEdition && (
+                <aside className="rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50/70 dark:bg-[#121214] p-5">
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Service Flow</p>
+                  <ul className="mt-3 space-y-3 text-sm text-gray-700 dark:text-gray-300">
+                    <li>1) Submit your project details</li>
+                    <li>2) Team reviews your strategy context</li>
+                    <li>3) We deliver a polished content package</li>
+                  </ul>
+                  <div className="mt-5 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-black/30 p-3 text-xs text-gray-600 dark:text-gray-400">
+                    Our sales team will contact you after submission to coordinate the delivery timeline.
+                  </div>
+                </aside>
+              )}
+              <div>
             <div className="mb-8 rounded-2xl border border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-[#111] p-4 sm:p-5">
               <div className="mb-3 flex items-center justify-between text-[11px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
                 <span>Step {step + 1} of {maxStep + 1}</span>
@@ -593,6 +624,34 @@ export default function WizardCore(props: WizardCoreProps) {
 
             {currentStep === "brand" && (
               <div className="space-y-4 sm:space-y-6">
+                {agencyEdition && (
+                  <div className="rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-[#111] p-4 sm:p-5 space-y-4">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Client contact details</p>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <label htmlFor="client_name" className={labelCls}>Full name</label>
+                        <div className={fieldShell}>
+                          <input id="client_name" className={inputCls} placeholder="Client full name" {...register("client_name")} />
+                        </div>
+                        {errors.client_name && <p className={errCls}>{errors.client_name.message}</p>}
+                      </div>
+                      <div>
+                        <label htmlFor="client_phone" className={labelCls}>Phone number</label>
+                        <div className={fieldShell}>
+                          <input id="client_phone" className={inputCls} placeholder="+20 ..." {...register("client_phone")} />
+                        </div>
+                        {errors.client_phone && <p className={errCls}>{errors.client_phone.message}</p>}
+                      </div>
+                    </div>
+                    <div>
+                      <label htmlFor="client_email" className={labelCls}>Email address</label>
+                      <div className={fieldShell}>
+                        <input id="client_email" type="email" className={inputCls} placeholder="client@email.com" {...register("client_email")} />
+                      </div>
+                      {errors.client_email && <p className={errCls}>{errors.client_email.message}</p>}
+                    </div>
+                  </div>
+                )}
                 <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
                   <div>
                     <label htmlFor="brand_name" className={labelCls}>Brand name</label>
@@ -1214,6 +1273,8 @@ export default function WizardCore(props: WizardCoreProps) {
                   {loading ? (variantB ? "Building your diagnosis..." : "Generating...") : variantB ? "Show my diagnosis and plan" : "Generate my kit now"}
                 </button>
               )}
+            </div>
+              </div>
             </div>
           </div>
 

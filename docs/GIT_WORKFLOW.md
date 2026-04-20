@@ -4,6 +4,7 @@
 
 - Use a **dedicated branch per task** (`feat/…`, `fix/…`, `chore/…`).
 - Keep branches **short-lived**; rebase or merge from default branch as needed to reduce drift.
+- For parallel product tracks (example: `v1` self-serve vs `v2` agency), keep a clear branch lineage and avoid mixing cross-track behavior changes in one PR.
 
 ## Commits (micro-checkpoints)
 

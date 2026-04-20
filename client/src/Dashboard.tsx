@@ -5,19 +5,25 @@ import type { KitSummary } from "./types";
 import { useToast } from "./useToast";
 import { statusKind } from "./kitUiFormatters";
 import { logger } from "./logger";
+import { isAgencyEdition } from "./lib/appEdition";
 
 export default function Dashboard() {
   const [kits, setKits] = useState<KitSummary[] | null>(null);
   const { toasts, push } = useToast();
+  const agencyEdition = isAgencyEdition();
 
   useEffect(() => {
+    if (agencyEdition) {
+      setKits([]);
+      return;
+    }
     listKits()
       .then(setKits)
       .catch((e) => {
         logger.error(e);
         push("Could not load the list", "error");
       });
-  }, [push]);
+  }, [agencyEdition, push]);
 
   const stats = useMemo(() => {
     if (!kits?.length) {
@@ -55,8 +61,14 @@ export default function Dashboard() {
 
       <section className="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-6 md:mb-14">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white md:text-4xl">Dashboard</h2>
-          <p className="mt-2 text-base text-gray-500 dark:text-gray-400">Open past kits efficiently, or launch a new campaign pipeline.</p>
+          <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white md:text-4xl">
+            {agencyEdition ? "Service Dashboard" : "Dashboard"}
+          </h2>
+          <p className="mt-2 text-base text-gray-500 dark:text-gray-400">
+            {agencyEdition
+              ? "Save your time learning AI tools. Share your project details and our team will deliver a complete, ready-to-use content strategy."
+              : "Open past kits efficiently, or launch a new campaign pipeline."}
+          </p>
         </div>
         <div className="flex w-full sm:w-auto">
           <div className="flex items-center gap-2.5 rounded-full border border-gray-200 dark:border-white/10 bg-white dark:bg-white/[0.03] px-3.5 py-1.5 shadow-sm">
@@ -79,16 +91,26 @@ export default function Dashboard() {
             <div className="max-w-md">
               <div className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 dark:border-indigo-500/20 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 mb-4">
                 <span className="material-symbols-outlined text-[12px] text-indigo-600 dark:text-indigo-400">bolt</span>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400">Start Here</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
+                  {agencyEdition ? "Done-for-you Service" : "Start Here"}
+                </span>
               </div>
-              <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">Create new campaign</h3>
+              <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">
+                {agencyEdition ? "Submit your project request" : "Create new campaign"}
+              </h3>
               <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                Launch a social, offer, or deep content generator flow to build your next kit in minutes.
+                {agencyEdition
+                  ? "Tell us about your brand, audience, and goals. Our strategy team will prepare your content package and coordinate delivery with you."
+                  : "Launch a social, offer, or deep content generator flow to build your next kit in minutes."}
               </p>
               
               <div className="mt-6 flex flex-wrap gap-2">
-                <Link to="/wizard/social" className="rounded-md border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors">Social Flow</Link>
-                <Link to="/wizard/offer" className="rounded-md border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors">Offer Flow</Link>
+                <Link to="/wizard/social" className="rounded-md border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors">
+                  {agencyEdition ? "Request Intake" : "Social Flow"}
+                </Link>
+                <Link to="/wizard/offer" className="rounded-md border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors">
+                  {agencyEdition ? "Sales Offer" : "Offer Flow"}
+                </Link>
               </div>
             </div>
             
@@ -97,7 +119,7 @@ export default function Dashboard() {
                 to="/wizard"
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-gray-900 text-white dark:bg-white dark:text-black px-6 py-3.5 text-sm font-semibold shadow-sm hover:scale-[1.02] active:scale-95 transition-all w-full sm:w-auto"
               >
-                Launch Wizard
+                {agencyEdition ? "Start service request" : "Launch Wizard"}
                 <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
               </Link>
             </div>

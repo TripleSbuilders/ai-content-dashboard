@@ -15,6 +15,7 @@ import { generateWithGuardrails } from "./aiGenerationProvider.js";
 import { addUsageTotals, type GenerationUsageTotals } from "./aiGenerationProvider.js";
 import { runContentPackageChain } from "./contentPackageOrchestrator.js";
 import { parseReferenceImageFromDataUrl } from "./imageProcessor.js";
+import { notifyTelegramNewLead } from "./telegramNotifier.js";
 import {
   consumeGeneratedAssets,
   consumeUsage,
@@ -76,6 +77,7 @@ export type KitGenerationDependencies = {
   sendClientDelay?: typeof sendClientDelayEmail;
   sendAdminAlert?: typeof sendAdminFailureAlert;
   notify?: typeof recordKitNotification;
+  notifyTelegram?: typeof notifyTelegramNewLead;
 };
 
 function withDeps(deps?: KitGenerationDependencies) {
@@ -86,6 +88,7 @@ function withDeps(deps?: KitGenerationDependencies) {
     sendClientDelay: deps?.sendClientDelay ?? sendClientDelayEmail,
     sendAdminAlert: deps?.sendAdminAlert ?? sendAdminFailureAlert,
     notify: deps?.notify ?? recordKitNotification,
+    notifyTelegram: deps?.notifyTelegram ?? notifyTelegramNewLead,
   };
 }
 
@@ -270,6 +273,7 @@ export async function generateKitService(input: {
       isFallback: resolved.isFallback,
     });
     await d.notify(row);
+    await d.notifyTelegram({ snapshot, kitId: row.id, correlationId });
     await finalizeIdempotencyKey(d.db, { keyHash, briefHash: fp, kitId: row.id });
     await consumeGeneratedAssets(d.db, owner, {
       videoPromptsUsed: Array.isArray((aiContent as Record<string, unknown>).video_prompts)
@@ -294,6 +298,7 @@ export async function generateKitService(input: {
       isFallback: resolved.isFallback,
     });
     await d.notify(row);
+    await d.notifyTelegram({ snapshot, kitId: row.id, correlationId });
     await finalizeIdempotencyKey(d.db, { keyHash, briefHash: fp, kitId: row.id });
     return { status: 201, body: serializeKit(row) };
   }

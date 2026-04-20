@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ApiError } from "../../../api";
 import { generateKitStream, type KitGenerationStreamEvent } from "../../../api";
 import type { WizardEventPayload, WizardType } from "../../../lib/wizardAnalytics";
+import { isAgencyEdition } from "../../../lib/appEdition";
 import type { BriefForm } from "../../../types";
 
 const STREAM_STATUS_PROGRESS_FLOOR: Record<string, number> = {
@@ -54,7 +55,10 @@ export function useWizardSubmission(params: {
       elapsed_time_ms: params.getElapsedMs(),
     });
     try {
-      const payload = params.clampCounts(form);
+      const payload = {
+        ...params.clampCounts(form),
+        source_mode: isAgencyEdition() ? "agency" : "self_serve",
+      } satisfies BriefForm;
       const kit = await generateKitStream(payload, params.createIdempotencyKey(), (evt: KitGenerationStreamEvent) => {
         if (evt.type === "status") {
           setStreamStatus(evt.status);

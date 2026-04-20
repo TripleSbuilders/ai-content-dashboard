@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { Skeleton } from "../components/Skeleton";
+import { isAgencyEdition } from "../lib/appEdition";
 
 function linkClass(isActive: boolean) {
   return [
@@ -20,6 +21,7 @@ export default function UserLayout({ demoBanner }: { demoBanner?: ReactNode }) {
     document.documentElement.classList.contains("dark") ? "dark" : "light"
   );
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const agencyEdition = isAgencyEdition();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -95,11 +97,13 @@ export default function UserLayout({ demoBanner }: { demoBanner?: ReactNode }) {
                 Overview
               </NavLink>
               <NavLink to="/wizard" className={({ isActive }) => linkClass(isActive)}>
-                Wizard
+                {agencyEdition ? "Request" : "Wizard"}
               </NavLink>
-              <NavLink to="/generated-kits" className={({ isActive }) => linkClass(isActive)}>
-                Kits
-              </NavLink>
+              {!agencyEdition && (
+                <NavLink to="/generated-kits" className={({ isActive }) => linkClass(isActive)}>
+                  Kits
+                </NavLink>
+              )}
               <NavLink to="/pricing" className={({ isActive }) => linkClass(isActive)}>
                 Pricing
               </NavLink>

@@ -1,5 +1,5 @@
 import { and, desc, eq } from "drizzle-orm";
-import { kits, type KitRow } from "../db/schema.js";
+import { idempotencyKeys, kitInteractions, kits, type KitRow } from "../db/schema.js";
 import { getStatusBadgeLabel, getStatusBadgePalette } from "../logic/status.js";
 import type { GenerationUsageTotals } from "./aiGenerationProvider.js";
 
@@ -263,4 +263,20 @@ export async function patchKitUiPreferences(
     .where(and(eq(kits.id, id), owner.userId ? eq(kits.userId, owner.userId) : eq(kits.deviceId, owner.deviceId)))
     .returning();
   return updated[0] ?? null;
+}
+
+export async function deleteKitById(db: any, id: string): Promise<string | null> {
+  const existing = (
+    await db
+      .select({ id: kits.id })
+      .from(kits)
+      .where(eq(kits.id, id))
+      .limit(1)
+  )[0];
+  if (!existing) return null;
+
+  await db.delete(kitInteractions).where(eq(kitInteractions.kitId, id));
+  await db.delete(idempotencyKeys).where(eq(idempotencyKeys.kitId, id));
+  await db.delete(kits).where(eq(kits.id, id));
+  return existing.id;
 }

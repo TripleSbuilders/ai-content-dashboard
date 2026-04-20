@@ -211,3 +211,11 @@ export async function updateKitUiPreferences(id: string, uiPreferences: KitUiPre
   if (!res.ok) throw new ApiError(await parseErrorMessage(res, res.statusText), res.status);
   return res.json() as Promise<KitSummary>;
 }
+
+export async function deleteKit(id: string): Promise<void> {
+  const res = await fetch(apiUrl(`/api/kits/${id}`), {
+    method: "DELETE",
+    headers: buildHeaders(),
+  });
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res, res.statusText), res.status);
+}

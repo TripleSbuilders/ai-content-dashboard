@@ -33,6 +33,7 @@ import {
   reserveIdempotencyKey,
 } from "./idempotencyService.js";
 import {
+  deleteKitById,
   getKitById,
   getKitByIdAny,
   getLatestSuccessfulKitForOwner,
@@ -883,4 +884,11 @@ export async function patchKitUiPreferencesService(input: {
   const updated = await patchKitUiPreferences(withDeps().db, input.id, input.owner, input.uiPreferences);
   if (!updated) throw new HttpError(404, "Not found");
   return { status: 200 as const, body: serializeKit(updated) };
+}
+
+export async function deleteKitService(id: string) {
+  const d = withDeps();
+  const deletedId = await d.db.transaction(async (tx) => deleteKitById(tx, id));
+  if (!deletedId) throw new HttpError(404, "Not found");
+  return { status: 200 as const, body: { ok: true, id: deletedId } };
 }

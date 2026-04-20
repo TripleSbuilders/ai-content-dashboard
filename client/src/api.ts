@@ -10,6 +10,7 @@ export {
   regenerateKitItem,
   submitKitInteractionTelemetry,
   updateKitUiPreferences,
+  deleteKit,
 } from "./api/kits";
 export type {
   KitGenerationStreamEvent,

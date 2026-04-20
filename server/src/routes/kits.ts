@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { Next } from "hono";
 import {
+  deleteKitService,
   enqueueAgencyKitGenerationService,
   generateKitService,
   getKitByIdService,
@@ -456,6 +457,17 @@ export function createKitsRouter(mw: (c: import("hono").Context, next: Next) => 
       return c.json(result.body, result.status);
     } catch (err) {
       return respondHttpError(c, err, "Unexpected error while updating UI preferences.");
+    }
+  });
+
+  app.delete("/api/kits/:id", async (c) => {
+    const blocked = await requireAdminAccess(c);
+    if (blocked) return blocked;
+    try {
+      const result = await deleteKitService(c.req.param("id"));
+      return c.json(result.body, result.status);
+    } catch (err) {
+      return respondHttpError(c, err, "Unexpected error while deleting kit.");
     }
   });
 

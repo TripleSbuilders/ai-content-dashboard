@@ -1,8 +1,10 @@
 import { Link, useSearchParams } from "react-router-dom";
+import { getWhatsAppSalesUrl } from "../lib/whatsappSales";
 
 export default function OrderReceivedPage() {
   const [params] = useSearchParams();
   const trackingKitId = params.get("kit") ?? "";
+  const whatsappUrl = getWhatsAppSalesUrl();
 
   return (
     <section className="mx-auto max-w-3xl">
@@ -26,6 +28,16 @@ export default function OrderReceivedPage() {
         </div>
 
         <div className="mt-8 flex flex-wrap gap-3">
+          {whatsappUrl ? (
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500"
+            >
+              إتمام الدفع عبر واتساب
+            </a>
+          ) : null}
           <Link
             to="/"
             className="inline-flex items-center justify-center rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-100"

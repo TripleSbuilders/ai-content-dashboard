@@ -31,8 +31,12 @@ function RequireAgencyAdmin({ children }: { children: ReactElement }) {
   useEffect(() => {
     let cancelled = false;
     async function run() {
-      const valid = await validateAgencyAdminSession();
-      if (!cancelled) setStatus(valid ? "ok" : "blocked");
+      try {
+        const valid = await validateAgencyAdminSession();
+        if (!cancelled) setStatus(valid ? "ok" : "blocked");
+      } catch {
+        if (!cancelled) setStatus("blocked");
+      }
     }
     void run();
     return () => {

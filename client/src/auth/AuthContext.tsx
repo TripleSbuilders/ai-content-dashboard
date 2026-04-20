@@ -86,10 +86,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refreshEntitlements,
       signInWithGoogle: async () => {
         if (!supabase) return;
+        // Force a fresh auth handshake so V2 never reuses stale V1 local sessions.
+        try {
+          await supabase.auth.signOut({ scope: "local" });
+        } catch {
+          // Best effort only; continue with OAuth flow.
+        }
         await supabase.auth.signInWithOAuth({
           provider: "google",
           options: {
             redirectTo: resolveAuthRedirectUrl(),
+            queryParams: {
+              prompt: "select_account consent",
+            },
           },
         });
       },

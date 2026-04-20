@@ -86,6 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refreshEntitlements,
       signInWithGoogle: async () => {
         if (!supabase) return;
+        if (isAgencyEdition()) return;
         await supabase.auth.signInWithOAuth({
           provider: "google",
           options: {

@@ -103,6 +103,7 @@ export function buildSubmissionSnapshot(source: Record<string, unknown> | null |
     brand_colors: String(s.brand_colors ?? "").trim(),
     offer: String(s.offer ?? "").trim(),
     competitors: String(s.competitors ?? "").trim(),
+    audience_pain_point: String(s.audience_pain_point ?? "").trim(),
     visual_notes: String(s.visual_notes ?? "").trim(),
     reference_image: String(s.reference_image ?? "").trim(),
     campaign_duration: String(s.campaign_duration ?? "").trim(),

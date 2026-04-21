@@ -1103,8 +1103,8 @@ export default function WizardCore(props: WizardCoreProps) {
                       id="premium_audience_pain"
                       className={textareaCls}
                       placeholder="إيه أكتر حاجة بتضايق زبونك؟"
-                      value={watch("competitors") || ""}
-                      onChange={(e) => setValue("competitors", e.target.value, { shouldDirty: true })}
+                      value={watch("audience_pain_point") || ""}
+                      onChange={(e) => setValue("audience_pain_point", e.target.value, { shouldDirty: true })}
                     />
                   </div>
                 </div>

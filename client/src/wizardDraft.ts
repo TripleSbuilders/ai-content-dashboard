@@ -23,6 +23,7 @@ const BRIEF_KEYS: (keyof BriefForm)[] = [
   "brand_colors",
   "offer",
   "competitors",
+  "audience_pain_point",
   "visual_notes",
   "reference_image",
   "campaign_duration",
@@ -64,6 +65,7 @@ export function isWizardDirty(form: BriefForm, step: number, limits: WizardLimit
     form.brand_colors.trim() ||
     form.offer.trim() ||
     form.competitors.trim() ||
+    form.audience_pain_point.trim() ||
     form.visual_notes.trim() ||
     form.reference_image?.trim() ||
     form.campaign_duration.trim() ||
@@ -140,6 +142,7 @@ export function parseWizardDraft(raw: string, limits: WizardLimits, maxStep: num
       brand_colors: str(f.brand_colors),
       offer: str(f.offer),
       competitors: str(f.competitors),
+      audience_pain_point: str(f.audience_pain_point),
       visual_notes: str(f.visual_notes),
       reference_image: str(f.reference_image),
       campaign_duration: str(f.campaign_duration),

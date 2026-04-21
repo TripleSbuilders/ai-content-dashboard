@@ -46,6 +46,7 @@ const generateBodySchema = z
     brand_colors: z.string().optional().default(""),
     offer: z.string().optional().default(""),
     competitors: z.string().optional().default(""),
+    audience_pain_point: z.string().optional().default(""),
     visual_notes: z.string().optional().default(""),
     reference_image: z.string().optional().default(""),
     campaign_duration: z.string().optional().default(""),

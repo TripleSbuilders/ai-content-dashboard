@@ -50,6 +50,7 @@ export type BriefForm = {
   brand_colors: string;
   offer: string;
   competitors: string;
+  audience_pain_point: string;
   visual_notes: string;
   reference_image?: string;
   campaign_duration: string;

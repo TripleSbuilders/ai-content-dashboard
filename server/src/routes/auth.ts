@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Next } from "hono";
-import { timingSafeEqual } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { db } from "../db/index.js";
 import { getAuthUser } from "../middleware/userAuth.js";
 import {
@@ -61,6 +61,10 @@ function timingSafeStringEquals(input: string, expected: string): boolean {
 
 function utf8ByteLength(value: string): number {
   return Buffer.byteLength(value, "utf8");
+}
+
+function sha256Prefix(value: string): string {
+  return createHash("sha256").update(value, "utf8").digest("hex").slice(0, 12);
 }
 
 export function createAuthRouter(mw: (c: import("hono").Context, next: Next) => Promise<void | Response>) {
@@ -182,6 +186,40 @@ export function createAuthRouter(mw: (c: import("hono").Context, next: Next) => 
     const ok = await isAgencyAdminRequest(c);
     if (!ok) return c.json({ valid: false }, 401);
     return c.json({ valid: true });
+  });
+
+  app.get("/api/auth/agency-admin/debug-env", async (c) => {
+    const debugSecret = String(process.env.ADMIN_DEBUG_SECRET ?? "").trim();
+    if (!debugSecret) {
+      return c.json({ error: "Not found." }, 404);
+    }
+    const providedSecret = String(c.req.header("X-Admin-Debug-Secret") ?? "").trim();
+    if (!providedSecret || !timingSafeStringEquals(providedSecret, debugSecret)) {
+      return c.json({ error: "Unauthorized." }, 401);
+    }
+
+    const username = String(process.env.ADMIN_USERNAME ?? "admin").trim() || "admin";
+    const password = String(process.env.ADMIN_PASSWORD ?? "").trim();
+    const edition = String(process.env.APP_EDITION ?? "").trim().toLowerCase();
+    const authSecret = String(process.env.ADMIN_AUTH_SECRET ?? "").trim();
+
+    return c.json({
+      app_edition: edition || "(empty)",
+      admin_username: {
+        value_preview: username.slice(0, 2) + "***",
+        length: username.length,
+        hash12: sha256Prefix(username),
+      },
+      admin_password: {
+        present: Boolean(password),
+        length: password.length,
+        hash12: password ? sha256Prefix(password) : null,
+      },
+      admin_auth_secret: {
+        present: Boolean(authSecret),
+        length: authSecret.length,
+      },
+    });
   });
 
   return app;

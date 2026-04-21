@@ -16,6 +16,7 @@ import { rateLimit } from "./middleware/rateLimit.js";
 import { startIdempotencyCleanupJob } from "./services/kitGenerationService.js";
 import type { Context, Next } from "hono";
 import { assertSafeCorsOriginForRuntime } from "./config/runtimeGuards.js";
+import { apiRequestSizeLimit } from "./middleware/requestSizeLimit.js";
 
 async function main() {
   const migrationStartedAt = Date.now();
@@ -69,6 +70,8 @@ async function main() {
       migrations_on_boot: true,
     })
   );
+
+  app.use("/api/*", apiRequestSizeLimit);
 
   async function kitsGuard(c: Context, next: Next) {
     return await rateLimit(c, async () => {

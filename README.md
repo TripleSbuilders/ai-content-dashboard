@@ -249,6 +249,10 @@ Rate-limit IP resolution (spoofing-resistant defaults):
 - `x-forwarded-for` is ignored by default and only used when `TRUST_X_FORWARDED_FOR=true`
 - fallback is `local`
 
+Request-size guardrails:
+- Global `/api/*` payload cap is controlled by `API_MAX_CONTENT_LENGTH_BYTES` (default `262144` bytes).
+- Analytics ingest keeps an additional endpoint-specific cap via `ANALYTICS_MAX_CONTENT_LENGTH_BYTES`.
+
 Rejected by default:
 - Requests that rely only on `Origin`/`Referer` (no longer trusted as auth signals).
 - Production runtime with `CORS_ORIGIN=*`.
@@ -263,7 +267,7 @@ Rejected by default:
 | `POST` | `/api/kits/:id/regenerate-item` | Regenerate one item only with `{ item_type, index, row_version, feedback? }` |
 | `PATCH` | `/api/kits/:id/ui-preferences` | Persist viewer UI state with `{ ui_preferences }` (`lang`, section/panel maps) |
 | `POST` | `/api/telemetry/interaction` | Fire-and-forget interaction telemetry with `{ kit_id, interaction_type, meta? }` |
-| `POST` | `/api/analytics/wizard-events` | Public ingest with guardrails: per-IP throttling + payload size/text caps |
+| `POST` | `/api/analytics/wizard-events` | Public ingest with guardrails: per-IP throttling + global/body caps + text-field limits |
 | `GET` | `/api/analytics/wizard-summary` | Admin-only wizard telemetry aggregate (`total`, `byName`) |
 | `POST` | `/api/auth/agency-admin/login` | Agency admin login (rate-limited; returns `429` + `Retry-After` on throttle) |
 

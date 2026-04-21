@@ -36,7 +36,7 @@ describe("auth routes admin login throttling", () => {
     process.env.ADMIN_USERNAME = "admin";
     process.env.ADMIN_PASSWORD = "pass-123";
     process.env.ADMIN_AUTH_SECRET = "secret";
-    process.env.AGENCY_ADMIN_LOGIN_RATE_LIMIT = "1";
+    process.env.AGENCY_ADMIN_LOGIN_RATE_LIMIT = "3";
     process.env.AGENCY_ADMIN_LOGIN_RATE_WINDOW_MS = "60000";
     issueAgencyAdminSessionToken.mockResolvedValue("token-1");
     isAgencyAdminRequest.mockResolvedValue(false);
@@ -62,8 +62,14 @@ describe("auth routes admin login throttling", () => {
       headers,
       body,
     });
-    expect(third.status).toBe(429);
-    expect(third.headers.get("Retry-After")).toBeTruthy();
+    expect(third.status).toBe(200);
+    const fourth = await appRequest("/api/auth/agency-admin/login", {
+      method: "POST",
+      headers,
+      body,
+    });
+    expect(fourth.status).toBe(429);
+    expect(fourth.headers.get("Retry-After")).toBeTruthy();
   });
 
   it("keeps invalid credentials contract unchanged", async () => {
@@ -75,6 +81,30 @@ describe("auth routes admin login throttling", () => {
     expect(res.status).toBe(401);
     const body = await res.json();
     expect(body.error).toBe("Invalid username or password.");
+  });
+
+  it("applies minimum clamp when admin login limit is configured too low", async () => {
+    process.env.AGENCY_ADMIN_LOGIN_RATE_LIMIT = "1";
+    vi.resetModules();
+    const body = JSON.stringify({ username: "admin", password: "pass-123" });
+    const headers = { "Content-Type": "application/json", "x-real-ip": "2.2.2.9" };
+    const statuses: number[] = [];
+    for (let i = 0; i < 4; i += 1) {
+      const res = await appRequest("/api/auth/agency-admin/login", { method: "POST", headers, body });
+      statuses.push(res.status);
+    }
+    expect(statuses[0]).toBe(200);
+    expect(statuses[1]).toBe(200);
+    expect(statuses[2]).toBe(429);
+  });
+
+  it("rejects too-long username/password payloads", async () => {
+    const res = await appRequest("/api/auth/agency-admin/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-real-ip": "2.2.2.10" },
+      body: JSON.stringify({ username: "u".repeat(65), password: "p".repeat(513) }),
+    });
+    expect(res.status).toBe(400);
   });
 });
 

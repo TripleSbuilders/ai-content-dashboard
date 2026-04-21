@@ -7,6 +7,7 @@ import { db } from "../db/index.js";
 import { users } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 import { analyticsIngestRateLimit } from "../middleware/rateLimit.js";
+import { InMemoryAnalyticsStore, type AnalyticsStore } from "../services/analyticsStore.js";
 
 const ANALYTICS_TEXT_LIMITS = {
   name: 120,
@@ -43,9 +44,7 @@ const payloadSchema = z.object({
 });
 
 type StoredEvent = z.infer<typeof eventSchema>;
-
-const memoryStore: StoredEvent[] = [];
-const MAX_EVENTS = 5000;
+const defaultAnalyticsStore = new InMemoryAnalyticsStore();
 
 async function requireAdminAccess(c: import("hono").Context): Promise<Response | null> {
   if (await isAgencyAdminRequest(c)) return null;
@@ -64,7 +63,10 @@ async function requireAdminAccess(c: import("hono").Context): Promise<Response |
   return null;
 }
 
-export function createAnalyticsRouter(mw?: (c: import("hono").Context, next: Next) => Promise<void | Response>) {
+export function createAnalyticsRouter(
+  mw?: (c: import("hono").Context, next: Next) => Promise<void | Response>,
+  store: AnalyticsStore = defaultAnalyticsStore,
+) {
   const app = new Hono();
 
   if (mw) {
@@ -91,10 +93,7 @@ export function createAnalyticsRouter(mw?: (c: import("hono").Context, next: Nex
       return c.json({ error: "Invalid analytics payload" }, 400);
     }
 
-    memoryStore.push(...body.events);
-    if (memoryStore.length > MAX_EVENTS) {
-      memoryStore.splice(0, memoryStore.length - MAX_EVENTS);
-    }
+    store.append(body.events);
 
     return c.json({ ok: true, accepted: body.events.length }, 202);
   });
@@ -102,8 +101,9 @@ export function createAnalyticsRouter(mw?: (c: import("hono").Context, next: Nex
   app.get("/analytics/wizard-summary", async (c) => {
     const blocked = await requireAdminAccess(c);
     if (blocked) return blocked;
-    const total = memoryStore.length;
-    const byName = memoryStore.reduce<Record<string, number>>((acc, e) => {
+    const allEvents = store.getAll() as StoredEvent[];
+    const total = allEvents.length;
+    const byName = allEvents.reduce<Record<string, number>>((acc, e) => {
       acc[e.name] = (acc[e.name] ?? 0) + 1;
       return acc;
     }, {});

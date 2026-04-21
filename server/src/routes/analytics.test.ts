@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { InMemoryAnalyticsStore } from "../services/analyticsStore.js";
 
 const isAgencyAdminRequest = vi.fn();
 const getAuthUser = vi.fn();
@@ -32,9 +33,14 @@ vi.mock("drizzle-orm", () => ({
   eq: (_a: unknown, _b: unknown) => ({ _tag: "eq" }),
 }));
 
-async function appRequest(path: string, init?: RequestInit) {
+async function createTestApp() {
   const { createAnalyticsRouter } = await import("./analytics.js");
-  const app = createAnalyticsRouter(async (_c, next) => next());
+  const app = createAnalyticsRouter(async (_c, next) => next(), new InMemoryAnalyticsStore());
+  return app;
+}
+
+async function appRequest(path: string, init?: RequestInit) {
+  const app = await createTestApp();
   return app.request(path, init);
 }
 
@@ -42,7 +48,7 @@ describe("analytics routes auth boundary", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
-    process.env.ANALYTICS_INGEST_RATE_LIMIT = "2";
+    process.env.ANALYTICS_INGEST_RATE_LIMIT = "15";
     process.env.ANALYTICS_INGEST_RATE_WINDOW_MS = "60000";
     isAgencyAdminRequest.mockResolvedValue(false);
     getAuthUser.mockReturnValue(null);
@@ -75,8 +81,9 @@ describe("analytics routes auth boundary", () => {
   });
 
   it("allows summary endpoint for agency admin session", async () => {
+    const app = await createTestApp();
     isAgencyAdminRequest.mockResolvedValue(true);
-    const ingest = await appRequest("/analytics/wizard-events", {
+    const ingest = await app.request("/analytics/wizard-events", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-real-ip": "9.9.9.2" },
       body: JSON.stringify({
@@ -84,7 +91,7 @@ describe("analytics routes auth boundary", () => {
       }),
     });
     expect(ingest.status).toBe(202);
-    const res = await appRequest("/analytics/wizard-summary");
+    const res = await app.request("/analytics/wizard-summary");
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.ok).toBe(true);
@@ -117,7 +124,7 @@ describe("analytics routes auth boundary", () => {
 
   it("throttles analytics ingestion spam by IP", async () => {
     const statuses: number[] = [];
-    for (let i = 0; i < 12; i += 1) {
+    for (let i = 0; i < 18; i += 1) {
       const res = await appRequest("/analytics/wizard-events", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-real-ip": "9.9.9.4" },
@@ -127,9 +134,25 @@ describe("analytics routes auth boundary", () => {
       });
       statuses.push(res.status);
     }
+    expect(statuses.slice(0, 15).every((code) => code === 202)).toBe(true);
+    expect(statuses[15]).toBe(429);
+    expect(statuses[16]).toBe(429);
+  });
+
+  it("applies minimum clamp when configured ingest limit is too low", async () => {
+    process.env.ANALYTICS_INGEST_RATE_LIMIT = "2";
+    vi.resetModules();
+    const statuses: number[] = [];
+    for (let i = 0; i < 12; i += 1) {
+      const res = await appRequest("/analytics/wizard-events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-real-ip": "9.9.9.6" },
+        body: JSON.stringify({ events: [{ name: "wizard_opened", ts: Date.now() }] }),
+      });
+      statuses.push(res.status);
+    }
     expect(statuses.slice(0, 10).every((code) => code === 202)).toBe(true);
     expect(statuses[10]).toBe(429);
-    expect(statuses[11]).toBe(429);
   });
 
   it("rejects payloads above content-length cap", async () => {

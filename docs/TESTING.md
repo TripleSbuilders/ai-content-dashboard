@@ -81,12 +81,14 @@ Acceptance checks:
 
 ## Security hardening follow-up checks
 
+- **Global API body cap:** requests above `API_MAX_CONTENT_LENGTH_BYTES` to `/api/*` are rejected with `413`.
 - **Trusted IP precedence:** verify limiter key prefers `cf-connecting-ip`, then `x-real-ip`, and does not use `x-forwarded-for` unless `TRUST_X_FORWARDED_FOR=true`.
 - **Spoof-resistant fallback:** malformed/empty forwarded header values fall back to `local` and do not create polluted buckets.
 - **Analytics payload caps:** oversized text fields (notably `error`) are rejected with `400`.
 - **Analytics payload size guard:** payloads above `ANALYTICS_MAX_CONTENT_LENGTH_BYTES` are rejected with `413`.
 - **Analytics ingest throttling:** repeated `POST /api/analytics/wizard-events` from same IP eventually returns `429`.
 - **Admin credential check hardening:** `POST /api/auth/agency-admin/login` keeps `401 Invalid username or password.` behavior while using timing-safe comparison.
+- **Admin input bounds:** `POST /api/auth/agency-admin/login` rejects too-long `username/password` payloads with `400`.
 
 ## Audit Phase 4 focused checks
 
@@ -118,6 +120,7 @@ Acceptance checks:
 - [ ] `GET /api/analytics/wizard-summary` is blocked without admin context.
 - [ ] `POST /api/auth/agency-admin/login` throttles after repeated attempts and returns `429`.
 - [ ] `POST /api/analytics/wizard-events` rejects oversized payloads/text fields and rate-limits spam from one IP.
+- [ ] Global `/api/*` body-size middleware rejects large payloads with `413`.
 - [ ] `POST /api/kits/generate?stream=1` emits safe `error` payloads in production mode.
 - [ ] Playwright smoke (`npm run test:e2e`) passes against local demo stack.
 - [ ] Any RLS changes are validated against the target Supabase project before deploy.

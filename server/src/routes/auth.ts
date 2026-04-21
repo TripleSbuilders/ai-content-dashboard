@@ -39,8 +39,8 @@ const syncBodySchema = z.object({
 });
 
 const agencyAdminLoginSchema = z.object({
-  username: z.string().trim().min(1),
-  password: z.string().min(1),
+  username: z.string().trim().min(1).max(64),
+  password: z.string().min(1).max(512),
 });
 
 function isAgencyEdition() {
@@ -57,6 +57,10 @@ function timingSafeStringEquals(input: string, expected: string): boolean {
     return false;
   }
   return timingSafeEqual(inputBuffer, expectedBuffer);
+}
+
+function utf8ByteLength(value: string): number {
+  return Buffer.byteLength(value, "utf8");
 }
 
 export function createAuthRouter(mw: (c: import("hono").Context, next: Next) => Promise<void | Response>) {
@@ -144,6 +148,10 @@ export function createAuthRouter(mw: (c: import("hono").Context, next: Next) => 
     try {
       body = agencyAdminLoginSchema.parse(await c.req.json());
     } catch {
+      return c.json({ error: "Invalid body." }, 400);
+    }
+
+    if (utf8ByteLength(body.username) > 64 || utf8ByteLength(body.password) > 512) {
       return c.json({ error: "Invalid body." }, 400);
     }
 

@@ -1,6 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
 import type { Context } from "hono";
-import { isGarbageToken } from "../lib/authUtils";
+import { isGarbageToken } from "../lib/authUtils.js";
 
 const encoder = new TextEncoder();
 const SESSION_HEADER = "x-agency-admin-session";

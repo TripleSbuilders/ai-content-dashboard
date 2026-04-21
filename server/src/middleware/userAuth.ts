@@ -4,7 +4,7 @@ import {
   errors as joseErrors,
 } from "jose";
 import type { Context, Next } from "hono";
-import { isGarbageToken } from "../lib/authUtils";
+import { isGarbageToken } from "../lib/authUtils.js";
 
 export type AuthUserClaims = {
   supabaseUserId: string;

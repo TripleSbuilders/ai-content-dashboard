@@ -473,10 +473,7 @@ export function createKitsRouter(mw: (c: import("hono").Context, next: Next) => 
   app.delete("/api/kits/:id", async (c) => {
     const blocked = await requireAdminAccess(c);
     if (blocked) return blocked;
-    const reason = String(c.req.query("reason") ?? "").trim();
-    if (!reason) {
-      return c.json({ error: "Delete reason is required." }, 400);
-    }
+    const reason = String(c.req.query("reason") ?? "").trim() || "manual_admin_cleanup";
     const agencySession = (c as any).get("agencyAdminSession") as { username?: string } | undefined;
     const actorType = agencySession?.username ? "admin_session" : "admin_user";
     const actorId = agencySession?.username

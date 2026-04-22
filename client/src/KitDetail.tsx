@@ -293,6 +293,27 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
           </div>
         )}
 
+        {showTechnical && kit.failure_reason ? (
+          <div className="rounded-2xl border border-error/30 bg-error/10 p-4">
+            <div className="mb-2 text-xs font-bold uppercase tracking-wider text-error">Safe failure reason</div>
+            <div className="grid gap-2 sm:grid-cols-2 text-sm text-on-surface-variant">
+              <p>
+                <span className="font-semibold text-on-surface">Code:</span> {kit.failure_reason.code}
+              </p>
+              <p>
+                <span className="font-semibold text-on-surface">Phase:</span> {kit.failure_reason.phase}
+              </p>
+              <p className="sm:col-span-2">
+                <span className="font-semibold text-on-surface">Hint:</span> {kit.failure_reason.hint}
+              </p>
+              <p className="sm:col-span-2">
+                <span className="font-semibold text-on-surface">Timestamp:</span>{" "}
+                {new Date(kit.failure_reason.timestamp).toLocaleString()}
+              </p>
+            </div>
+          </div>
+        ) : null}
+
         {conflict && (
           <div className="rounded-2xl border border-secondary/40 bg-secondary/10 p-4" role="alert">
             <p className="mb-3 text-sm text-on-surface">

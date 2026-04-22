@@ -222,10 +222,22 @@ export default function GeneratedKitsPage({ adminMode = false }: { adminMode?: b
                           </span>
                         )}
                         {sk === "failed" && (
-                          <span className="inline-flex items-center gap-1.5 rounded-md border border-red-200/50 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 px-2 py-1 text-xs font-semibold text-red-700 dark:text-red-400">
-                            <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
-                            {k.status_badge}
-                          </span>
+                          <div className="space-y-1.5">
+                            <span className="inline-flex items-center gap-1.5 rounded-md border border-red-200/50 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 px-2 py-1 text-xs font-semibold text-red-700 dark:text-red-400">
+                              <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                              {k.status_badge}
+                            </span>
+                            {adminMode && k.failure_reason ? (
+                              <div className="space-y-0.5">
+                                <p className="text-[11px] font-medium text-red-700 dark:text-red-300">
+                                  {k.failure_reason.code}
+                                </p>
+                                <p className="text-[11px] text-red-700/85 dark:text-red-300/90">
+                                  {k.failure_reason.hint}
+                                </p>
+                              </div>
+                            ) : null}
+                          </div>
                         )}
                       </td>
                       {adminMode && (

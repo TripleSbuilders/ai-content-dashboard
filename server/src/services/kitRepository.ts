@@ -3,6 +3,13 @@ import { idempotencyKeys, kitDeleteAudit, kitInteractions, kits, type KitRow } f
 import { getStatusBadgeLabel, getStatusBadgePalette } from "../logic/status.js";
 import type { GenerationUsageTotals } from "./aiGenerationProvider.js";
 
+export type SafeFailureReason = {
+  code: string;
+  hint: string;
+  phase: string;
+  timestamp: string;
+};
+
 function normalizeArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return Array.from(
@@ -19,7 +26,7 @@ function normalizeUiPreferences(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-export function serializeKit(row: KitRow, opts?: { includeUsage?: boolean }) {
+export function serializeKit(row: KitRow, opts?: { includeUsage?: boolean; failureReason?: SafeFailureReason | null }) {
   const status = row.deliveryStatus;
   const palette = getStatusBadgePalette(status);
   let result: unknown = null;
@@ -58,6 +65,7 @@ export function serializeKit(row: KitRow, opts?: { includeUsage?: boolean }) {
     row_version: row.rowVersion,
     created_at: row.createdAt.toISOString(),
     updated_at: row.updatedAt.toISOString(),
+    ...(opts?.failureReason ? { failure_reason: opts.failureReason } : {}),
   };
   if (!opts?.includeUsage) return base;
   return {
@@ -179,13 +187,19 @@ export async function listKits(
   return rows.map((row: KitRow) => serializeKit(row, opts));
 }
 
-export async function listAllKits(db: any, opts?: { includeUsage?: boolean }) {
+export async function listAllKits(
+  db: any,
+  opts?: { includeUsage?: boolean },
+  failureReasonByKitId?: Record<string, SafeFailureReason>
+) {
   const rows = await db
     .select()
     .from(kits)
     .orderBy(desc(kits.createdAt))
     .limit(200);
-  return rows.map((row: KitRow) => serializeKit(row, opts));
+  return rows.map((row: KitRow) =>
+    serializeKit(row, { ...opts, failureReason: failureReasonByKitId?.[row.id] ?? null })
+  );
 }
 
 export async function getKitById(db: any, id: string, owner: { deviceId: string; userId?: string | null }) {

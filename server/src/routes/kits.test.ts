@@ -229,18 +229,25 @@ describe("kits routes device header enforcement", () => {
     });
   });
 
-  it("requires delete reason query parameter", async () => {
+  it("uses fallback delete reason when query reason is missing", async () => {
     isAgencyAdminRequest.mockImplementation(async (c: { set: (k: string, v: unknown) => void }) => {
       c.set("agencyAdminSession", { username: "ops-admin" });
       return true;
     });
+    deleteKitService.mockResolvedValueOnce({ status: 200, body: { ok: true, id: "k-del" } });
 
     const res = await appRequest("/api/kits/k-del", {
       method: "DELETE",
     });
 
-    expect(res.status).toBe(400);
-    expect(deleteKitService).not.toHaveBeenCalled();
+    expect(res.status).toBe(200);
+    expect(deleteKitService).toHaveBeenCalledWith({
+      id: "k-del",
+      actorType: "admin_session",
+      actorId: "ops-admin",
+      reason: "manual_admin_cleanup",
+      metadata: { source: "admin_api" },
+    });
   });
 
   it("passes audit actor and reason into delete service", async () => {

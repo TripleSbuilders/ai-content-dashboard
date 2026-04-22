@@ -213,7 +213,8 @@ export async function updateKitUiPreferences(id: string, uiPreferences: KitUiPre
 }
 
 export async function deleteKit(id: string): Promise<void> {
-  const res = await fetch(apiUrl(`/api/kits/${id}`), {
+  const reason = encodeURIComponent("manual_admin_cleanup");
+  const res = await fetch(apiUrl(`/api/kits/${id}?reason=${reason}`), {
     method: "DELETE",
     headers: buildHeaders(),
   });

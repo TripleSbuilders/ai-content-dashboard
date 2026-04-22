@@ -51,9 +51,11 @@ import {
   type RegenerateItemType,
 } from "./kitGenerationDomain.js";
 import { logKitFailure } from "./kitFailureLogRepository.js";
-import { HttpError, safeClientError } from "./serviceErrors.js";
+import { getLatestFailureForKit, getLatestFailuresForKits } from "./kitFailureLogRepository.js";
+import { FailureCode, HttpError, failureHintForCode, safeClientError, toFailureCode } from "./serviceErrors.js";
 import { brandVoice } from "../db/schema.js";
 import { type BrandVoiceContext } from "../logic/promptComposer.js";
+import type { SafeFailureReason } from "./kitRepository.js";
 
 async function fetchBrandVoiceContext(db: any, userId?: string | null): Promise<BrandVoiceContext | undefined> {
   if (!userId) return undefined;
@@ -72,6 +74,19 @@ async function fetchBrandVoiceContext(db: any, userId?: string | null): Promise<
 }
 export { getRegenerateItemSchema, getSectionArray } from "./kitGenerationDomain.js";
 export { HttpError } from "./serviceErrors.js";
+
+function toSafeFailureReason(input: {
+  errorCode: string;
+  phase: string;
+  createdAt: Date;
+}): SafeFailureReason {
+  return {
+    code: input.errorCode,
+    hint: failureHintForCode(input.errorCode as FailureCode),
+    phase: input.phase,
+    timestamp: input.createdAt.toISOString(),
+  };
+}
 
 export type KitGenerationDependencies = {
   db?: typeof db;
@@ -298,6 +313,7 @@ export async function generateKitService(input: {
   }
 
   if (!settings.apiKey) {
+    const errorCode = "API_KEY_MISSING" as const;
     const row = await persistGenerationFailure({
       db: d.db,
       snapshot,
@@ -308,6 +324,15 @@ export async function generateKitService(input: {
       promptVersionId: resolved.promptVersionId,
       isFallback: resolved.isFallback,
       briefHash: fp,
+    });
+    await logKitFailure(d.db, {
+      kitId: row.id,
+      phase: "generate",
+      errorCode,
+      errorMessage: "Missing GEMINI_API_KEY.",
+      correlationId,
+      modelUsed: settings.model,
+      meta: { promptMode: resolved.promptMode, industrySource: resolved.industrySource },
     });
     await d.notify(row);
     await d.notifyTelegram({ snapshot, kitId: row.id, correlationId });
@@ -359,6 +384,10 @@ export async function generateKitService(input: {
     return { status: 201, body: serializeKit(row) };
   } catch (err) {
     const reason = safeClientError(err);
+    const errorCode = toFailureCode(
+      err,
+      isContentPackageChainFailureMessage(reason) ? "CONTENT_PACKAGE_CHAIN_FAILED" : "GENERATION_FAILED"
+    );
     const row = await persistGenerationFailure({
       db: d.db,
       snapshot,
@@ -374,7 +403,7 @@ export async function generateKitService(input: {
     await logKitFailure(d.db, {
       kitId: row.id,
       phase: isContentPackageChainFailureMessage(reason) ? "content_package_chain" : "generate",
-      errorCode: isContentPackageChainFailureMessage(reason) ? "CONTENT_PACKAGE_CHAIN_FAILED" : "GENERATION_FAILED",
+      errorCode,
       errorMessage: reason,
       correlationId,
       modelUsed: settings.model,
@@ -491,6 +520,7 @@ export async function enqueueAgencyKitGenerationService(input: {
       }
 
       if (!settings.apiKey) {
+        const errorCode = "API_KEY_MISSING" as const;
         const failed = await updateKit(d.db, pending.id, snapshot, null, {
           deliveryStatus: "failed_generation",
           modelUsed: settings.model,
@@ -502,6 +532,15 @@ export async function enqueueAgencyKitGenerationService(input: {
           rowVersion: 1,
         });
         if (failed) await d.notify(failed);
+        await logKitFailure(d.db, {
+          kitId: pending.id,
+          phase: "generate",
+          errorCode,
+          errorMessage: "Missing GEMINI_API_KEY.",
+          correlationId,
+          modelUsed: settings.model,
+          meta: { promptMode: resolved.promptMode, industrySource: resolved.industrySource, parentPhase: "enqueue" },
+        });
         await finalizeIdempotencyKey(d.db, { keyHash, briefHash: fp, kitId: pending.id });
         return;
       }
@@ -540,6 +579,7 @@ export async function enqueueAgencyKitGenerationService(input: {
       await finalizeIdempotencyKey(d.db, { keyHash, briefHash: fp, kitId: pending.id });
     } catch (error) {
       const reason = safeClientError(error);
+      const errorCode = toFailureCode(error, "GENERATION_FAILED");
       const failed = await updateKit(d.db, pending.id, snapshot, null, {
         deliveryStatus: "failed_generation",
         modelUsed: settings.model,
@@ -554,7 +594,7 @@ export async function enqueueAgencyKitGenerationService(input: {
       await logKitFailure(d.db, {
         kitId: pending.id,
         phase: "generate",
-        errorCode: "GENERATION_FAILED",
+        errorCode,
         errorMessage: reason,
         correlationId,
         modelUsed: settings.model,
@@ -643,6 +683,7 @@ export async function retryKitService(input: {
   }
 
   if (!settings.apiKey) {
+    const errorCode = "API_KEY_MISSING" as const;
     const fr = (await d.db.update(kits).set({
       deliveryStatus: "failed_generation",
       lastError: "Missing GEMINI_API_KEY.",
@@ -653,6 +694,15 @@ export async function retryKitService(input: {
       updatedAt: new Date(),
     }).where(and(eq(kits.id, id), eq(kits.rowVersion, nextVersion))).returning())[0];
     if (!fr) throw new HttpError(409, "Concurrent update; refresh and try again.");
+    await logKitFailure(d.db, {
+      kitId: id,
+      phase: "retry",
+      errorCode,
+      errorMessage: "Missing GEMINI_API_KEY.",
+      correlationId,
+      modelUsed: settings.model,
+      meta: { promptMode: resolved.promptMode, industrySource: resolved.industrySource, parentPhase: "retry" },
+    });
     await d.notify(fr);
     return { status: 200, body: serializeKit(fr) };
   }
@@ -703,6 +753,10 @@ export async function retryKitService(input: {
     return { status: 200, body: serializeKit(ok) };
   } catch (err) {
     const reason = safeClientError(err, "Retry generation failed. Please retry.");
+    const errorCode = toFailureCode(
+      err,
+      isContentPackageChainFailureMessage(reason) ? "CONTENT_PACKAGE_CHAIN_FAILED" : "RETRY_FAILED"
+    );
     const clientDelay = await d.sendClientDelay(snapshot, correlationId);
     await d.sendAdminAlert(snapshot, reason, correlationId, id, settings.model, clientDelay);
     const fr = (await d.db.update(kits).set({
@@ -718,7 +772,7 @@ export async function retryKitService(input: {
     await logKitFailure(d.db, {
       kitId: id,
       phase: isContentPackageChainFailureMessage(reason) ? "content_package_chain" : "retry",
-      errorCode: isContentPackageChainFailureMessage(reason) ? "CONTENT_PACKAGE_CHAIN_FAILED" : "RETRY_FAILED",
+      errorCode,
       errorMessage: reason,
       correlationId,
       modelUsed: settings.model,
@@ -819,10 +873,11 @@ export async function regenerateKitItemService(input: {
       totalTokens: response.usage?.totalTokenCount ?? 0,
     };
   } catch (e) {
+    const errorCode = toFailureCode(e, "REGENERATE_CALL_FAILED");
     await logKitFailure(d.db, {
       kitId: input.id,
       phase: "regenerate",
-      errorCode: "REGENERATE_CALL_FAILED",
+      errorCode,
       errorMessage: String(e),
       correlationId,
       modelUsed: settings.model,
@@ -862,7 +917,21 @@ export async function listKitsService(
   owner?: { deviceId: string; userId?: string | null },
   opts?: { includeUsage?: boolean }
 ) {
-  if (!owner) return listAllKits(withDeps().db, opts);
+  if (!owner) {
+    const d = withDeps();
+    const rows = await listAllKits(d.db, opts);
+    if (!opts?.includeUsage || !rows.length) return rows;
+    const failureMap = await getLatestFailuresForKits(
+      d.db,
+      rows.map((row: { id: string }) => row.id)
+    );
+    return rows.map((row: any) => ({
+      ...row,
+      ...(row.delivery_status === "failed_generation" && failureMap[row.id]
+        ? { failure_reason: toSafeFailureReason(failureMap[row.id]!) }
+        : {}),
+    }));
+  }
   return listKits(withDeps().db, owner, opts);
 }
 
@@ -871,8 +940,16 @@ export async function getKitByIdService(
   owner?: { deviceId: string; userId?: string | null },
   opts?: { includeUsage?: boolean }
 ) {
-  const row = owner ? await getKitById(withDeps().db, id, owner) : await getKitByIdAny(withDeps().db, id);
+  const d = withDeps();
+  const row = owner ? await getKitById(d.db, id, owner) : await getKitByIdAny(d.db, id);
   if (!row) throw new HttpError(404, "Not found");
+  if (!owner && opts?.includeUsage) {
+    const failure = await getLatestFailureForKit(d.db, id);
+    return serializeKit(row, {
+      ...opts,
+      failureReason: row.deliveryStatus === "failed_generation" && failure ? toSafeFailureReason(failure) : null,
+    });
+  }
   return serializeKit(row, opts);
 }
 

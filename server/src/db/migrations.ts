@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS social_geni.kits (
   device_id TEXT NOT NULL DEFAULT '',
   user_id TEXT,
   brief_json TEXT NOT NULL,
+  brief_hash TEXT NOT NULL DEFAULT '',
   target_audience_v2 JSONB NOT NULL DEFAULT '[]'::jsonb,
   platforms_v2 JSONB NOT NULL DEFAULT '[]'::jsonb,
   best_content_types_v2 JSONB NOT NULL DEFAULT '[]'::jsonb,
@@ -22,6 +23,7 @@ CREATE TABLE IF NOT EXISTS social_geni.kits (
   prompt_tokens INTEGER NOT NULL DEFAULT 0,
   completion_tokens INTEGER NOT NULL DEFAULT 0,
   total_tokens INTEGER NOT NULL DEFAULT 0,
+  usage_charged_at TIMESTAMPTZ,
   row_version INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL
@@ -32,6 +34,12 @@ ADD COLUMN IF NOT EXISTS device_id TEXT NOT NULL DEFAULT '';
 
 ALTER TABLE social_geni.kits
 ADD COLUMN IF NOT EXISTS user_id TEXT;
+
+ALTER TABLE social_geni.kits
+ADD COLUMN IF NOT EXISTS brief_hash TEXT NOT NULL DEFAULT '';
+
+ALTER TABLE social_geni.kits
+ADD COLUMN IF NOT EXISTS usage_charged_at TIMESTAMPTZ;
 
 ALTER TABLE social_geni.kits
 ADD COLUMN IF NOT EXISTS target_audience_v2 JSONB NOT NULL DEFAULT '[]'::jsonb;
@@ -106,6 +114,7 @@ CREATE INDEX IF NOT EXISTS idx_kit_failure_logs_phase ON social_geni.kit_failure
 CREATE INDEX IF NOT EXISTS idx_kits_created ON social_geni.kits (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_kits_device_created ON social_geni.kits (device_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_kits_user_created ON social_geni.kits (user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_kits_brief_hash ON social_geni.kits (brief_hash);
 
 CREATE TABLE IF NOT EXISTS social_geni.users (
   id TEXT PRIMARY KEY NOT NULL,
@@ -119,6 +128,9 @@ CREATE TABLE IF NOT EXISTS social_geni.users (
 
 ALTER TABLE social_geni.users
 ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;
+
+ALTER TABLE social_geni.users
+ADD COLUMN IF NOT EXISTS is_premium BOOLEAN NOT NULL DEFAULT FALSE;
 
 CREATE TABLE IF NOT EXISTS social_geni.user_devices (
   id TEXT PRIMARY KEY NOT NULL,
@@ -173,6 +185,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_usage_device_period
 
 CREATE TABLE IF NOT EXISTS social_geni.notifications (
   id TEXT PRIMARY KEY NOT NULL,
+  user_id TEXT,
   title TEXT NOT NULL,
   body TEXT NOT NULL,
   kind TEXT NOT NULL,
@@ -181,7 +194,24 @@ CREATE TABLE IF NOT EXISTS social_geni.notifications (
   created_at TIMESTAMPTZ NOT NULL
 );
 
+ALTER TABLE social_geni.notifications
+ADD COLUMN IF NOT EXISTS user_id TEXT;
+
 CREATE INDEX IF NOT EXISTS idx_notifications_created ON social_geni.notifications (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON social_geni.notifications (user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS social_geni.kit_delete_audit (
+  id TEXT PRIMARY KEY NOT NULL,
+  kit_id TEXT NOT NULL,
+  actor_type TEXT NOT NULL,
+  actor_id TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  deleted_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_kit_delete_audit_kit_deleted
+  ON social_geni.kit_delete_audit (kit_id, deleted_at DESC);
 
 CREATE TABLE IF NOT EXISTS social_geni.user_profile (
   id TEXT PRIMARY KEY NOT NULL,
@@ -251,6 +281,16 @@ CREATE TABLE IF NOT EXISTS social_geni.extras_waitlist (
   created_at TIMESTAMPTZ NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS social_geni.premium_leads (
+  id TEXT PRIMARY KEY NOT NULL,
+  user_id TEXT,
+  name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  email TEXT,
+  source TEXT NOT NULL DEFAULT 'pricing_modal',
+  created_at TIMESTAMPTZ NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS social_geni.industries (
   id TEXT PRIMARY KEY NOT NULL,
   slug TEXT NOT NULL UNIQUE,
@@ -275,6 +315,91 @@ CREATE TABLE IF NOT EXISTS social_geni.industry_prompts (
 
 CREATE INDEX IF NOT EXISTS idx_industry_prompts_industry ON social_geni.industry_prompts (industry_id);
 CREATE INDEX IF NOT EXISTS idx_industry_prompts_status ON social_geni.industry_prompts (status);
+
+-- -------------------------------------------------------------------
+-- Row Level Security hardening (Phase 4)
+-- NOTE:
+-- - Policies are primarily effective for JWT-scoped PostgREST paths.
+-- - Service-role / bypass-RLS connections can still access all rows.
+-- - In plain Postgres environments (without Supabase auth schema),
+--   this block is skipped to avoid startup failures.
+-- -------------------------------------------------------------------
+
+DO $$
+DECLARE
+  has_auth_schema BOOLEAN;
+BEGIN
+  SELECT EXISTS (
+    SELECT 1
+    FROM pg_namespace
+    WHERE nspname = 'auth'
+  ) INTO has_auth_schema;
+
+  IF NOT has_auth_schema THEN
+    RETURN;
+  END IF;
+
+  EXECUTE 'ALTER TABLE social_geni.kits ENABLE ROW LEVEL SECURITY';
+  EXECUTE 'ALTER TABLE social_geni.kit_interactions ENABLE ROW LEVEL SECURITY';
+  EXECUTE 'ALTER TABLE social_geni.notifications ENABLE ROW LEVEL SECURITY';
+  EXECUTE 'ALTER TABLE social_geni.monthly_usage_counters ENABLE ROW LEVEL SECURITY';
+  EXECUTE 'ALTER TABLE social_geni.kit_delete_audit ENABLE ROW LEVEL SECURITY';
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'social_geni'
+      AND tablename = 'kits'
+      AND policyname = 'kits_owner_rw'
+  ) THEN
+    EXECUTE 'CREATE POLICY kits_owner_rw ON social_geni.kits
+      USING (user_id = auth.uid()::text)
+      WITH CHECK (user_id = auth.uid()::text)';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'social_geni'
+      AND tablename = 'kit_interactions'
+      AND policyname = 'kit_interactions_owner_rw'
+  ) THEN
+    EXECUTE 'CREATE POLICY kit_interactions_owner_rw ON social_geni.kit_interactions
+      USING (user_id = auth.uid()::text)
+      WITH CHECK (user_id = auth.uid()::text)';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'social_geni'
+      AND tablename = 'notifications'
+      AND policyname = 'notifications_owner_rw'
+  ) THEN
+    EXECUTE 'CREATE POLICY notifications_owner_rw ON social_geni.notifications
+      USING (user_id = auth.uid()::text)
+      WITH CHECK (user_id = auth.uid()::text)';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'social_geni'
+      AND tablename = 'monthly_usage_counters'
+      AND policyname = 'monthly_usage_owner_rw'
+  ) THEN
+    EXECUTE 'CREATE POLICY monthly_usage_owner_rw ON social_geni.monthly_usage_counters
+      USING (user_id = auth.uid()::text)
+      WITH CHECK (user_id = auth.uid()::text)';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'social_geni'
+      AND tablename = 'kit_delete_audit'
+      AND policyname = 'kit_delete_audit_admin_read'
+  ) THEN
+    EXECUTE 'CREATE POLICY kit_delete_audit_admin_read ON social_geni.kit_delete_audit
+      FOR SELECT
+      USING (COALESCE((auth.jwt() ->> ''is_admin'')::boolean, false))';
+  END IF;
+END $$;
 `;
 
 function splitDdlStatements(sql: string): string[] {

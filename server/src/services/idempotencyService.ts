@@ -28,6 +28,17 @@ export async function reserveIdempotencyKey(db: any, params: { keyHash: string; 
   return inserted[0] ?? null;
 }
 
+export async function hasPendingIdempotencyForBriefHash(db: any, briefHash: string): Promise<boolean> {
+  const existing = (
+    await db
+      .select({ keyHash: idempotencyKeys.keyHash })
+      .from(idempotencyKeys)
+      .where(and(eq(idempotencyKeys.briefHash, briefHash), eq(idempotencyKeys.kitId, IDEMPOTENCY_PENDING_KIT)))
+      .limit(1)
+  )[0];
+  return Boolean(existing);
+}
+
 export async function finalizeIdempotencyKey(
   db: any,
   params: { keyHash: string; briefHash: string; kitId: string }

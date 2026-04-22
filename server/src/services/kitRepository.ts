@@ -1,7 +1,14 @@
 import { and, desc, eq } from "drizzle-orm";
-import { kits, type KitRow } from "../db/schema.js";
+import { idempotencyKeys, kitDeleteAudit, kitInteractions, kits, type KitRow } from "../db/schema.js";
 import { getStatusBadgeLabel, getStatusBadgePalette } from "../logic/status.js";
 import type { GenerationUsageTotals } from "./aiGenerationProvider.js";
+
+export type SafeFailureReason = {
+  code: string;
+  hint: string;
+  phase: string;
+  timestamp: string;
+};
 
 function normalizeArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
@@ -19,7 +26,7 @@ function normalizeUiPreferences(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-export function serializeKit(row: KitRow, opts?: { includeUsage?: boolean }) {
+export function serializeKit(row: KitRow, opts?: { includeUsage?: boolean; failureReason?: SafeFailureReason | null }) {
   const status = row.deliveryStatus;
   const palette = getStatusBadgePalette(status);
   let result: unknown = null;
@@ -58,6 +65,7 @@ export function serializeKit(row: KitRow, opts?: { includeUsage?: boolean }) {
     row_version: row.rowVersion,
     created_at: row.createdAt.toISOString(),
     updated_at: row.updatedAt.toISOString(),
+    ...(opts?.failureReason ? { failure_reason: opts.failureReason } : {}),
   };
   if (!opts?.includeUsage) return base;
   return {
@@ -82,6 +90,7 @@ export async function persistKit(
     isFallback?: boolean;
     tokenUsage?: GenerationUsageTotals;
     rowVersion?: number;
+    briefHash?: string;
   }
 ) {
   const { nanoid } = await import("nanoid");
@@ -95,6 +104,7 @@ export async function persistKit(
       deviceId: owner.deviceId,
       userId: owner.userId ?? null,
       briefJson,
+      briefHash: meta.briefHash ?? "",
       targetAudienceV2: normalizeArray(snapshot.target_audience),
       platformsV2: normalizeArray(snapshot.platforms),
       bestContentTypesV2: normalizeArray(snapshot.best_content_types),
@@ -132,6 +142,7 @@ export async function updateKit(
     isFallback?: boolean;
     tokenUsage?: GenerationUsageTotals;
     rowVersion: number;
+    briefHash?: string;
   }
 ) {
   const now = new Date();
@@ -140,6 +151,7 @@ export async function updateKit(
     .update(kits)
     .set({
       briefJson,
+      briefHash: meta.briefHash ?? "",
       targetAudienceV2: normalizeArray(snapshot.target_audience),
       platformsV2: normalizeArray(snapshot.platforms),
       bestContentTypesV2: normalizeArray(snapshot.best_content_types),
@@ -175,13 +187,19 @@ export async function listKits(
   return rows.map((row: KitRow) => serializeKit(row, opts));
 }
 
-export async function listAllKits(db: any, opts?: { includeUsage?: boolean }) {
+export async function listAllKits(
+  db: any,
+  opts?: { includeUsage?: boolean },
+  failureReasonByKitId?: Record<string, SafeFailureReason>
+) {
   const rows = await db
     .select()
     .from(kits)
     .orderBy(desc(kits.createdAt))
     .limit(200);
-  return rows.map((row: KitRow) => serializeKit(row, opts));
+  return rows.map((row: KitRow) =>
+    serializeKit(row, { ...opts, failureReason: failureReasonByKitId?.[row.id] ?? null })
+  );
 }
 
 export async function getKitById(db: any, id: string, owner: { deviceId: string; userId?: string | null }) {
@@ -222,6 +240,28 @@ export async function getLatestSuccessfulKitForOwner(
   );
 }
 
+export async function getPendingKitByBriefHash(
+  db: any,
+  owner: { deviceId: string; userId?: string | null },
+  briefHash: string
+) {
+  const row = (
+    await db
+      .select()
+      .from(kits)
+      .where(
+        and(
+          owner.userId ? eq(kits.userId, owner.userId) : eq(kits.deviceId, owner.deviceId),
+          eq(kits.briefHash, briefHash),
+          eq(kits.deliveryStatus, "retry_in_progress")
+        )
+      )
+      .orderBy(desc(kits.createdAt))
+      .limit(1)
+  )[0];
+  return row ?? null;
+}
+
 export async function patchKitUiPreferences(
   db: any,
   id: string,
@@ -237,4 +277,56 @@ export async function patchKitUiPreferences(
     .where(and(eq(kits.id, id), owner.userId ? eq(kits.userId, owner.userId) : eq(kits.deviceId, owner.deviceId)))
     .returning();
   return updated[0] ?? null;
+}
+
+export async function deleteKitById(db: any, id: string): Promise<string | null> {
+  const existing = (
+    await db
+      .select({ id: kits.id })
+      .from(kits)
+      .where(eq(kits.id, id))
+      .limit(1)
+  )[0];
+  if (!existing) return null;
+
+  await db.delete(kitInteractions).where(eq(kitInteractions.kitId, id));
+  await db.delete(idempotencyKeys).where(eq(idempotencyKeys.kitId, id));
+  await db.delete(kits).where(eq(kits.id, id));
+  return existing.id;
+}
+
+export async function deleteKitByIdWithAudit(
+  db: any,
+  input: {
+    id: string;
+    actorType: string;
+    actorId: string;
+    reason: string;
+    metadata?: Record<string, unknown>;
+  }
+): Promise<string | null> {
+  const existing = (
+    await db
+      .select({ id: kits.id })
+      .from(kits)
+      .where(eq(kits.id, input.id))
+      .limit(1)
+  )[0];
+  if (!existing) return null;
+
+  const { nanoid } = await import("nanoid");
+  await db.insert(kitDeleteAudit).values({
+    id: nanoid(),
+    kitId: input.id,
+    actorType: input.actorType,
+    actorId: input.actorId,
+    reason: input.reason,
+    metadata: input.metadata ?? {},
+    deletedAt: new Date(),
+  });
+
+  await db.delete(kitInteractions).where(eq(kitInteractions.kitId, input.id));
+  await db.delete(idempotencyKeys).where(eq(idempotencyKeys.kitId, input.id));
+  await db.delete(kits).where(eq(kits.id, input.id));
+  return existing.id;
 }

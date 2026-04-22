@@ -91,6 +91,11 @@ cp .env.example client/.env.local
 #   - VITE_WHATSAPP_SALES_NUMBER=201025364905
 #   - Premium package CTA routes to WhatsApp (wa.me) with prefilled Arabic payment message
 # - optional team routing: TELEGRAM_WEBHOOK_URL or (TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID [+ TELEGRAM_THREAD_ID]), ADMIN_BASE_URL
+# - optional PDF export branding/runtime:
+#   - PDF_AGENCY_NAME=Your Agency
+#   - PDF_AGENCY_CONTACT=+20XXXXXXXXXX | support@example.com
+#   - PDF_AGENCY_LOGO_URL=https://example.com/logo.png
+#   - PDF_PUPPETEER_ARGS=--no-sandbox,--disable-setuid-sandbox,--disable-dev-shm-usage
 
 npm install
 npm run dev
@@ -109,6 +114,7 @@ npm run test:e2e
 ```
 
 Runs dev servers in demo mode with a temporary DB.
+Set `PLAYWRIGHT_BASE_URL` when you need a non-default URL (default: `http://localhost:5173`).
 
 ---
 
@@ -122,19 +128,21 @@ npx tsc --noEmit -p server/tsconfig.json
 npm audit --audit-level=high
 ```
 
-Required production env guard:
-- `API_SECRET` must be present and non-empty in production.
-- If missing in production, API auth middleware now fails closed with a server misconfiguration response.
+Required production env guards:
+- `API_SECRET` must be present and non-empty in production (service bearer path).
+- `CORS_ORIGIN` cannot be `*` in production; startup now fails fast with a security error.
 
 ---
 
 ## Core Features
 
-- Visual wizard with auto-save draft in localStorage (`ai-content-dashboard:wizard-draft:v1`)
+- Visual wizard with per-path auto-save drafts in localStorage (`ai-content-dashboard:wizard-draft:social:v1`, `...:offer:v1`, `...:deep:v1`)
 - Idempotent synchronous kit generation
 - Dashboard list + searchable kit viewer
+- V2 client portal with sidebar navigation (Overview, My Brands, Request Content, Pricing)
 - Structured social/image/video rendering (with copy actions)
 - Retry flow for failed generation (full regenerate)
+- Admin-only hard delete for duplicate/junk kits (`DELETE /api/kits/:id`)
 - Prompt Catalog authoring as creative direction (client context auto-injected server-side)
 
 ---
@@ -234,14 +242,25 @@ Shared implementation: `client/src/pages/wizards/WizardCore.tsx`. After the last
 
 ## API Reference
 
-All `/api/*` routes require:
+Auth boundary contract for guarded routes:
 
-```http
-Authorization: Bearer <API_SECRET>
-```
+- `Authorization: Bearer <API_SECRET>` for internal service-to-service calls.
+- `Authorization: Bearer <JWT>` for user/browser channels (JWT-shaped bearer is accepted at gate, then verified in user auth middleware).
+- `X-Agency-Admin-Session: <session-token>` for agency admin channels.
 
-> The bearer token is added by the server-side flow and local test harnesses where needed.
-> Frontend runtime no longer reads any `VITE_API_SECRET`.
+Rate-limit IP resolution (spoofing-resistant defaults):
+- `cf-connecting-ip` first (trusted edge header when available)
+- `x-real-ip` second (trusted reverse proxy header)
+- `x-forwarded-for` is ignored by default and only used when `TRUST_X_FORWARDED_FOR=true`
+- fallback is `local`
+
+Request-size guardrails:
+- Global `/api/*` payload cap is controlled by `API_MAX_CONTENT_LENGTH_BYTES` (default `262144` bytes).
+- Analytics ingest keeps an additional endpoint-specific cap via `ANALYTICS_MAX_CONTENT_LENGTH_BYTES`.
+
+Rejected by default:
+- Requests that rely only on `Origin`/`Referer` (no longer trusted as auth signals).
+- Production runtime with `CORS_ORIGIN=*`.
 
 | Method | Route | Purpose |
 |---|---|---|
@@ -253,6 +272,9 @@ Authorization: Bearer <API_SECRET>
 | `POST` | `/api/kits/:id/regenerate-item` | Regenerate one item only with `{ item_type, index, row_version, feedback? }` |
 | `PATCH` | `/api/kits/:id/ui-preferences` | Persist viewer UI state with `{ ui_preferences }` (`lang`, section/panel maps) |
 | `POST` | `/api/telemetry/interaction` | Fire-and-forget interaction telemetry with `{ kit_id, interaction_type, meta? }` |
+| `POST` | `/api/analytics/wizard-events` | Public ingest with guardrails: per-IP throttling + global/body caps + text-field limits |
+| `GET` | `/api/analytics/wizard-summary` | Admin-only wizard telemetry aggregate (`total`, `byName`) |
+| `POST` | `/api/auth/agency-admin/login` | Agency admin login (rate-limited; returns `429` + `Retry-After` on throttle) |
 
 Generation quota usage (image/video prompt counters) is consumed only after a successful LLM response and successful kit persistence path.
 
@@ -305,6 +327,7 @@ It does **not** patch individual failed nodes in `result_json`.
   - `error` (safe message)
 - Idempotency behavior remains the same as standard generate.
 - `reasoning` is best-effort and never persisted in `result_json`.
+- In production, SSE `error` events are sanitized and do not expose raw server exception text.
 
 ---
 

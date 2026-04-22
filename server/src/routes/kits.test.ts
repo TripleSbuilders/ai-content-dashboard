@@ -6,6 +6,9 @@ const getKitByIdService = vi.fn();
 const regenerateKitItemService = vi.fn();
 const retryKitService = vi.fn();
 const patchKitUiPreferencesService = vi.fn();
+const deleteKitService = vi.fn();
+const generateKitPdf = vi.fn();
+const isAgencyAdminRequest = vi.fn();
 
 vi.mock("../services/kitGenerationService.js", () => ({
   generateKitService,
@@ -14,6 +17,15 @@ vi.mock("../services/kitGenerationService.js", () => ({
   regenerateKitItemService,
   retryKitService,
   patchKitUiPreferencesService,
+  deleteKitService,
+}));
+
+vi.mock("../services/pdfService.js", () => ({
+  generateKitPdf,
+}));
+
+vi.mock("../middleware/agencyAdminAuth.js", () => ({
+  isAgencyAdminRequest,
 }));
 
 async function appRequest(path: string, init?: RequestInit) {
@@ -25,6 +37,7 @@ async function appRequest(path: string, init?: RequestInit) {
 describe("kits routes device header enforcement", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    isAgencyAdminRequest.mockResolvedValue(false);
   });
 
   it("rejects list endpoint without X-Device-ID", async () => {
@@ -124,6 +137,31 @@ describe("kits routes device header enforcement", () => {
     expect(narrativeIdx).toBeLessThan(postsIdx);
   });
 
+  it("sanitizes SSE error message in production mode", async () => {
+    const prevNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    try {
+      const deviceId = "8e46f65c-c7d7-4b5e-a860-f48e183f3a24";
+      generateKitService.mockRejectedValueOnce(new Error("raw internal error details"));
+      const res = await appRequest("/api/kits/generate?stream=1", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": "idem-stream-error",
+          "X-Device-ID": deviceId,
+        },
+        body: JSON.stringify({ brand_name: "Stream", industry: "SaaS" }),
+      });
+      expect(res.status).toBe(200);
+      const text = await res.text();
+      expect(text).toContain("event: error");
+      expect(text).toContain("\"message\":\"Unexpected error while generating kit.\"");
+      expect(text).not.toContain("raw internal error details");
+    } finally {
+      process.env.NODE_ENV = prevNodeEnv;
+    }
+  });
+
   it("accepts array payload fields for generate route", async () => {
     const deviceId = "6b813b44-522f-4a53-9522-4a43ceadb523";
     generateKitService.mockResolvedValueOnce({ status: 201, body: { id: "k2" } });
@@ -170,6 +208,45 @@ describe("kits routes device header enforcement", () => {
     expect(getKitByIdService).toHaveBeenCalledWith("k1", { deviceId, userId: null }, { includeUsage: false });
   });
 
+  it("exports pdf for admin sessions only", async () => {
+    isAgencyAdminRequest.mockImplementation(async (c: { set: (k: string, v: unknown) => void }) => {
+      c.set("agencyAdminSession", { username: "ops-admin" });
+      return true;
+    });
+    getKitByIdService.mockResolvedValueOnce({
+      id: "k-pdf",
+      brief_json: "{\"brand_name\":\"Florenza\"}",
+      result_json: { posts: [] },
+      created_at: "2026-04-22T10:00:00.000Z",
+    });
+    generateKitPdf.mockResolvedValueOnce(Buffer.from("%PDF-test"));
+
+    const res = await appRequest("/api/kits/k-pdf/export-pdf?scope=all", {
+      method: "GET",
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("application/pdf");
+    expect(res.headers.get("content-disposition")).toContain("kit-k-pdf.pdf");
+    expect(getKitByIdService).toHaveBeenCalledWith("k-pdf", undefined, { includeUsage: true });
+    expect(generateKitPdf).toHaveBeenCalledWith({
+      id: "k-pdf",
+      brief_json: "{\"brand_name\":\"Florenza\"}",
+      result_json: { posts: [] },
+      created_at: "2026-04-22T10:00:00.000Z",
+    });
+  });
+
+  it("blocks pdf export when requester is not admin", async () => {
+    isAgencyAdminRequest.mockResolvedValue(false);
+    const res = await appRequest("/api/kits/k-pdf/export-pdf?scope=all", {
+      method: "GET",
+      headers: { "X-Device-ID": "a4be40b8-2ac6-4f59-9e14-a5cf6f39b4bd" },
+    });
+    expect([401, 403]).toContain(res.status);
+    expect(generateKitPdf).not.toHaveBeenCalled();
+  });
+
   it("patches ui preferences with ownership context", async () => {
     const deviceId = "43cef6f6-6085-4f41-b244-5b1a91c3b4af";
     patchKitUiPreferencesService.mockResolvedValueOnce({
@@ -193,6 +270,48 @@ describe("kits routes device header enforcement", () => {
       id: "k-pref",
       owner: { deviceId, userId: null },
       uiPreferences: { lang: "en", open_map: { "kit-section-posts": true } },
+    });
+  });
+
+  it("uses fallback delete reason when query reason is missing", async () => {
+    isAgencyAdminRequest.mockImplementation(async (c: { set: (k: string, v: unknown) => void }) => {
+      c.set("agencyAdminSession", { username: "ops-admin" });
+      return true;
+    });
+    deleteKitService.mockResolvedValueOnce({ status: 200, body: { ok: true, id: "k-del" } });
+
+    const res = await appRequest("/api/kits/k-del", {
+      method: "DELETE",
+    });
+
+    expect(res.status).toBe(200);
+    expect(deleteKitService).toHaveBeenCalledWith({
+      id: "k-del",
+      actorType: "admin_session",
+      actorId: "ops-admin",
+      reason: "manual_admin_cleanup",
+      metadata: { source: "admin_api" },
+    });
+  });
+
+  it("passes audit actor and reason into delete service", async () => {
+    isAgencyAdminRequest.mockImplementation(async (c: { set: (k: string, v: unknown) => void }) => {
+      c.set("agencyAdminSession", { username: "ops-admin" });
+      return true;
+    });
+    deleteKitService.mockResolvedValueOnce({ status: 200, body: { ok: true, id: "k-del" } });
+
+    const res = await appRequest("/api/kits/k-del?reason=duplicate+cleanup", {
+      method: "DELETE",
+    });
+
+    expect(res.status).toBe(200);
+    expect(deleteKitService).toHaveBeenCalledWith({
+      id: "k-del",
+      actorType: "admin_session",
+      actorId: "ops-admin",
+      reason: "duplicate cleanup",
+      metadata: { source: "admin_api" },
     });
   });
 });

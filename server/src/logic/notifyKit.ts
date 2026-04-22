@@ -26,6 +26,7 @@ export async function recordKitNotification(row: KitRow): Promise<void> {
 
   await db.insert(notifications).values({
     id: nanoid(),
+    userId: row.userId ?? null,
     title,
     body,
     kind: isFail ? "kit_failed" : "kit_success",

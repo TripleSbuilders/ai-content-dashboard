@@ -2,6 +2,8 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { Next } from "hono";
 import {
+  deleteKitService,
+  enqueueAgencyKitGenerationService,
   generateKitService,
   getKitByIdService,
   listKitsService,
@@ -9,12 +11,14 @@ import {
   regenerateKitItemService,
   retryKitService,
 } from "../services/kitGenerationService.js";
+import { generateKitPdf } from "../services/pdfService.js";
 import { respondHttpError } from "./httpErrorMapping.js";
 import { getAuthUser } from "../middleware/userAuth.js";
 import { ensureUserFromSupabase } from "../services/subscriptionService.js";
 import { db } from "../db/index.js";
 import { users } from "../db/schema.js";
 import { eq } from "drizzle-orm";
+import { isAgencyAdminRequest } from "../middleware/agencyAdminAuth.js";
 
 const deviceIdSchema = z.string().uuid();
 const REASONING_TRACE_MAX_LINES = 24;
@@ -24,6 +28,10 @@ const generateBodySchema = z
   .object({
     submitted_at: z.union([z.string(), z.number()]).optional(),
     email: z.string().optional(),
+    client_name: z.string().optional().default(""),
+    client_phone: z.string().optional().default(""),
+    client_email: z.string().optional().default(""),
+    source_mode: z.enum(["self_serve", "agency"]).optional().default("self_serve"),
     brand_name: z.string().optional().default(""),
     industry: z.string().optional().default(""),
     business_links: z.string().optional().default(""),
@@ -39,6 +47,7 @@ const generateBodySchema = z
     brand_colors: z.string().optional().default(""),
     offer: z.string().optional().default(""),
     competitors: z.string().optional().default(""),
+    audience_pain_point: z.string().optional().default(""),
     visual_notes: z.string().optional().default(""),
     reference_image: z.string().optional().default(""),
     campaign_duration: z.string().optional().default(""),
@@ -90,6 +99,21 @@ function requireDeviceId(c: import("hono").Context): { ok: true; deviceId: strin
     };
   }
   return { ok: true, deviceId: parsed.data };
+}
+
+function isAgencyModeEnabled() {
+  return String(process.env.APP_EDITION ?? "").trim().toLowerCase() === "agency";
+}
+
+function sanitizeSseErrorMessage(err: unknown): string {
+  const fallback = "Unexpected error while generating kit.";
+  if (String(process.env.NODE_ENV ?? "").trim().toLowerCase() === "production") {
+    return fallback;
+  }
+  if (err instanceof Error && err.message.trim()) {
+    return err.message;
+  }
+  return fallback;
 }
 
 function buildHydrationSnapshots(resultJson: unknown): Array<{ section: string; progress: number; snapshot: Record<string, unknown> }> {
@@ -184,6 +208,7 @@ async function resolveOwner(c: import("hono").Context) {
 }
 
 async function requireAdminAccess(c: import("hono").Context): Promise<Response | null> {
+  if (await isAgencyAdminRequest(c)) return null;
   const authUser = getAuthUser(c);
   if (!authUser) return c.json({ error: "Unauthorized" }, 401);
   const current = (
@@ -197,6 +222,7 @@ async function requireAdminAccess(c: import("hono").Context): Promise<Response |
       .limit(1)
   )[0];
   if (!current?.isAdmin) return c.json({ error: "Admin access required." }, 403);
+  c.set("adminActorUserId", current.id);
   return null;
 }
 
@@ -217,6 +243,23 @@ export function createKitsRouter(mw: (c: import("hono").Context, next: Next) => 
     }
 
     const streamMode = c.req.query("stream") === "1";
+    const asyncMode = c.req.query("async") === "1";
+    const agencyRequest = body.source_mode === "agency";
+
+    if (asyncMode && agencyRequest) {
+      try {
+        const result = await enqueueAgencyKitGenerationService({
+          idempotencyKey: c.req.header("Idempotency-Key")?.trim() || "",
+          body: body as Record<string, unknown>,
+          deviceId: ownerRes.owner.deviceId,
+          userId: ownerRes.owner.userId,
+        });
+        return c.json(result.body, result.status);
+      } catch (err) {
+        return respondHttpError(c, err, "Unexpected error while queueing kit generation.");
+      }
+    }
+
     if (!streamMode) {
       try {
         const result = await generateKitService({
@@ -291,10 +334,7 @@ export function createKitsRouter(mw: (c: import("hono").Context, next: Next) => 
         } catch (err) {
           clearInterval(heartbeat);
           sendEvent("error", {
-            message:
-              err instanceof Error && err.message.trim()
-                ? err.message
-                : "Unexpected error while generating kit.",
+            message: sanitizeSseErrorMessage(err),
           });
           console.warn("[kits_stream] error", String(err));
           controller.close();
@@ -310,8 +350,19 @@ export function createKitsRouter(mw: (c: import("hono").Context, next: Next) => 
     });
   });
 
+  app.get("/api/kits/mine", async (c) => {
+    const ownerRes = await resolveOwner(c);
+    if (!ownerRes.ok) return ownerRes.response;
+    return c.json(await listKitsService(ownerRes.owner, { includeUsage: false }));
+  });
+
   app.get("/api/kits", async (c) => {
     const scopeAll = c.req.query("scope") === "all";
+    if (isAgencyModeEnabled() && !scopeAll) {
+      const blocked = await requireAdminAccess(c);
+      if (blocked) return blocked;
+      return c.json(await listKitsService(undefined, { includeUsage: true }));
+    }
     if (scopeAll) {
       const blocked = await requireAdminAccess(c);
       if (blocked) return blocked;
@@ -324,6 +375,15 @@ export function createKitsRouter(mw: (c: import("hono").Context, next: Next) => 
 
   app.get("/api/kits/:id", async (c) => {
     const scopeAll = c.req.query("scope") === "all";
+    if (isAgencyModeEnabled() && !scopeAll) {
+      const blocked = await requireAdminAccess(c);
+      if (blocked) return blocked;
+      try {
+        return c.json(await getKitByIdService(c.req.param("id"), undefined, { includeUsage: true }));
+      } catch (err) {
+        return respondHttpError(c, err, "Unexpected error while loading kit.");
+      }
+    }
     let owner: { deviceId: string; userId?: string | null } | undefined;
     if (!scopeAll) {
       const ownerRes = await resolveOwner(c);
@@ -337,6 +397,36 @@ export function createKitsRouter(mw: (c: import("hono").Context, next: Next) => 
       return c.json(await getKitByIdService(c.req.param("id"), owner, { includeUsage: scopeAll }));
     } catch (err) {
       return respondHttpError(c, err, "Unexpected error while loading kit.");
+    }
+  });
+
+  app.get("/api/kits/:id/export-pdf", async (c) => {
+    const blocked = await requireAdminAccess(c);
+    if (blocked) return blocked;
+    try {
+      const kit = (await getKitByIdService(c.req.param("id"), undefined, {
+        includeUsage: true,
+      })) as {
+        id: string;
+        brief_json: string;
+        result_json: unknown;
+        created_at: string;
+      };
+      const pdf = await generateKitPdf({
+        id: kit.id,
+        brief_json: kit.brief_json,
+        result_json: kit.result_json,
+        created_at: kit.created_at,
+      });
+      return new Response(new Uint8Array(pdf), {
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `attachment; filename="kit-${kit.id}.pdf"`,
+          "Cache-Control": "no-store",
+        },
+      });
+    } catch (err) {
+      return respondHttpError(c, err, "Unexpected error while exporting PDF.");
     }
   });
 
@@ -408,6 +498,32 @@ export function createKitsRouter(mw: (c: import("hono").Context, next: Next) => 
       return c.json(result.body, result.status);
     } catch (err) {
       return respondHttpError(c, err, "Unexpected error while updating UI preferences.");
+    }
+  });
+
+  app.delete("/api/kits/:id", async (c) => {
+    const blocked = await requireAdminAccess(c);
+    if (blocked) return blocked;
+    const reason = String(c.req.query("reason") ?? "").trim() || "manual_admin_cleanup";
+    const agencySession = (c as any).get("agencyAdminSession") as { username?: string } | undefined;
+    const actorType = agencySession?.username ? "admin_session" : "admin_user";
+    const actorId = agencySession?.username
+      ? String(agencySession.username)
+      : String((c as any).get("adminActorUserId") ?? "").trim();
+    if (!actorId) {
+      return c.json({ error: "Unable to resolve delete actor." }, 403);
+    }
+    try {
+      const result = await deleteKitService({
+        id: c.req.param("id"),
+        actorType,
+        actorId,
+        reason,
+        metadata: { source: "admin_api" },
+      });
+      return c.json(result.body, result.status);
+    } catch (err) {
+      return respondHttpError(c, err, "Unexpected error while deleting kit.");
     }
   });
 

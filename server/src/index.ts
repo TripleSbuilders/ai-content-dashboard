@@ -10,14 +10,23 @@ import { createAnalyticsRouter } from "./routes/analytics.js";
 import { createAuthRouter } from "./routes/auth.js";
 import { createAdminPlansRouter } from "./routes/adminPlans.js";
 import { createTelemetryRouter } from "./routes/telemetry.js";
+import { createLeadsRouter } from "./routes/leads.js";
 import { bearerAuth } from "./middleware/auth.js";
 import { optionalSupabaseUser } from "./middleware/userAuth.js";
 import { rateLimit } from "./middleware/rateLimit.js";
 import { startIdempotencyCleanupJob } from "./services/kitGenerationService.js";
 import type { Context, Next } from "hono";
+import { assertSafeCorsOriginForRuntime } from "./config/runtimeGuards.js";
+import { apiRequestSizeLimit } from "./middleware/requestSizeLimit.js";
 
 async function main() {
+  const migrationStartedAt = Date.now();
+  console.info("[startup] Running DB migrations...");
   await runMigrations();
+  console.info(
+    "[startup] DB migrations finished",
+    JSON.stringify({ elapsed_ms: Date.now() - migrationStartedAt })
+  );
   const cleanupTimer = startIdempotencyCleanupJob();
   cleanupTimer.unref();
 
@@ -26,15 +35,18 @@ async function main() {
   app.use("*", secureHeaders());
 
   const origin = String(process.env.CORS_ORIGIN ?? "*").trim() || "*";
-  const isProd = String(process.env.NODE_ENV ?? "").toLowerCase() === "production";
-  if (isProd && origin === "*") {
-    console.warn("[SECURITY] CORS_ORIGIN is '*' in production. Restrict it to trusted domains.");
-  }
+  assertSafeCorsOriginForRuntime(process.env.NODE_ENV, origin);
   app.use(
     "*",
     cors({
       origin: origin === "*" ? "*" : origin.split(",").map((o) => o.trim()),
-      allowHeaders: ["Content-Type", "Authorization", "Idempotency-Key", "X-Device-ID"],
+      allowHeaders: [
+        "Content-Type",
+        "Authorization",
+        "Idempotency-Key",
+        "X-Device-ID",
+        "X-Agency-Admin-Session",
+      ],
       exposeHeaders: ["Content-Type"],
     })
   );
@@ -52,7 +64,15 @@ async function main() {
     })
   );
 
-  app.get("/health", (c) => c.json({ ok: true, db: Boolean(db) }));
+  app.get("/health", (c) =>
+    c.json({
+      ok: true,
+      db: Boolean(db),
+      migrations_on_boot: true,
+    })
+  );
+
+  app.use("/api/*", apiRequestSizeLimit);
 
   async function kitsGuard(c: Context, next: Next) {
     return await rateLimit(c, async () => {
@@ -68,10 +88,11 @@ async function main() {
 
   const kitsApp = createKitsRouter(kitsGuard);
   const featuresApp = createFeaturesRouter(kitsGuard);
-  const analyticsApp = createAnalyticsRouter();
+  const analyticsApp = createAnalyticsRouter(adminGuard);
   const authApp = createAuthRouter(kitsGuard);
   const adminPlansApp = createAdminPlansRouter(adminGuard);
   const telemetryApp = createTelemetryRouter(kitsGuard);
+  const leadsApp = createLeadsRouter();
 
   app.route("/", kitsApp);
   app.route("/api", featuresApp);
@@ -79,6 +100,7 @@ async function main() {
   app.route("/", authApp);
   app.route("/", adminPlansApp);
   app.route("/", telemetryApp);
+  app.route("/", leadsApp);
 
   const port = parseInt(process.env.PORT ?? "8787", 10);
   const server = serve({ fetch: app.fetch, port }, () => {

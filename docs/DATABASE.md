@@ -22,6 +22,7 @@
 | `monthly_usage_counters` | `id` | Usage per period (video/image/kits/regenerate/retry) |
 | `kit_failure_logs` | `id` | Failure diagnostics |
 | `notifications` | `id` | In-app notifications |
+| `kit_delete_audit` | `id` | Admin delete audit trail (actor + reason + timestamp) |
 | `user_profile` | `id` | Profile fields; `user_id` unique |
 | `app_preferences` | `id` | UI prefs; `user_id` unique |
 | `brand_voice` | `id` | Pillars / avoid words / sample; `user_id` unique |
@@ -41,6 +42,7 @@
 | `device_id` | text | Default `''` |
 | `user_id` | text | Nullable |
 | `brief_json` | text | Stringified wizard payload |
+| `brief_hash` | text | Normalized brief fingerprint (idempotency) |
 | `target_audience_v2` | jsonb | `string[]` |
 | `platforms_v2` | jsonb | `string[]` |
 | `best_content_types_v2` | jsonb | `string[]` |
@@ -55,9 +57,20 @@
 | `prompt_tokens` | integer | Default 0 |
 | `completion_tokens` | integer | Default 0 |
 | `total_tokens` | integer | Default 0 |
+| `usage_charged_at` | timestamptz nullable | Charge-once guard marker for usage deduction |
 | `row_version` | integer | Optimistic concurrency |
 | `created_at` | timestamptz | |
 | `updated_at` | timestamptz | |
+
+### Admin-side delete behavior (Phase 4 + Phase 2 hardening)
+
+- Admin delete endpoint: `DELETE /api/kits/:id` (admin-only).
+- Cleanup order in repository/service (inside one transaction):
+  1) insert `kit_delete_audit` record (`actor_type`, `actor_id`, `reason`, `deleted_at`)
+  1) delete `kit_interactions` by `kit_id`
+  2) delete `idempotency_keys` by `kit_id`
+  3) delete `kits` row
+- This is hard delete for MVP operations.
 
 ---
 
@@ -162,10 +175,27 @@
 | Column | Type |
 |--------|------|
 | `id` | text PK |
+| `user_id` | text nullable (owner scope key) |
 | `title`, `body`, `kind` | text |
 | `kit_id` | text nullable |
 | `read_at` | timestamptz nullable |
 | `created_at` | timestamptz |
+
+Notifications API contract is now strictly user-scoped in routes (`GET`, `read-all`, `read-one`) and no longer global.
+
+---
+
+## `kit_delete_audit`
+
+| Column | Type |
+|--------|------|
+| `id` | text PK |
+| `kit_id` | text |
+| `actor_type` | text (`admin_session` / `admin_user`) |
+| `actor_id` | text |
+| `reason` | text |
+| `metadata` | jsonb |
+| `deleted_at` | timestamptz |
 
 ---
 
@@ -244,3 +274,52 @@
 ## Indexes
 
 Define explicit indexes in **`migrations.ts`** if present; Drizzle `schema.ts` does not list all indexes. Query migrations for `CREATE INDEX` before assuming an index exists.
+
+---
+
+## Row Level Security (Phase 4)
+
+RLS is enabled in `server/src/db/migrations.ts` for:
+
+- `social_geni.kits`
+- `social_geni.kit_interactions`
+- `social_geni.notifications`
+- `social_geni.monthly_usage_counters`
+- `social_geni.kit_delete_audit`
+
+### Active policies
+
+- `kits_owner_rw` on `kits`:
+  - `USING (user_id = auth.uid()::text)`
+  - `WITH CHECK (user_id = auth.uid()::text)`
+- `kit_interactions_owner_rw` on `kit_interactions`:
+  - `USING (user_id = auth.uid()::text)`
+  - `WITH CHECK (user_id = auth.uid()::text)`
+- `notifications_owner_rw` on `notifications`:
+  - `USING (user_id = auth.uid()::text)`
+  - `WITH CHECK (user_id = auth.uid()::text)`
+- `monthly_usage_owner_rw` on `monthly_usage_counters`:
+  - `USING (user_id = auth.uid()::text)`
+  - `WITH CHECK (user_id = auth.uid()::text)`
+- `kit_delete_audit_admin_read` on `kit_delete_audit`:
+  - `FOR SELECT`
+  - `USING (COALESCE((auth.jwt() ->> 'is_admin')::boolean, false))`
+
+### Scope and caveats
+
+- هذه السياسات فعّالة بشكل أساسي لقنوات Supabase/PostgREST المرتبطة بـ JWT.
+- إذا كان الاتصال بقاعدة البيانات يتم عبر service role (أو role لديه `bypassrls`) فسياسات RLS لا تكون حاجزًا كاملاً على هذا المسار.
+- جدول `kit_jobs` غير موجود حاليًا في schema الحالي، لذا لم تُطبّق عليه سياسات.
+
+### Rollback notes
+
+للرجوع السريع:
+
+1. حذف السياسات:
+   - `DROP POLICY IF EXISTS kits_owner_rw ON social_geni.kits;`
+   - `DROP POLICY IF EXISTS kit_interactions_owner_rw ON social_geni.kit_interactions;`
+   - `DROP POLICY IF EXISTS notifications_owner_rw ON social_geni.notifications;`
+   - `DROP POLICY IF EXISTS monthly_usage_owner_rw ON social_geni.monthly_usage_counters;`
+   - `DROP POLICY IF EXISTS kit_delete_audit_admin_read ON social_geni.kit_delete_audit;`
+2. تعطيل RLS عند الحاجة:
+   - `ALTER TABLE social_geni.<table> DISABLE ROW LEVEL SECURITY;`

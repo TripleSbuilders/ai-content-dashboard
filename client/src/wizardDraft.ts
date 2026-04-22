@@ -4,7 +4,10 @@ import { normalizeCampaignMode } from "./types";
 export const WIZARD_DRAFT_KEY = "ai-content-dashboard:wizard-draft:v1";
 
 const BRIEF_KEYS: (keyof BriefForm)[] = [
-  "email",
+  "client_name",
+  "client_phone",
+  "client_email",
+  "source_mode",
   "brand_name",
   "industry",
   "business_links",
@@ -20,6 +23,7 @@ const BRIEF_KEYS: (keyof BriefForm)[] = [
   "brand_colors",
   "offer",
   "competitors",
+  "audience_pain_point",
   "visual_notes",
   "reference_image",
   "campaign_duration",
@@ -44,9 +48,11 @@ export function isWizardDirty(form: BriefForm, step: number, limits: WizardLimit
   if (step > 0) return true;
   if (
     form.brand_name.trim() ||
+    form.client_name.trim() ||
+    form.client_phone.trim() ||
+    form.client_email.trim() ||
     form.industry.trim() ||
     form.business_links.trim() ||
-    form.email.trim() ||
     form.target_audience.length > 0 ||
     form.diagnostic_role.trim() ||
     form.diagnostic_account_stage.trim() ||
@@ -59,6 +65,7 @@ export function isWizardDirty(form: BriefForm, step: number, limits: WizardLimit
     form.brand_colors.trim() ||
     form.offer.trim() ||
     form.competitors.trim() ||
+    form.audience_pain_point.trim() ||
     form.visual_notes.trim() ||
     form.reference_image?.trim() ||
     form.campaign_duration.trim() ||
@@ -90,6 +97,10 @@ export function parseWizardDraft(raw: string, limits: WizardLimits, maxStep: num
         if (k === "campaign_mode") continue;
         if (k === "include_content_package") continue;
         if (k === "content_package_idea_count") continue;
+        if (k === "client_name") continue;
+        if (k === "client_phone") continue;
+        if (k === "client_email") continue;
+        if (k === "source_mode") continue;
         return null;
       }
     }
@@ -112,7 +123,10 @@ export function parseWizardDraft(raw: string, limits: WizardLimits, maxStep: num
       return [];
     };
     const form: BriefForm = {
-      email: str(f.email),
+      client_name: str(f.client_name),
+      client_phone: str(f.client_phone),
+      client_email: str(f.client_email),
+      source_mode: str(f.source_mode).toLowerCase() === "agency" ? "agency" : "self_serve",
       brand_name: str(f.brand_name),
       industry: str(f.industry),
       business_links: str(f.business_links),
@@ -128,6 +142,7 @@ export function parseWizardDraft(raw: string, limits: WizardLimits, maxStep: num
       brand_colors: str(f.brand_colors),
       offer: str(f.offer),
       competitors: str(f.competitors),
+      audience_pain_point: str(f.audience_pain_point),
       visual_notes: str(f.visual_notes),
       reference_image: str(f.reference_image),
       campaign_duration: str(f.campaign_duration),

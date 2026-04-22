@@ -6,6 +6,7 @@ import { db } from "../db/index.js";
 import { planSubscriptions, users } from "../db/schema.js";
 import { getAuthUser } from "../middleware/userAuth.js";
 import { canApplyAdminRoleChange } from "../services/adminRolePolicy.js";
+import { isAgencyAdminRequest } from "../middleware/agencyAdminAuth.js";
 
 const bodySchema = z.object({
   plan_code: z.enum(["starter", "early_adopter", "admin_unlimited"]),
@@ -23,21 +24,12 @@ const roleByEmailBodySchema = z.object({
   is_admin: z.boolean(),
 });
 
-function parseBearerToken(c: import("hono").Context): string {
-  const auth = c.req.header("authorization") ?? "";
-  if (!auth.toLowerCase().startsWith("bearer ")) return "";
-  return auth.slice(7).trim();
-}
-
-function isApiSecretToken(token: string): boolean {
-  const secret = String(process.env.API_SECRET ?? "").trim();
-  return Boolean(secret) && token === secret;
-}
+const premiumBodySchema = z.object({
+  is_premium: z.boolean(),
+});
 
 async function requireAdminAccess(c: import("hono").Context): Promise<Response | null> {
-  const token = parseBearerToken(c);
-  if (isApiSecretToken(token)) return null;
-
+  if (await isAgencyAdminRequest(c)) return null;
   const authUser = getAuthUser(c);
   if (!authUser) return c.json({ error: "Unauthorized" }, 401);
 
@@ -101,6 +93,7 @@ export function createAdminPlansRouter(
         email: user.email,
         display_name: user.displayName,
         is_admin: user.isAdmin,
+        is_premium: user.isPremium,
       },
       subscriptions: rows.map((r) => ({
         id: r.id,
@@ -186,6 +179,7 @@ export function createAdminPlansRouter(
         email: users.email,
         display_name: users.displayName,
         is_admin: users.isAdmin,
+        is_premium: users.isPremium,
         created_at: users.createdAt,
       })
       .from(users)
@@ -247,6 +241,38 @@ export function createAdminPlansRouter(
       .where(eq(users.id, targetUserId));
 
     return c.json({ ok: true });
+  });
+
+  app.patch("/api/admin/users/:userId/upgrade", async (c) => {
+    const blocked = await requireAdminAccess(c);
+    if (blocked) return blocked;
+    const targetUserId = c.req.param("userId");
+
+    let body: z.infer<typeof premiumBodySchema>;
+    try {
+      body = premiumBodySchema.parse(await c.req.json());
+    } catch {
+      return c.json({ error: "Invalid body." }, 400);
+    }
+
+    const target = (await db.select().from(users).where(eq(users.id, targetUserId)).limit(1))[0];
+    if (!target) return c.json({ error: "User not found." }, 404);
+
+    const now = new Date();
+    await db
+      .update(users)
+      .set({
+        isPremium: body.is_premium,
+        updatedAt: now,
+      })
+      .where(eq(users.id, targetUserId));
+
+    return c.json({
+      ok: true,
+      user_id: targetUserId,
+      is_premium: body.is_premium,
+      updated_at: now.toISOString(),
+    });
   });
 
   app.post("/api/admin/users/promote-by-email", async (c) => {

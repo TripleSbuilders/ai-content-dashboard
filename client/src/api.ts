@@ -4,11 +4,14 @@ export {
   generateKitAsync,
   generateKitStream,
   listKits,
+  listMyKits,
   getKit,
   retryKit,
   regenerateKitItem,
   submitKitInteractionTelemetry,
   updateKitUiPreferences,
+  deleteKit,
+  exportKitPdf,
 } from "./api/kits";
 export type {
   KitGenerationStreamEvent,
@@ -33,6 +36,8 @@ export {
   getHealth,
 } from "./api/misc";
 export type { HelpTopicsResponse } from "./api/misc";
+export { submitPremiumLead } from "./api/leads";
+export type { PremiumLeadPayload } from "./api/leads";
 export { getEntitlements, syncAuthDevice } from "./api/auth";
 export type { EntitlementsResponse } from "./api/auth";
 export {

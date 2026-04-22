@@ -16,12 +16,15 @@ export const BRIEF_LIMITS = {
 const L = BRIEF_LIMITS;
 
 export const briefSchema = z.object({
-  email: z
+  client_name: z.string().trim().default(""),
+  client_phone: z.string().trim().default(""),
+  client_email: z
     .string()
     .trim()
     .refine((v) => v === "" || /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(v), {
-      message: "Invalid email format",
+      message: "Invalid client email format",
     }),
+  source_mode: z.enum(["self_serve", "agency"]).default("self_serve"),
   brand_name: z.string().trim().min(1, "Brand name is required"),
   industry: z.string(),
   business_links: z.string().default(""),
@@ -32,6 +35,7 @@ export const briefSchema = z.object({
   brand_colors: z.string(),
   offer: z.string(),
   competitors: z.string(),
+  audience_pain_point: z.string().default(""),
   visual_notes: z.string(),
   reference_image: z.string().max(3_000_000).optional(),
   campaign_duration: z.string(),
@@ -75,6 +79,17 @@ export const briefSchema = z.object({
 export type BriefSchema = z.infer<typeof briefSchema>;
 
 const requiredStr = (message: string) => z.string().trim().min(1, { message });
+const requiredClientContactShape = {
+  client_name: requiredStr("Client name is required"),
+  client_phone: requiredStr("Client phone is required"),
+  client_email: z
+    .string()
+    .trim()
+    .min(1, "Client email is required")
+    .refine((v) => /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(v), {
+      message: "Invalid client email format",
+    }),
+} as const;
 
 /** Social path: minimum viable brief for reach/engagement prompts. */
 export const socialBriefSchema = briefSchema.extend({
@@ -127,6 +142,13 @@ export const deepBriefSchemaWithDiagnosis = deepBriefSchema.extend({
   diagnostic_revenue_goal: requiredStr("Select a target revenue range"),
 });
 
+export const socialBriefSchemaAgency = socialBriefSchema.extend(requiredClientContactShape);
+export const offerBriefSchemaAgency = offerBriefSchema.extend(requiredClientContactShape);
+export const deepBriefSchemaAgency = deepBriefSchema.extend(requiredClientContactShape);
+export const socialBriefSchemaWithDiagnosisAgency = socialBriefSchemaWithDiagnosis.extend(requiredClientContactShape);
+export const offerBriefSchemaWithDiagnosisAgency = offerBriefSchemaWithDiagnosis.extend(requiredClientContactShape);
+export const deepBriefSchemaWithDiagnosisAgency = deepBriefSchemaWithDiagnosis.extend(requiredClientContactShape);
+
 /** Fields validated when leaving each step (0–4). Step 5 uses full schema on submit. */
 export const STEP_FIELD_KEYS: readonly (readonly (keyof BriefForm)[])[] = [
   [
@@ -141,12 +163,15 @@ export const STEP_FIELD_KEYS: readonly (readonly (keyof BriefForm)[])[] = [
   ["platforms", "brand_tone", "brand_colors"],
   ["offer", "competitors"],
   ["visual_notes", "reference_image", "campaign_duration", "budget_level", "best_content_types"],
-  ["include_content_package", "content_package_idea_count", "num_posts", "num_image_designs", "num_video_prompts", "email"],
+  ["include_content_package", "content_package_idea_count", "num_posts", "num_image_designs", "num_video_prompts"],
 ] as const;
 
 export function initialBriefForm(): BriefForm {
   return {
-    email: "",
+    client_name: "",
+    client_phone: "",
+    client_email: "",
+    source_mode: "self_serve",
     brand_name: "",
     industry: "",
     business_links: "",
@@ -157,6 +182,7 @@ export function initialBriefForm(): BriefForm {
     brand_colors: "",
     offer: "",
     competitors: "",
+    audience_pain_point: "",
     visual_notes: "",
     reference_image: "",
     campaign_duration: "",

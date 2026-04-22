@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
-import { getKit, retryKit, ApiError } from "./api";
+import { getKit, retryKit, exportKitPdf, ApiError } from "./api";
 import type { KitSummary } from "./types";
 import { useToast } from "./useToast";
 import { emitWizardEvent } from "./lib/wizardAnalytics";
@@ -41,6 +41,7 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
   const [kit, setKit] = useState<KitSummary | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [conflict, setConflict] = useState(false);
   const { toasts, push } = useToast();
 
@@ -97,6 +98,27 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
     }
   };
 
+  const doExportPdf = async () => {
+    if (!kit || !showTechnical) return;
+    setExportingPdf(true);
+    try {
+      const blob = await exportKitPdf(kit.id);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `kit-${kit.id}.pdf`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      push("PDF exported", "info");
+    } catch (e) {
+      push(e instanceof Error ? e.message : "Failed to export PDF.", "error");
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
   if (err || !id) {
     return (
       <div className="glass-panel rounded-3xl border border-outline/30 p-8 text-on-surface">
@@ -138,6 +160,11 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
       : "unknown";
   const blocker = String(brief.diagnostic_primary_blocker ?? "").trim();
   const target = String(brief.diagnostic_revenue_goal ?? "").trim();
+  const sourceModeRaw = String(brief.source_mode ?? "").trim().toLowerCase();
+  const sourceMode = sourceModeRaw === "agency" ? "agency" : sourceModeRaw === "self_serve" ? "self_serve" : "unknown";
+  const clientName = String(brief.client_name ?? "").trim();
+  const clientPhone = String(brief.client_phone ?? "").trim();
+  const clientEmail = String(brief.client_email ?? brief.email ?? "").trim();
   const recommendation =
     blocker === "inconsistent-execution"
       ? "Start with Quick win and publish one output today to rebuild momentum."
@@ -201,6 +228,17 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
           </div>
         </div>
         <div className="flex w-full flex-wrap gap-3 lg:w-auto">
+          {showTechnical ? (
+            <button
+              type="button"
+              className={btnSecondary + " w-full sm:w-auto"}
+              disabled={exportingPdf}
+              onClick={() => void doExportPdf()}
+            >
+              <span className="material-symbols-outlined text-lg">download</span>
+              {exportingPdf ? "Exporting PDF…" : "Export PDF"}
+            </button>
+          ) : null}
           {showTechnical && kit.result_json ? (
             <button type="button" className={btnSecondary + " w-full sm:w-auto"} onClick={() => void copyResultJson()}>
               <span className="material-symbols-outlined text-lg">content_copy</span>
@@ -259,6 +297,26 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
           </div>
         ) : null}
 
+        {showTechnical ? (
+          <div className="rounded-2xl border border-outline/25 bg-surface-container-low p-4">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Lead routing</p>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2 text-sm text-on-surface-variant">
+              <p>
+                <span className="font-semibold text-on-surface">Source:</span> {sourceMode}
+              </p>
+              <p>
+                <span className="font-semibold text-on-surface">Client:</span> {clientName || "-"}
+              </p>
+              <p>
+                <span className="font-semibold text-on-surface">Phone:</span> {clientPhone || "-"}
+              </p>
+              <p>
+                <span className="font-semibold text-on-surface">Email:</span> {clientEmail || "-"}
+              </p>
+            </div>
+          </div>
+        ) : null}
+
         {kit.last_error && (
           <div className="rounded-2xl border border-error/30 bg-error/10 p-4">
             <div className="mb-2 text-xs font-bold uppercase tracking-wider text-error">Error details</div>
@@ -267,6 +325,27 @@ export default function KitDetail({ showTechnical = false }: { showTechnical?: b
             </pre>
           </div>
         )}
+
+        {showTechnical && kit.failure_reason ? (
+          <div className="rounded-2xl border border-error/30 bg-error/10 p-4">
+            <div className="mb-2 text-xs font-bold uppercase tracking-wider text-error">Safe failure reason</div>
+            <div className="grid gap-2 sm:grid-cols-2 text-sm text-on-surface-variant">
+              <p>
+                <span className="font-semibold text-on-surface">Code:</span> {kit.failure_reason.code}
+              </p>
+              <p>
+                <span className="font-semibold text-on-surface">Phase:</span> {kit.failure_reason.phase}
+              </p>
+              <p className="sm:col-span-2">
+                <span className="font-semibold text-on-surface">Hint:</span> {kit.failure_reason.hint}
+              </p>
+              <p className="sm:col-span-2">
+                <span className="font-semibold text-on-surface">Timestamp:</span>{" "}
+                {new Date(kit.failure_reason.timestamp).toLocaleString()}
+              </p>
+            </div>
+          </div>
+        ) : null}
 
         {conflict && (
           <div className="rounded-2xl border border-secondary/40 bg-secondary/10 p-4" role="alert">

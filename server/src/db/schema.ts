@@ -16,6 +16,7 @@ export const kits = socialGeni.table("kits", {
   deviceId: text("device_id").notNull().default(""),
   userId: text("user_id"),
   briefJson: text("brief_json").notNull(),
+  briefHash: text("brief_hash").notNull().default(""),
   targetAudienceV2: jsonb("target_audience_v2").$type<string[]>().notNull().default([]),
   platformsV2: jsonb("platforms_v2").$type<string[]>().notNull().default([]),
   bestContentTypesV2: jsonb("best_content_types_v2").$type<string[]>().notNull().default([]),
@@ -30,6 +31,7 @@ export const kits = socialGeni.table("kits", {
   promptTokens: integer("prompt_tokens").notNull().default(0),
   completionTokens: integer("completion_tokens").notNull().default(0),
   totalTokens: integer("total_tokens").notNull().default(0),
+  usageChargedAt: timestamp("usage_charged_at", { withTimezone: true, mode: "date" }),
   rowVersion: integer("row_version").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull(),
@@ -59,8 +61,19 @@ export const users = socialGeni.table("users", {
   email: text("email").notNull().default(""),
   displayName: text("display_name").notNull().default(""),
   isAdmin: boolean("is_admin").notNull().default(false),
+  isPremium: boolean("is_premium").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull(),
+});
+
+export const premiumLeads = socialGeni.table("premium_leads", {
+  id: text("id").primaryKey(),
+  userId: text("user_id"),
+  name: text("name").notNull(),
+  phone: text("phone").notNull(),
+  email: text("email"),
+  source: text("source").notNull().default("pricing_modal"),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull(),
 });
 
 export const userDevices = socialGeni.table("user_devices", {
@@ -112,12 +125,23 @@ export type KitRow = typeof kits.$inferSelect;
 
 export const notifications = socialGeni.table("notifications", {
   id: text("id").primaryKey(),
+  userId: text("user_id"),
   title: text("title").notNull(),
   body: text("body").notNull(),
   kind: text("kind").notNull(),
   kitId: text("kit_id"),
   readAt: timestamp("read_at", { withTimezone: true, mode: "date" }),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull(),
+});
+
+export const kitDeleteAudit = socialGeni.table("kit_delete_audit", {
+  id: text("id").primaryKey(),
+  kitId: text("kit_id").notNull(),
+  actorType: text("actor_type").notNull(),
+  actorId: text("actor_id").notNull(),
+  reason: text("reason").notNull(),
+  metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+  deletedAt: timestamp("deleted_at", { withTimezone: true, mode: "date" }).notNull(),
 });
 
 export const userProfile = socialGeni.table("user_profile", {

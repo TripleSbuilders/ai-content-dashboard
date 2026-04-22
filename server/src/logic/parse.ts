@@ -89,6 +89,10 @@ export function buildSubmissionSnapshot(source: Record<string, unknown> | null |
   return {
     submitted_at: submittedAt,
     email: extractFirstEmail(String(s.email ?? "")),
+    client_name: String(s.client_name ?? "").trim(),
+    client_phone: String(s.client_phone ?? "").trim(),
+    client_email: extractFirstEmail(String(s.client_email ?? "")),
+    source_mode: String(s.source_mode ?? "").trim().toLowerCase() === "agency" ? "agency" : "self_serve",
     brand_name: String(s.brand_name ?? "").trim(),
     industry: String(s.industry ?? "").trim(),
     business_links: String(s.business_links ?? "").trim(),
@@ -99,6 +103,7 @@ export function buildSubmissionSnapshot(source: Record<string, unknown> | null |
     brand_colors: String(s.brand_colors ?? "").trim(),
     offer: String(s.offer ?? "").trim(),
     competitors: String(s.competitors ?? "").trim(),
+    audience_pain_point: String(s.audience_pain_point ?? "").trim(),
     visual_notes: String(s.visual_notes ?? "").trim(),
     reference_image: String(s.reference_image ?? "").trim(),
     campaign_duration: String(s.campaign_duration ?? "").trim(),
@@ -152,5 +157,9 @@ export function snapshotToBriefJson(snapshot: SubmissionSnapshot): string {
 }
 
 export function briefFingerprint(snapshot: SubmissionSnapshot): string {
-  return createHash("sha256").update(snapshotToBriefJson(snapshot)).digest("hex");
+  const normalized = {
+    ...snapshot,
+    submitted_at: "stable",
+  };
+  return createHash("sha256").update(JSON.stringify(normalized)).digest("hex");
 }

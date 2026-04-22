@@ -142,6 +142,7 @@ export function buildClientContextBlock(snapshot: SubmissionSnapshot): string {
     `Brand colors: ${cleanText(snapshot.brand_colors)}`,
     `Offer: ${cleanText(snapshot.offer)}`,
     `Competitors: ${cleanText(snapshot.competitors)}`,
+    `Audience pain point: ${cleanText(snapshot.audience_pain_point)}`,
     `Visual notes: ${cleanText(snapshot.visual_notes)}`,
     `Reference image attached: ${cleanText(snapshot.reference_image) ? "yes" : "no"}`,
     `Campaign duration/timing: ${cleanText(snapshot.campaign_duration)}`,

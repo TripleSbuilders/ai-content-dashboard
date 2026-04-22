@@ -15,6 +15,10 @@ export const G_DEFAULT_MAX_RETRIES = 1;
 export type SubmissionSnapshot = {
   submitted_at: Date;
   email: string;
+  client_name: string;
+  client_phone: string;
+  client_email: string;
+  source_mode: "self_serve" | "agency";
   brand_name: string;
   industry: string;
   business_links: string;
@@ -25,6 +29,7 @@ export type SubmissionSnapshot = {
   brand_colors: string;
   offer: string;
   competitors: string;
+  audience_pain_point: string;
   visual_notes: string;
   reference_image: string;
   campaign_duration: string;

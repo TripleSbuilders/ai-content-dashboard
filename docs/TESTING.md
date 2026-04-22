@@ -17,12 +17,22 @@ E2E runs dev servers in demo mode with a temporary DB (see [`README.md`](../READ
 - **UI / wizard / API contract changes:** run `npm run test:e2e` or extend Playwright coverage if a gap is found.
 - **Server-only logic:** unit/integration tests if present; at minimum `tsc` for `server`.
 
-## Phase 1 focused checks
+## Phase 1 focused checks (Auth Boundary Hardening)
 
-- **Streaming route:** verify `/api/kits/generate?stream=1` emits `status`, `partial`, `complete` in order.
-- **Hydration ordering:** verify light fields (`narrative_summary`, `diagnosis_plan`) are emitted before heavy arrays.
-- **Graceful degradation:** load kits with missing optional fields and confirm viewer does not crash.
-- **Critical missing sections:** confirm viewer surfaces local warning and keeps page interactive.
+Before -> after decision matrix for `bearerAuth`:
+
+- **Before:** `Origin`/`Referer` could allow pass-through without cryptographic auth.
+- **After:** only explicit trusted channels are allowed:
+  - `Authorization: Bearer <API_SECRET>` (service channel),
+  - JWT-shaped bearer token for user channel (verification happens in user middleware),
+  - `X-Agency-Admin-Session` valid session token (admin channel).
+
+Acceptance checks:
+
+- **Spoofed origin is rejected:** request without valid bearer/admin session must return `401` even if `Origin`/`Referer` are trusted-looking.
+- **JWT pass-through at gate:** request with JWT-like bearer is accepted by auth gate and can continue to user verification middleware.
+- **Malformed bearer is rejected:** non-secret/non-JWT bearer must return `401`.
+- **Production CORS guard:** startup fails when `NODE_ENV=production` and `CORS_ORIGIN=*`.
 
 ## Phase 2 focused checks
 
@@ -51,15 +61,51 @@ E2E runs dev servers in demo mode with a temporary DB (see [`README.md`](../READ
 - **Historical context injection:** verify generation includes bounded historical context only when a prior successful kit exists; malformed legacy `result_json` is ignored safely.
 - **Backward compatibility:** historical kits missing `ui_preferences` still render with defaults and no crash.
 
-## Phase 4 focused checks
+## Phase 4 focused checks (admin kit delete)
 
-- **Motion calibration:** card expand/collapse transitions feel consistent (moderate easing/duration) and no abrupt jumps appear between sections/cards.
-- **Reduced motion:** with `prefers-reduced-motion: reduce`, transition animations are disabled for wizard/loading polish and viewer remains fully usable.
-- **Unicode copy guardrails:** short markdown-like snippets (`**bold**`, `*italic*`, `` `inline` ``) convert in enhanced copy path; long text remains unchanged.
-- **Shared expansion context:** collapsing expanded cards restores focus and preserves previous scroll context.
-- **Hotkeys safety:** `Cmd/Ctrl + C`, `Cmd/Ctrl + R`, `Cmd/Ctrl + Enter` work in viewer context and do **not** fire while typing in editable fields.
-- **Large payload responsiveness:** grouped posts/media lists render progressively (windowed "load more"), avoiding UI freeze on large kits.
-- **Regression pass:** verify copy/regenerate/language toggles + persisted `ui_preferences` behavior still match Phase 3 expectations.
+- **Endpoint auth:** non-admin requests to `DELETE /api/kits/:id` return `401/403`.
+- **Endpoint success path:** admin can delete an existing kit and receives `{ ok: true, id }`.
+- **Not-found path:** deleting unknown id returns `404`.
+- **Cleanup path:** related `kit_interactions` (and idempotency rows linked to `kit_id`) are removed with the kit.
+- **UI exposure:** Delete button appears only in admin mode (`GeneratedKitsPage` with `adminMode === true`).
+- **Confirmation guard:** `window.confirm(...)` appears before delete request is sent.
+- **Optimistic UI:** deleted row is removed from table state without full page reload.
+- **Feedback:** success/error toasts appear accordingly.
+
+## Audit Phase 3 focused checks
+
+- **SSE error sanitization:** `POST /api/kits/generate?stream=1` must emit a generic `error.message` in production and must not leak raw exception text.
+- **Analytics summary guard:** `GET /api/analytics/wizard-summary` returns `401/403` for non-admin requests and returns `200` only for admin channels.
+- **Analytics ingestion continuity:** `POST /api/analytics/wizard-events` remains writable for client telemetry ingestion.
+- **Agency admin login throttling:** repeated calls to `POST /api/auth/agency-admin/login` from same source eventually return `429` with `Retry-After`.
+
+## Security hardening follow-up checks
+
+- **Global API body cap:** requests above `API_MAX_CONTENT_LENGTH_BYTES` to `/api/*` are rejected with `413`.
+- **Trusted IP precedence:** verify limiter key prefers `cf-connecting-ip`, then `x-real-ip`, and does not use `x-forwarded-for` unless `TRUST_X_FORWARDED_FOR=true`.
+- **Spoof-resistant fallback:** malformed/empty forwarded header values fall back to `local` and do not create polluted buckets.
+- **Analytics payload caps:** oversized text fields (notably `error`) are rejected with `400`.
+- **Analytics payload size guard:** payloads above `ANALYTICS_MAX_CONTENT_LENGTH_BYTES` are rejected with `413`.
+- **Analytics ingest throttling:** repeated `POST /api/analytics/wizard-events` from same IP eventually returns `429`.
+- **Admin credential check hardening:** `POST /api/auth/agency-admin/login` keeps `401 Invalid username or password.` behavior while using timing-safe comparison.
+- **Admin input bounds:** `POST /api/auth/agency-admin/login` rejects too-long `username/password` payloads with `400`.
+
+## Audit Phase 4 focused checks
+
+- **RLS enabled:** confirm `relrowsecurity = true` for `social_geni.kits`, `kit_interactions`, `notifications`, `monthly_usage_counters`, `kit_delete_audit`.
+- **Owner isolation:** with non-admin JWT, attempts to read rows owned by other `user_id` must return empty/denied.
+- **Owner write guard:** insert/update on owner-scoped tables must fail when `user_id` does not match `auth.uid()`.
+- **Admin audit visibility:** `kit_delete_audit` readable only for JWTs carrying admin claim (`is_admin=true`).
+- **Service role caveat:** verify service-role pathways still function and document that they bypass RLS by design.
+
+## Agency pivot focused checks
+
+- **Edition routing:** with `VITE_APP_EDITION=agency`, wizard submit redirects to `/order-received` (not `/kits/:id`).
+- **Contact contract:** `client_name`, `client_phone`, `client_email` are required in agency wizard mode.
+- **Source tagging:** generated brief payload contains `source_mode: "agency"` in V2; V1 defaults remain `self_serve`.
+- **Admin-only kits:** with `APP_EDITION=agency`, non-admin requests to `/api/kits` and `/api/kits/:id` are blocked.
+- **Admin visibility:** admin kit list/detail surfaces source mode and client contact metadata.
+- **Webhook side effect:** successful generation triggers Telegram webhook when `TELEGRAM_WEBHOOK_URL` is configured; webhook failure must not fail generation.
 
 ## Self-review checklist (before merge)
 
@@ -68,3 +114,13 @@ E2E runs dev servers in demo mode with a temporary DB (see [`README.md`](../READ
 - [ ] **API boundaries:** request/response shapes consistent with existing routes and schemas.
 - [ ] **DB:** migrations/schema aligned if tables or columns changed (`server/src/db/schema.ts`).
 - [ ] **Docs:** for substantive changes (schema, API, prompts, env, security, stack), update the files required by [`docs/TASKING.md`](TASKING.md) → Documentation sync; optionally adjust routing in [`docs/CONTEXT_INDEX.md`](CONTEXT_INDEX.md) if doc map changes.
+
+## Manual regression quick list (pre-merge gate)
+
+- [ ] `GET /api/analytics/wizard-summary` is blocked without admin context.
+- [ ] `POST /api/auth/agency-admin/login` throttles after repeated attempts and returns `429`.
+- [ ] `POST /api/analytics/wizard-events` rejects oversized payloads/text fields and rate-limits spam from one IP.
+- [ ] Global `/api/*` body-size middleware rejects large payloads with `413`.
+- [ ] `POST /api/kits/generate?stream=1` emits safe `error` payloads in production mode.
+- [ ] Playwright smoke (`npm run test:e2e`) passes against local demo stack.
+- [ ] Any RLS changes are validated against the target Supabase project before deploy.

@@ -8,6 +8,11 @@ dist/
 server/data/
 .DS_Store
 .env
+*.env
+*.env.*
+!.env.example
 .env.local
 client/playwright-report/
 client/test-results/
+.vscode/
+server/scratch/

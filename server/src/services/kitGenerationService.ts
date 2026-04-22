@@ -15,8 +15,9 @@ import { generateWithGuardrails } from "./aiGenerationProvider.js";
 import { addUsageTotals, type GenerationUsageTotals } from "./aiGenerationProvider.js";
 import { runContentPackageChain } from "./contentPackageOrchestrator.js";
 import { parseReferenceImageFromDataUrl } from "./imageProcessor.js";
+import { notifyTelegramNewLead } from "./telegramNotifier.js";
 import {
-  consumeGeneratedAssets,
+  consumeGeneratedAssetsOnceForKit,
   consumeUsage,
   enforceGenerateEntitlements,
   enforceRegenerateEntitlements,
@@ -26,14 +27,17 @@ import {
 import {
   finalizeIdempotencyKey,
   hashIdempotencyKey,
+  hasPendingIdempotencyForBriefHash,
   IDEMPOTENCY_PENDING_KIT,
   pruneExpiredIdempotency,
   reserveIdempotencyKey,
 } from "./idempotencyService.js";
 import {
+  deleteKitByIdWithAudit,
   getKitById,
   getKitByIdAny,
   getLatestSuccessfulKitForOwner,
+  getPendingKitByBriefHash,
   listAllKits,
   listKits,
   patchKitUiPreferences,
@@ -47,9 +51,11 @@ import {
   type RegenerateItemType,
 } from "./kitGenerationDomain.js";
 import { logKitFailure } from "./kitFailureLogRepository.js";
-import { HttpError, safeClientError } from "./serviceErrors.js";
+import { getLatestFailureForKit, getLatestFailuresForKits } from "./kitFailureLogRepository.js";
+import { FailureCode, HttpError, failureHintForCode, safeClientError, toFailureCode } from "./serviceErrors.js";
 import { brandVoice } from "../db/schema.js";
 import { type BrandVoiceContext } from "../logic/promptComposer.js";
+import type { SafeFailureReason } from "./kitRepository.js";
 
 async function fetchBrandVoiceContext(db: any, userId?: string | null): Promise<BrandVoiceContext | undefined> {
   if (!userId) return undefined;
@@ -69,6 +75,19 @@ async function fetchBrandVoiceContext(db: any, userId?: string | null): Promise<
 export { getRegenerateItemSchema, getSectionArray } from "./kitGenerationDomain.js";
 export { HttpError } from "./serviceErrors.js";
 
+function toSafeFailureReason(input: {
+  errorCode: string;
+  phase: string;
+  createdAt: Date;
+}): SafeFailureReason {
+  return {
+    code: input.errorCode,
+    hint: failureHintForCode(input.errorCode as FailureCode),
+    phase: input.phase,
+    timestamp: input.createdAt.toISOString(),
+  };
+}
+
 export type KitGenerationDependencies = {
   db?: typeof db;
   callGemini?: typeof callGeminiAPI;
@@ -76,6 +95,7 @@ export type KitGenerationDependencies = {
   sendClientDelay?: typeof sendClientDelayEmail;
   sendAdminAlert?: typeof sendAdminFailureAlert;
   notify?: typeof recordKitNotification;
+  notifyTelegram?: typeof notifyTelegramNewLead;
 };
 
 function withDeps(deps?: KitGenerationDependencies) {
@@ -86,11 +106,19 @@ function withDeps(deps?: KitGenerationDependencies) {
     sendClientDelay: deps?.sendClientDelay ?? sendClientDelayEmail,
     sendAdminAlert: deps?.sendAdminAlert ?? sendAdminFailureAlert,
     notify: deps?.notify ?? recordKitNotification,
+    notifyTelegram: deps?.notifyTelegram ?? notifyTelegramNewLead,
   };
 }
 
 function isContentPackageChainFailureMessage(message: string): boolean {
   return message.includes("content_package_chain");
+}
+
+function generatedAssetsUsageFromContent(aiContent: Record<string, unknown>): { videoPromptsUsed: number; imagePromptsUsed: number } {
+  return {
+    videoPromptsUsed: Array.isArray(aiContent.video_prompts) ? (aiContent.video_prompts as unknown[]).length : 0,
+    imagePromptsUsed: Array.isArray(aiContent.image_designs) ? (aiContent.image_designs as unknown[]).length : 0,
+  };
 }
 
 function logGenerationTelemetry(meta: {
@@ -198,6 +226,7 @@ async function persistGenerationFailure(params: {
   promptVersionId?: string | null;
   isFallback?: boolean;
   tokenUsage?: GenerationUsageTotals;
+  briefHash?: string;
 }) {
   return persistKit(params.db, params.snapshot, null, params.owner, {
     deliveryStatus: "failed_generation",
@@ -206,6 +235,7 @@ async function persistGenerationFailure(params: {
     correlationId: params.correlationId,
     promptVersionId: params.promptVersionId,
     isFallback: params.isFallback,
+    briefHash: params.briefHash,
     tokenUsage: params.tokenUsage,
   });
 }
@@ -232,6 +262,9 @@ export async function generateKitService(input: {
   });
   const fp = briefFingerprint(snapshot);
   const keyHash = hashIdempotencyKey(idemHeader);
+  if (await hasPendingIdempotencyForBriefHash(d.db, fp)) {
+    throw new HttpError(409, "An identical request is already in progress.");
+  }
   const reserved = await reserveIdempotencyKey(d.db, { keyHash, briefHash: fp });
   if (!reserved) {
     const existingKey = (await d.db.select().from(idempotencyKeys).where(eq(idempotencyKeys.keyHash, keyHash)).limit(1))[0];
@@ -268,21 +301,19 @@ export async function generateKitService(input: {
       correlationId,
       promptVersionId: resolved.promptVersionId,
       isFallback: resolved.isFallback,
+      briefHash: fp,
     });
     await d.notify(row);
-    await finalizeIdempotencyKey(d.db, { keyHash, briefHash: fp, kitId: row.id });
-    await consumeGeneratedAssets(d.db, owner, {
-      videoPromptsUsed: Array.isArray((aiContent as Record<string, unknown>).video_prompts)
-        ? ((aiContent as Record<string, unknown>).video_prompts as unknown[]).length
-        : 0,
-      imagePromptsUsed: Array.isArray((aiContent as Record<string, unknown>).image_designs)
-        ? ((aiContent as Record<string, unknown>).image_designs as unknown[]).length
-        : 0,
+    await d.notifyTelegram({ snapshot, kitId: row.id, correlationId });
+    await d.db.transaction(async (tx) => {
+      await finalizeIdempotencyKey(tx, { keyHash, briefHash: fp, kitId: row.id });
+      await consumeGeneratedAssetsOnceForKit(tx, row.id, owner, generatedAssetsUsageFromContent(aiContent));
     });
     return { status: 200, body: serializeKit(row) };
   }
 
   if (!settings.apiKey) {
+    const errorCode = "API_KEY_MISSING" as const;
     const row = await persistGenerationFailure({
       db: d.db,
       snapshot,
@@ -292,8 +323,19 @@ export async function generateKitService(input: {
       correlationId,
       promptVersionId: resolved.promptVersionId,
       isFallback: resolved.isFallback,
+      briefHash: fp,
+    });
+    await logKitFailure(d.db, {
+      kitId: row.id,
+      phase: "generate",
+      errorCode,
+      errorMessage: "Missing GEMINI_API_KEY.",
+      correlationId,
+      modelUsed: settings.model,
+      meta: { promptMode: resolved.promptMode, industrySource: resolved.industrySource },
     });
     await d.notify(row);
+    await d.notifyTelegram({ snapshot, kitId: row.id, correlationId });
     await finalizeIdempotencyKey(d.db, { keyHash, briefHash: fp, kitId: row.id });
     return { status: 201, body: serializeKit(row) };
   }
@@ -321,6 +363,7 @@ export async function generateKitService(input: {
       correlationId,
       promptVersionId: resolved.promptVersionId,
       isFallback: resolved.isFallback,
+      briefHash: fp,
       tokenUsage: usage,
     });
     logGenerationTelemetry({
@@ -334,18 +377,17 @@ export async function generateKitService(input: {
       kitId: row.id,
     });
     await d.notify(row);
-    await finalizeIdempotencyKey(d.db, { keyHash, briefHash: fp, kitId: row.id });
-    await consumeGeneratedAssets(d.db, owner, {
-      videoPromptsUsed: Array.isArray((aiContent as Record<string, unknown>).video_prompts)
-        ? ((aiContent as Record<string, unknown>).video_prompts as unknown[]).length
-        : 0,
-      imagePromptsUsed: Array.isArray((aiContent as Record<string, unknown>).image_designs)
-        ? ((aiContent as Record<string, unknown>).image_designs as unknown[]).length
-        : 0,
+    await d.db.transaction(async (tx) => {
+      await finalizeIdempotencyKey(tx, { keyHash, briefHash: fp, kitId: row.id });
+      await consumeGeneratedAssetsOnceForKit(tx, row.id, owner, generatedAssetsUsageFromContent(aiContent));
     });
     return { status: 201, body: serializeKit(row) };
   } catch (err) {
     const reason = safeClientError(err);
+    const errorCode = toFailureCode(
+      err,
+      isContentPackageChainFailureMessage(reason) ? "CONTENT_PACKAGE_CHAIN_FAILED" : "GENERATION_FAILED"
+    );
     const row = await persistGenerationFailure({
       db: d.db,
       snapshot,
@@ -355,12 +397,13 @@ export async function generateKitService(input: {
       correlationId,
       promptVersionId: resolved.promptVersionId,
       isFallback: resolved.isFallback,
+      briefHash: fp,
       tokenUsage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
     });
     await logKitFailure(d.db, {
       kitId: row.id,
       phase: isContentPackageChainFailureMessage(reason) ? "content_package_chain" : "generate",
-      errorCode: isContentPackageChainFailureMessage(reason) ? "CONTENT_PACKAGE_CHAIN_FAILED" : "GENERATION_FAILED",
+      errorCode,
       errorMessage: reason,
       correlationId,
       modelUsed: settings.model,
@@ -382,6 +425,190 @@ export async function generateKitService(input: {
     await finalizeIdempotencyKey(d.db, { keyHash, briefHash: fp, kitId: row.id });
     return { status: 201, body: serializeKit(row) };
   }
+}
+
+export async function enqueueAgencyKitGenerationService(input: {
+  idempotencyKey: string;
+  body: Record<string, unknown>;
+  deviceId: string;
+  userId?: string | null;
+}, deps?: KitGenerationDependencies) {
+  const d = withDeps(deps);
+  const idemHeader = input.idempotencyKey?.trim();
+  if (!idemHeader) throw new HttpError(400, "Idempotency-Key header is required.");
+  const snapshot = buildSubmissionSnapshot(input.body);
+  const owner = { deviceId: input.deviceId, userId: input.userId ?? null };
+  const access = await resolveAccessContext(d.db, owner);
+  enforceGenerateEntitlements(access, {
+    campaignMode: snapshot.campaign_mode,
+    hasReferenceImage: Boolean(parseReferenceImageFromDataUrl(snapshot.reference_image)),
+    requestedVideoPrompts: snapshot.num_video_prompts,
+    requestedImagePrompts: snapshot.num_image_designs,
+  });
+
+  const settings = loadGeminiSettingsFromEnv();
+  const correlationId = nanoid();
+  const fp = briefFingerprint(snapshot);
+  const keyHash = hashIdempotencyKey(idemHeader);
+  const existingPending = await getPendingKitByBriefHash(d.db, owner, fp);
+  if (existingPending) {
+    return { status: 202 as const, body: serializeKit(existingPending) };
+  }
+  if (await hasPendingIdempotencyForBriefHash(d.db, fp)) {
+    throw new HttpError(409, "An identical request is already in progress.");
+  }
+  const reserved = await reserveIdempotencyKey(d.db, { keyHash, briefHash: fp });
+  if (!reserved) {
+    const existingKey = (await d.db.select().from(idempotencyKeys).where(eq(idempotencyKeys.keyHash, keyHash)).limit(1))[0];
+    if (existingKey) {
+      if (existingKey.briefHash !== fp) throw new HttpError(409, "Idempotency-Key already used with a different brief.");
+      if (existingKey.kitId !== IDEMPOTENCY_PENDING_KIT) {
+        const existingKit = (await d.db.select().from(kits).where(eq(kits.id, existingKey.kitId)).limit(1))[0];
+        if (existingKit) return { status: 200 as const, body: serializeKit(existingKit) };
+      }
+      throw new HttpError(409, "A request with the same Idempotency-Key is already in progress.");
+    }
+  }
+  const bv = await fetchBrandVoiceContext(d.db, input.userId);
+  const latestSuccessfulKit = await getLatestSuccessfulKitForOwner(d.db, owner);
+  const historicalContext = buildHistoricalContextFromResultJson(latestSuccessfulKit?.resultJson ?? null);
+  const resolved = await resolvePrompt(snapshot.industry, snapshot, bv, {
+    historicalContext,
+  });
+  const referenceImage = parseReferenceImageFromDataUrl(snapshot.reference_image);
+
+  const pending = await persistKit(d.db, snapshot, null, owner, {
+    deliveryStatus: "retry_in_progress",
+    modelUsed: settings.model,
+    lastError: "",
+    correlationId,
+    promptVersionId: resolved.promptVersionId,
+    isFallback: resolved.isFallback,
+    briefHash: fp,
+    rowVersion: 0,
+    tokenUsage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+  });
+
+  await d.notifyTelegram({ snapshot, kitId: pending.id, correlationId });
+  await d.notify(pending);
+
+  void (async () => {
+    try {
+      const demoMode = String(process.env.DEMO_MODE ?? "").toLowerCase() === "true";
+      if (demoMode) {
+        const aiContent = buildDemoKitContent(snapshot) as Record<string, unknown>;
+        if (shouldRunContentPackageChain(snapshot)) {
+          aiContent[CONTENT_IDEAS_PACKAGE_KEY] = buildDemoContentIdeasPackage(snapshot.content_package_idea_count);
+        }
+        const emailResult = await d.sendKit(snapshot, aiContent);
+        const done = await updateKit(d.db, pending.id, snapshot, aiContent, {
+          deliveryStatus: resolveDeliveryStatus(emailResult),
+          modelUsed: "demo-mode",
+          lastError: emailResult.error || "",
+          correlationId,
+          promptVersionId: resolved.promptVersionId,
+          isFallback: resolved.isFallback,
+          briefHash: fp,
+          rowVersion: 1,
+        });
+        if (done) {
+          await d.notify(done);
+          await consumeGeneratedAssetsOnceForKit(d.db, done.id, owner, generatedAssetsUsageFromContent(aiContent));
+        }
+        await finalizeIdempotencyKey(d.db, { keyHash, briefHash: fp, kitId: pending.id });
+        return;
+      }
+
+      if (!settings.apiKey) {
+        const errorCode = "API_KEY_MISSING" as const;
+        const failed = await updateKit(d.db, pending.id, snapshot, null, {
+          deliveryStatus: "failed_generation",
+          modelUsed: settings.model,
+          lastError: "Missing GEMINI_API_KEY.",
+          correlationId,
+          promptVersionId: resolved.promptVersionId,
+          isFallback: resolved.isFallback,
+          briefHash: fp,
+          rowVersion: 1,
+        });
+        if (failed) await d.notify(failed);
+        await logKitFailure(d.db, {
+          kitId: pending.id,
+          phase: "generate",
+          errorCode,
+          errorMessage: "Missing GEMINI_API_KEY.",
+          correlationId,
+          modelUsed: settings.model,
+          meta: { promptMode: resolved.promptMode, industrySource: resolved.industrySource, parentPhase: "enqueue" },
+        });
+        await finalizeIdempotencyKey(d.db, { keyHash, briefHash: fp, kitId: pending.id });
+        return;
+      }
+
+      const { aiContent, usage: primaryUsage } = await generateWithGuardrails(
+        resolved.renderedPrompt,
+        snapshot,
+        settings,
+        referenceImage,
+        { callAPI: d.callGemini }
+      );
+      let usage = primaryUsage;
+      if (shouldRunContentPackageChain(snapshot)) {
+        const pkgResult = await runContentPackageChain(snapshot, settings, referenceImage, { callAPI: d.callGemini });
+        (aiContent as Record<string, unknown>)[CONTENT_IDEAS_PACKAGE_KEY] =
+          pkgResult.data as unknown as Record<string, unknown>;
+        usage = addUsageTotals(usage, pkgResult.usage);
+      }
+
+      const emailResult = await d.sendKit(snapshot, aiContent);
+      const done = await updateKit(d.db, pending.id, snapshot, aiContent, {
+        deliveryStatus: resolveDeliveryStatus(emailResult),
+        modelUsed: settings.model,
+        lastError: emailResult.error || "",
+        correlationId,
+        promptVersionId: resolved.promptVersionId,
+        isFallback: resolved.isFallback,
+        briefHash: fp,
+        rowVersion: 1,
+        tokenUsage: usage,
+      });
+      if (done) {
+        await d.notify(done);
+        await consumeGeneratedAssetsOnceForKit(d.db, done.id, owner, generatedAssetsUsageFromContent(aiContent));
+      }
+      await finalizeIdempotencyKey(d.db, { keyHash, briefHash: fp, kitId: pending.id });
+    } catch (error) {
+      const reason = safeClientError(error);
+      const errorCode = toFailureCode(error, "GENERATION_FAILED");
+      const failed = await updateKit(d.db, pending.id, snapshot, null, {
+        deliveryStatus: "failed_generation",
+        modelUsed: settings.model,
+        lastError: reason,
+        correlationId,
+        promptVersionId: resolved.promptVersionId,
+        isFallback: resolved.isFallback,
+        briefHash: fp,
+        rowVersion: 1,
+      });
+      if (failed) await d.notify(failed);
+      await logKitFailure(d.db, {
+        kitId: pending.id,
+        phase: "generate",
+        errorCode,
+        errorMessage: reason,
+        correlationId,
+        modelUsed: settings.model,
+      });
+      await finalizeIdempotencyKey(d.db, { keyHash, briefHash: fp, kitId: pending.id });
+    }
+  })().catch((error) => {
+    console.warn("[agency_background_generation_unhandled]", String(error));
+  });
+
+  return {
+    status: 202 as const,
+    body: serializeKit(pending),
+  };
 }
 
 export async function retryKitService(input: {
@@ -456,6 +683,7 @@ export async function retryKitService(input: {
   }
 
   if (!settings.apiKey) {
+    const errorCode = "API_KEY_MISSING" as const;
     const fr = (await d.db.update(kits).set({
       deliveryStatus: "failed_generation",
       lastError: "Missing GEMINI_API_KEY.",
@@ -466,6 +694,15 @@ export async function retryKitService(input: {
       updatedAt: new Date(),
     }).where(and(eq(kits.id, id), eq(kits.rowVersion, nextVersion))).returning())[0];
     if (!fr) throw new HttpError(409, "Concurrent update; refresh and try again.");
+    await logKitFailure(d.db, {
+      kitId: id,
+      phase: "retry",
+      errorCode,
+      errorMessage: "Missing GEMINI_API_KEY.",
+      correlationId,
+      modelUsed: settings.model,
+      meta: { promptMode: resolved.promptMode, industrySource: resolved.industrySource, parentPhase: "retry" },
+    });
     await d.notify(fr);
     return { status: 200, body: serializeKit(fr) };
   }
@@ -516,6 +753,10 @@ export async function retryKitService(input: {
     return { status: 200, body: serializeKit(ok) };
   } catch (err) {
     const reason = safeClientError(err, "Retry generation failed. Please retry.");
+    const errorCode = toFailureCode(
+      err,
+      isContentPackageChainFailureMessage(reason) ? "CONTENT_PACKAGE_CHAIN_FAILED" : "RETRY_FAILED"
+    );
     const clientDelay = await d.sendClientDelay(snapshot, correlationId);
     await d.sendAdminAlert(snapshot, reason, correlationId, id, settings.model, clientDelay);
     const fr = (await d.db.update(kits).set({
@@ -531,7 +772,7 @@ export async function retryKitService(input: {
     await logKitFailure(d.db, {
       kitId: id,
       phase: isContentPackageChainFailureMessage(reason) ? "content_package_chain" : "retry",
-      errorCode: isContentPackageChainFailureMessage(reason) ? "CONTENT_PACKAGE_CHAIN_FAILED" : "RETRY_FAILED",
+      errorCode,
       errorMessage: reason,
       correlationId,
       modelUsed: settings.model,
@@ -632,10 +873,11 @@ export async function regenerateKitItemService(input: {
       totalTokens: response.usage?.totalTokenCount ?? 0,
     };
   } catch (e) {
+    const errorCode = toFailureCode(e, "REGENERATE_CALL_FAILED");
     await logKitFailure(d.db, {
       kitId: input.id,
       phase: "regenerate",
-      errorCode: "REGENERATE_CALL_FAILED",
+      errorCode,
       errorMessage: String(e),
       correlationId,
       modelUsed: settings.model,
@@ -675,7 +917,21 @@ export async function listKitsService(
   owner?: { deviceId: string; userId?: string | null },
   opts?: { includeUsage?: boolean }
 ) {
-  if (!owner) return listAllKits(withDeps().db, opts);
+  if (!owner) {
+    const d = withDeps();
+    const rows = await listAllKits(d.db, opts);
+    if (!opts?.includeUsage || !rows.length) return rows;
+    const failureMap = await getLatestFailuresForKits(
+      d.db,
+      rows.map((row: { id: string }) => row.id)
+    );
+    return rows.map((row: any) => ({
+      ...row,
+      ...(row.delivery_status === "failed_generation" && failureMap[row.id]
+        ? { failure_reason: toSafeFailureReason(failureMap[row.id]!) }
+        : {}),
+    }));
+  }
   return listKits(withDeps().db, owner, opts);
 }
 
@@ -684,8 +940,16 @@ export async function getKitByIdService(
   owner?: { deviceId: string; userId?: string | null },
   opts?: { includeUsage?: boolean }
 ) {
-  const row = owner ? await getKitById(withDeps().db, id, owner) : await getKitByIdAny(withDeps().db, id);
+  const d = withDeps();
+  const row = owner ? await getKitById(d.db, id, owner) : await getKitByIdAny(d.db, id);
   if (!row) throw new HttpError(404, "Not found");
+  if (!owner && opts?.includeUsage) {
+    const failure = await getLatestFailureForKit(d.db, id);
+    return serializeKit(row, {
+      ...opts,
+      failureReason: row.deliveryStatus === "failed_generation" && failure ? toSafeFailureReason(failure) : null,
+    });
+  }
   return serializeKit(row, opts);
 }
 
@@ -697,4 +961,25 @@ export async function patchKitUiPreferencesService(input: {
   const updated = await patchKitUiPreferences(withDeps().db, input.id, input.owner, input.uiPreferences);
   if (!updated) throw new HttpError(404, "Not found");
   return { status: 200 as const, body: serializeKit(updated) };
+}
+
+export async function deleteKitService(input: {
+  id: string;
+  actorType: "admin_session" | "admin_user";
+  actorId: string;
+  reason: string;
+  metadata?: Record<string, unknown>;
+}) {
+  const d = withDeps();
+  const deletedId = await d.db.transaction(async (tx) =>
+    deleteKitByIdWithAudit(tx, {
+      id: input.id,
+      actorType: input.actorType,
+      actorId: input.actorId,
+      reason: input.reason,
+      metadata: input.metadata,
+    })
+  );
+  if (!deletedId) throw new HttpError(404, "Not found");
+  return { status: 200 as const, body: { ok: true, id: deletedId } };
 }

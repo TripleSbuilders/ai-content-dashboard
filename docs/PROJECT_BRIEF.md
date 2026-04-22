@@ -57,21 +57,28 @@ For the **exact JSON keys and every generated field**, see **§10.4** (canonical
 
 | Persona | What they get from the product |
 |--------|--------------------------------|
-| **Brand owner / marketing lead** | A fast **baseline plan** aligned to budget, duration, and platforms they selected in the wizard; a **summary** they can share internally. |
+| **Brand owner / marketing lead (V2 client)** | A guided agency intake, clear order-received state, and quick re-ordering through saved brand presets without exposing internal operational kit tooling. |
 | **Social manager** | **Copy-paste-ready posts** and hashtag/CTA structure; language toggle where the kit exposes Arabic and English fields. |
 | **Designer or AI operator** | **Image and video prompt blocks** detailed enough to feed Midjourney, DALL·E, Runway-class tools, etc. |
 | **Sales or growth** | **Pain points, objections, funnel and CTA angles** from the sales-system portion of the kit—useful for landing pages, ads, or call scripts. |
-| **Internal admin / strategist** | **Prompt catalog** and industry templates so the *voice of the machine* stays on-brand across many kits; **analytics** on wizard usage; ability to **see all kits** for QA or support; **user/admin role management** and operational plan controls. |
+| **Internal admin / strategist** | **Prompt catalog** and industry templates so the *voice of the machine* stays on-brand across many kits; **analytics** on wizard usage; ability to **see all kits** for QA/support, including **admin-side hard delete** for junk/duplicate requests; **user/admin role management** and operational plan controls. |
 
-The public flow supports a **free trial experience** for fast onboarding, while authenticated users get persistent account-level features (profile, brand voice, integrations readiness, saved preferences). Admins use separate routes to see **everything** and manage privileged access.
+The public V2 flow is **agency-intake first** (client submits request, internal team fulfills). Authenticated users still get persistent account-level features (profile, brand voice, saved preferences, brand history), while admins use separate routes to see **everything** and manage privileged access.
 
 ---
 
 ## 5. The user journey (purpose of each major surface)
 
-### 5.1 Dashboard and “Generated kits”
+### 5.1 Dashboard and client portal
 
-Purpose: **Orientation and history**. Users see whether generation succeeded or failed, open past kits, and avoid losing work. Status and list views answer: *“Do I have something to work with, and where is it?”*
+Purpose: **Orientation and continuity** for V2 clients. The portal now centers on:
+
+- **Overview** (how agency delivery works),
+- **My Brands** (brand cards extracted from historical briefs),
+- **Request Content** (wizard entry),
+- **Pricing** (one-time packages and WhatsApp sales CTA).
+
+In agency mode, generated kits are handled as an **internal admin surface**, not a public client viewer.
 
 ### 5.2 The wizard (three campaign modes)
 
@@ -136,11 +143,17 @@ Together, the wizard should feel like a **guided interview** (structured, saved,
 
 ### 5.3 Generation moment
 
-Purpose: **One authoritative run** per logical request. **Idempotency** exists so double-clicks and network retries do not create duplicate kits or double cost—this is a product promise of **predictability**, not just an engineering detail.
+Purpose: **One authoritative run** per logical request. In V2 agency mode, users submit once and are redirected to an order-received confirmation while fulfillment continues through internal/admin operations.
+
+**Idempotency and charge-once controls** ensure:
+
+- duplicate clicks/retries do not create duplicate charges,
+- usage deduction runs only once after successful persistence,
+- pending duplicate briefs are blocked until the in-flight request resolves.
 
 ### 5.4 Kit detail (viewer)
 
-Purpose: **Make the kit actionable**. Collapsible sections, copy actions, optional technical JSON, and **partial regeneration** (one post, one image block, one video item) support the real workflow: *“Everything else is fine—redo item 3 with this feedback.”*
+Purpose: **Make the kit actionable** for internal/admin workflows. Collapsible sections, copy actions, optional technical JSON, and **partial regeneration** (one post, one image block, one video item) support the real workflow: *“Everything else is fine—redo item 3 with this feedback.”*
 
 ### 5.5 Admin: Prompt catalog
 
@@ -161,14 +174,15 @@ Purpose: make account features **real and persistent**, not placeholder UI.
 
 ---
 
-## 6. Current monetization model (Paid Beta)
+## 6. Current monetization model (Agency packages)
 
-The product currently follows a **Paid Beta** model with simple, asset-based quotas:
+The V2 public model is **productized service packaging**, not a recurring SaaS checkout:
 
-- **Starter (free trial)**: limited trial usage to experience real output quality quickly.
-- **Early Adopter (paid beta)**: symbolic low-cost entry plan for early customer acquisition, focused on practical starter quotas (e.g. small monthly video/image limits) rather than high-volume access.
+- **Free Sample package** (lead magnet): 1 video prompt, 2 image prompts, 1 social post, 1 hook.
+- **Premium Agency package** (paid): service deliverables (custom videos, image designs/prompts, ready-to-publish posts, hooks/media strategy).
+- **Payment path:** CTA redirects to WhatsApp (`wa.me`) with prefilled Arabic payment message for manual completion.
 
-The pricing philosophy is intentional: remove friction for first adoption, validate conversion behavior with real users, then iterate packaging and pricing based on usage evidence.
+The pricing philosophy is intentional: reduce purchase friction, route demand into a managed agency workflow, and optimize package conversion through operational feedback.
 
 ---
 
@@ -300,9 +314,11 @@ Types reflect Drizzle definitions (`timestamp` = `timestamptz`, `bigint` = JS nu
 | `device_id` | text | `notNull`, default `''` |
 | `user_id` | text | nullable |
 | `brief_json` | text | `notNull` — stringified wizard payload |
+| `brief_hash` | text | `notNull`, default `''` — normalized brief fingerprint for idempotency |
 | `target_audience_v2` | jsonb (`string[]`) | `notNull`, default `[]` |
 | `platforms_v2` | jsonb (`string[]`) | `notNull`, default `[]` |
 | `best_content_types_v2` | jsonb (`string[]`) | `notNull`, default `[]` |
+| `ui_preferences` | jsonb | `notNull`, default `{}` — persisted viewer state |
 | `result_json` | text | nullable — stringified kit JSON |
 | `delivery_status` | text | `notNull` |
 | `model_used` | text | `notNull` |
@@ -313,6 +329,7 @@ Types reflect Drizzle definitions (`timestamp` = `timestamptz`, `bigint` = JS nu
 | `prompt_tokens` | integer | `notNull`, default `0` |
 | `completion_tokens` | integer | `notNull`, default `0` |
 | `total_tokens` | integer | `notNull`, default `0` |
+| `usage_charged_at` | timestamptz | nullable — guardrail for charge-once usage deduction |
 | `row_version` | integer | `notNull`, default `0` (optimistic concurrency) |
 | `created_at` | timestamptz | `notNull` |
 | `updated_at` | timestamptz | `notNull` |
@@ -325,6 +342,24 @@ Types reflect Drizzle definitions (`timestamp` = `timestamptz`, `bigint` = JS nu
 | `brief_hash` | text | `notNull` |
 | `kit_id` | text | `notNull` |
 | `expires_at` | bigint | `notNull` |
+
+**`social_geni.kit_interactions`**
+
+| Column | Type | Constraints |
+|--------|------|-------------|
+| `id` | text | **PK** |
+| `kit_id` | text | `notNull` |
+| `user_id` | text | nullable |
+| `device_id` | text | `notNull` |
+| `interaction_type` | text | `notNull` |
+| `meta_json` | jsonb | `notNull`, default `{}` |
+| `created_at` / `updated_at` | timestamptz | `notNull` |
+
+#### 10.3.2 Admin delete behavior (Phase 4)
+
+- Admin-only endpoint supports **hard delete** of kits.
+- Deletion explicitly cleans related `kit_interactions` and idempotency rows before kit deletion.
+- This action is intentionally hidden from the client portal and exposed only in admin mode.
 
 **`social_geni.users`**
 
@@ -719,8 +754,10 @@ All paths are relative to the deployed API origin (e.g. `https://…onrender.com
 | Method | Path | Purpose |
 |--------|------|---------|
 | `POST` | `/api/kits/generate` | Create kit from brief (idempotency header supported) |
+| `GET` | `/api/kits/mine` | List kits for current owner (client-facing history source) |
 | `GET` | `/api/kits` | List kits for current device/user; `?scope=all` **admin** + token usage |
 | `GET` | `/api/kits/:id` | Get kit; `?scope=all` admin + usage |
+| `DELETE` | `/api/kits/:id` | **Admin-only** hard delete with related cleanup |
 | `POST` | `/api/kits/:id/retry` | Retry failed generation from stored brief |
 | `POST` | `/api/kits/:id/regenerate-item` | Regenerate a single post/image/video slice |
 
@@ -770,4 +807,4 @@ Ideas already noted in the repo include field-level repair endpoints, richer val
 
 ---
 
-*This brief prioritizes purpose and experience, adds a **technical map** for accurate analysis, and reflects the current Paid Beta phase. Operational commands and env vars live in [`README.md`](README.md). For LLM-assisted reviews: use the **Document map** at the top or attach the **full file** so §5.2, §10.3.1, §10.4, and §10.5 stay in context together.*
+*This brief prioritizes purpose and experience, adds a **technical map** for accurate analysis, and reflects the current V2 agency package phase. Operational commands and env vars live in [`README.md`](README.md). For LLM-assisted reviews: use the **Document map** at the top or attach the **full file** so §5.2, §10.3.1, §10.4, and §10.5 stay in context together.*

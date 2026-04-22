@@ -1,12 +1,26 @@
-import { offerBriefSchema, offerBriefSchemaWithDiagnosis } from "../../briefSchema";
+import {
+  offerBriefSchema,
+  offerBriefSchemaAgency,
+  offerBriefSchemaWithDiagnosis,
+  offerBriefSchemaWithDiagnosisAgency,
+} from "../../briefSchema";
 import WizardCore from "./WizardCore";
 import { isWizardVariantB } from "../../lib/wizardExperiment";
+import { isAgencyEdition } from "../../lib/appEdition";
 
 export default function OfferProductWizard() {
   const variantB = isWizardVariantB();
+  const agencyEdition = isAgencyEdition();
+  const formSchema = variantB
+    ? agencyEdition
+      ? offerBriefSchemaWithDiagnosisAgency
+      : offerBriefSchemaWithDiagnosis
+    : agencyEdition
+      ? offerBriefSchemaAgency
+      : offerBriefSchema;
   return (
     <WizardCore
-      formSchema={variantB ? offerBriefSchemaWithDiagnosis : offerBriefSchema}
+      formSchema={formSchema}
       draftKey="ai-content-dashboard:wizard-draft:offer:v1"
       title="Offer Campaign Wizard"
       subtitle="Designed for commercial execution: focused offer framing, clear buyer intent, and stronger conversion outcomes."

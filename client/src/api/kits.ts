@@ -154,6 +154,12 @@ export async function listKits(adminMode = false): Promise<KitSummary[]> {
   return res.json() as Promise<KitSummary[]>;
 }
 
+export async function listMyKits(): Promise<KitSummary[]> {
+  const res = await fetch(apiUrl("/api/kits/mine"), { headers: buildHeaders() });
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res, "Failed to list your kits"), res.status);
+  return res.json() as Promise<KitSummary[]>;
+}
+
 export async function getKit(id: string, adminMode = false): Promise<KitSummary> {
   const qs = adminMode ? "?scope=all" : "";
   const res = await fetch(apiUrl(`/api/kits/${id}${qs}`), { headers: buildHeaders() });
@@ -204,4 +210,21 @@ export async function updateKitUiPreferences(id: string, uiPreferences: KitUiPre
   });
   if (!res.ok) throw new ApiError(await parseErrorMessage(res, res.statusText), res.status);
   return res.json() as Promise<KitSummary>;
+}
+
+export async function deleteKit(id: string): Promise<void> {
+  const reason = encodeURIComponent("manual_admin_cleanup");
+  const res = await fetch(apiUrl(`/api/kits/${id}?reason=${reason}`), {
+    method: "DELETE",
+    headers: buildHeaders(),
+  });
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res, res.statusText), res.status);
+}
+
+export async function exportKitPdf(id: string): Promise<Blob> {
+  const res = await fetch(apiUrl(`/api/kits/${id}/export-pdf?scope=all`), {
+    headers: buildHeaders(),
+  });
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res, res.statusText), res.status);
+  return res.blob();
 }

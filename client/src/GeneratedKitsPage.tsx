@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { listKits } from "./api";
+import { deleteKit, listKits } from "./api";
 import type { KitSummary } from "./types";
 import { useCompactTable } from "./layout/compactTableContext";
-import { briefBrand, briefIndustry } from "./kitSearchUtils";
+import { briefBrand, briefClientMeta, briefIndustry } from "./kitSearchUtils";
 import { statusKind } from "./kitUiFormatters";
+import { useToast } from "./useToast";
 
 function initials(name: string, id: string): string {
   const s = name.trim() || id;
@@ -22,6 +23,8 @@ export default function GeneratedKitsPage({ adminMode = false }: { adminMode?: b
   const compactTable = useCompactTable();
   const [kits, setKits] = useState<KitSummary[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const { toasts, push } = useToast();
   const thPad = compactTable ? "px-4 py-3" : "px-6 py-4";
   const tdPad = compactTable ? "px-4 py-3" : "px-6 py-5";
   const avSize = compactTable ? "h-8 w-8 text-[10px]" : "h-10 w-10 text-sm";
@@ -35,8 +38,36 @@ export default function GeneratedKitsPage({ adminMode = false }: { adminMode?: b
   const latestKits = useMemo(() => (kits?.length ? kits.slice(0, 5) : []), [kits]);
   const kitDetailsBase = adminMode ? "/admin/kits/" : "/kits/";
 
+  const handleDelete = async (id: string) => {
+    if (!adminMode || deletingId) return;
+    const confirmed = window.confirm("Are you sure you want to delete this request? This cannot be undone.");
+    if (!confirmed) return;
+    setDeletingId(id);
+    try {
+      await deleteKit(id);
+      setKits((prev) => prev?.filter((kit) => kit.id !== id) ?? prev);
+      push("Request deleted", "info");
+    } catch (error) {
+      push(error instanceof Error ? error.message : "Failed to delete request", "error");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
     <>
+      <div className="toast-host fixed bottom-4 end-4 z-[100] flex flex-col gap-2" aria-live="polite">
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-xl dark:border-white/10 dark:bg-[#111] dark:text-gray-100"
+            role="status"
+          >
+            {toast.message}
+          </div>
+        ))}
+      </div>
+
       <section className="mb-10 flex flex-col sm:flex-row sm:items-end justify-between gap-6">
         <div>
           <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-4xl">
@@ -64,6 +95,7 @@ export default function GeneratedKitsPage({ adminMode = false }: { adminMode?: b
             {latestKits.map((k) => {
               const brand = briefBrand(k.brief_json);
               const ind = briefIndustry(k.brief_json);
+              const meta = briefClientMeta(k.brief_json);
               const ini = initials(brand, k.id);
               const dt = new Date(k.created_at);
               return (
@@ -85,9 +117,14 @@ export default function GeneratedKitsPage({ adminMode = false }: { adminMode?: b
                       {dt.toLocaleDateString()} · {dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </p>
                     {adminMode && (
-                      <p className="mt-2 inline-flex w-fit rounded-full border border-gray-200 px-2 py-0.5 text-[11px] font-semibold text-gray-600 dark:border-white/10 dark:text-gray-300">
-                        Tokens: {formatTokens(k.total_tokens)}
-                      </p>
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        <p className="inline-flex w-fit rounded-full border border-gray-200 px-2 py-0.5 text-[11px] font-semibold text-gray-600 dark:border-white/10 dark:text-gray-300">
+                          Tokens: {formatTokens(k.total_tokens)}
+                        </p>
+                        <p className="inline-flex w-fit rounded-full border border-gray-200 px-2 py-0.5 text-[11px] font-semibold text-gray-600 dark:border-white/10 dark:text-gray-300">
+                          Source: {meta.sourceMode}
+                        </p>
+                      </div>
                     )}
                   </Link>
                 </li>
@@ -133,6 +170,7 @@ export default function GeneratedKitsPage({ adminMode = false }: { adminMode?: b
                 {kits.map((k) => {
                   const brand = briefBrand(k.brief_json);
                   const ind = briefIndustry(k.brief_json);
+                  const meta = briefClientMeta(k.brief_json);
                   const ini = initials(brand, k.id);
                   const sk = statusKind(k.status_badge);
                   const dt = new Date(k.created_at);
@@ -160,6 +198,9 @@ export default function GeneratedKitsPage({ adminMode = false }: { adminMode?: b
                       </td>
                       <td className={tdPad}>
                         <span className="text-sm text-gray-600 dark:text-gray-300">{ind}</span>
+                        {adminMode && meta.clientName && (
+                          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Client: {meta.clientName}</p>
+                        )}
                       </td>
                       <td className={tdPad}>
                         <div className="text-sm">
@@ -181,29 +222,61 @@ export default function GeneratedKitsPage({ adminMode = false }: { adminMode?: b
                           </span>
                         )}
                         {sk === "failed" && (
-                          <span className="inline-flex items-center gap-1.5 rounded-md border border-red-200/50 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 px-2 py-1 text-xs font-semibold text-red-700 dark:text-red-400">
-                            <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
-                            {k.status_badge}
-                          </span>
+                          <div className="space-y-1.5">
+                            <span className="inline-flex items-center gap-1.5 rounded-md border border-red-200/50 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 px-2 py-1 text-xs font-semibold text-red-700 dark:text-red-400">
+                              <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                              {k.status_badge}
+                            </span>
+                            {adminMode && k.failure_reason ? (
+                              <div className="space-y-0.5">
+                                <p className="text-[11px] font-medium text-red-700 dark:text-red-300">
+                                  {k.failure_reason.code}
+                                </p>
+                                <p className="text-[11px] text-red-700/85 dark:text-red-300/90">
+                                  {k.failure_reason.hint}
+                                </p>
+                              </div>
+                            ) : null}
+                          </div>
                         )}
                       </td>
                       {adminMode && (
                         <td className={tdPad}>
-                          <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-                            {formatTokens(k.total_tokens)}
-                          </span>
+                          <div className="space-y-1">
+                            <span className="block text-sm font-semibold text-gray-700 dark:text-gray-200">
+                              {formatTokens(k.total_tokens)}
+                            </span>
+                            <span className="block text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                              {meta.sourceMode}
+                            </span>
+                          </div>
                         </td>
                       )}
                       <td className={tdPad + " text-end"}>
-                        <Link
-                          to={kitDetailsBase + k.id}
-                          className={
-                            "inline-flex items-center justify-center rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 font-medium text-gray-900 dark:text-white transition-all hover:bg-gray-50 dark:hover:bg-white/10 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 " +
-                            (compactTable ? "px-3 py-1.5 text-xs" : "px-4 py-2 text-sm")
-                          }
-                        >
-                          View details
-                        </Link>
+                        <div className="inline-flex items-center gap-2">
+                          {adminMode ? (
+                            <button
+                              type="button"
+                              onClick={() => void handleDelete(k.id)}
+                              disabled={deletingId === k.id}
+                              className={
+                                "inline-flex items-center justify-center rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-900/40 " +
+                                (deletingId === k.id ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100")
+                              }
+                            >
+                              {deletingId === k.id ? "Deleting..." : "Delete"}
+                            </button>
+                          ) : null}
+                          <Link
+                            to={kitDetailsBase + k.id}
+                            className={
+                              "inline-flex items-center justify-center rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 font-medium text-gray-900 dark:text-white transition-all hover:bg-gray-50 dark:hover:bg-white/10 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 " +
+                              (compactTable ? "px-3 py-1.5 text-xs" : "px-4 py-2 text-sm")
+                            }
+                          >
+                            View details
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   );

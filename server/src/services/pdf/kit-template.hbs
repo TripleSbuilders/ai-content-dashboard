@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{title}}</title>
+    <style>
+{{{css}}}
+    </style>
+  </head>
+  <body>
+    <header class="premium-header">
+      <div class="header-content">
+        <div class="agency-info">
+          {{#if branding.logoUrl}}
+            <img class="logo" src="{{branding.logoUrl}}" alt="Agency Logo" />
+          {{/if}}
+          <div>
+            <h1 class="agency-name">{{branding.agencyName}}</h1>
+            {{#if branding.contactLine}}
+              <p class="agency-contact">{{branding.contactLine}}</p>
+            {{/if}}
+          </div>
+        </div>
+        <div class="kit-meta">
+          <div class="meta-item">
+            <span class="meta-label">ID التقرير:</span>
+            <span class="meta-value">{{kit.id}}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">اسم البراند:</span>
+            <span class="meta-value">{{kit.brandName}}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">تاريخ الإصدار:</span>
+            <span class="meta-value">{{kit.createdAt}}</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="content-container">
+      {{#if kit.narrativeSummary}}
+        <section class="section">
+          <h2 class="section-title">ملخص الاستراتيجية</h2>
+          <div class="card summary-card">
+            <p class="pre">{{kit.narrativeSummary}}</p>
+          </div>
+        </section>
+      {{/if}}
+
+      {{#if kit.diagnosisPlan.length}}
+        <section class="section">
+          <h2 class="section-title">خطة التشخيص والتحسين</h2>
+          <div class="diagnosis-grid">
+            {{#each kit.diagnosisPlan}}
+              <div class="card diagnosis-card">
+                <h3 class="diagnosis-label">{{label}}</h3>
+                <p class="diagnosis-value">{{value}}</p>
+              </div>
+            {{/each}}
+          </div>
+        </section>
+      {{/if}}
+
+      {{#if kit.posts.length}}
+        <section class="section">
+          <h2 class="section-title">المحتوى المقترح (بوستات)</h2>
+          <div class="posts-list">
+            {{#each kit.posts}}
+              <article class="card post-card">
+                <div class="post-tags">
+                  {{#if platform}}<span class="badge platform">{{platform}}</span>{{/if}}
+                  {{#if format}}<span class="badge format">{{format}}</span>{{/if}}
+                  {{#if goal}}<span class="badge goal">{{goal}}</span>{{/if}}
+                </div>
+                {{#if caption}}
+                  <div class="post-caption pre">{{caption}}</div>
+                {{/if}}
+                {{#if hashtags.length}}
+                  <div class="post-hashtags">
+                    {{#each hashtags}}<span>#{{this}}</span> {{/each}}
+                  </div>
+                {{/if}}
+                {{#if cta}}
+                  <div class="post-cta">
+                    <span class="cta-label">CTA:</span>
+                    <span class="cta-text">{{cta}}</span>
+                  </div>
+                {{/if}}
+              </article>
+            {{/each}}
+          </div>
+        </section>
+      {{/if}}
+
+      {{#if kit.imageDesigns.length}}
+        <section class="section">
+          <h2 class="section-title">أفكار التصاميم المقترحة</h2>
+          <div class="designs-list">
+            {{#each kit.imageDesigns}}
+              <article class="card design-card">
+                <div class="post-tags">
+                  {{#if platformFormat}}<span class="badge platform">{{platformFormat}}</span>{{/if}}
+                  {{#if designType}}<span class="badge format">{{designType}}</span>{{/if}}
+                  {{#if goal}}<span class="badge goal">{{goal}}</span>{{/if}}
+                </div>
+                {{#if caption}}
+                  <div class="design-caption pre">{{caption}}</div>
+                {{/if}}
+                {{#if supportingCopy}}
+                  <div class="design-support">
+                    <span class="support-label">نصوص التصميم:</span>
+                    <p class="pre">{{supportingCopy}}</p>
+                  </div>
+                {{/if}}
+              </article>
+            {{/each}}
+          </div>
+        </section>
+      {{/if}}
+    </main>
+
+    <footer class="pdf-footer">
+      <p>تم إنتاج هذا التقرير آلياً بواسطة AI Content Dashboard لـ {{branding.agencyName}}</p>
+    </footer>
+  </body>
+</html>

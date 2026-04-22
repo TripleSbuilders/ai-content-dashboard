@@ -10,6 +10,12 @@ export type KitSummary = {
   correlation_id: string;
   prompt_version_id?: string | null;
   is_fallback?: boolean;
+  failure_reason?: {
+    code: string;
+    hint: string;
+    phase: string;
+    timestamp: string;
+  };
   ui_preferences?: {
     lang?: "ar" | "en";
     open_map?: Record<string, boolean>;
@@ -35,7 +41,11 @@ export function normalizeCampaignMode(v: unknown): CampaignMode {
 }
 
 export type BriefForm = {
-  email: string;
+  client_name: string;
+  client_phone: string;
+  client_email: string;
+  /** Differentiates kit origin between self-serve and agency intake. */
+  source_mode: "self_serve" | "agency";
   brand_name: string;
   industry: string;
   business_links: string;
@@ -46,6 +56,7 @@ export type BriefForm = {
   brand_colors: string;
   offer: string;
   competitors: string;
+  audience_pain_point: string;
   visual_notes: string;
   reference_image?: string;
   campaign_duration: string;

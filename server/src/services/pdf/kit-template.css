@@ -1,6 +1,19 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@500;600;700;800;900&display=swap');
+
 @page {
   size: A4;
-  margin: 18mm 14mm;
+  margin: 0; /* Handled by JS but keep for fallback */
+}
+
+:root {
+  --navy: #0f172a;
+  --gold: #d97706;
+  --gold-light: #f59e0b;
+  --bg-off-white: #fafafa;
+  --text-main: #1e293b;
+  --text-muted: #475569;
+  --border-color: #e2e8f0;
+  --card-bg: #ffffff;
 }
 
 * {
@@ -9,105 +22,240 @@
 
 body {
   margin: 0;
-  color: #111827;
-  background: #ffffff;
-  font-family: "Cairo", "Noto Kufi Arabic", "Segoe UI", Tahoma, Arial, sans-serif;
-  line-height: 1.65;
-  font-size: 12.5px;
+  padding: 0;
+  color: var(--text-main);
+  background-color: var(--bg-off-white);
+  font-family: 'Cairo', sans-serif;
+  font-weight: 600;
+  line-height: 1.6;
+  font-size: 13px;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-.page {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.card {
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 12px;
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.branding {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.logo {
-  width: 46px;
-  height: 46px;
-  object-fit: contain;
-}
-
-h1 {
+/* Typography Overrides */
+h1, h2, h3, h4 {
   margin: 0;
-  font-size: 18px;
-  line-height: 1.2;
-}
-
-h2 {
-  margin: 0 0 8px;
-  font-size: 14.5px;
-}
-
-.meta {
-  text-align: left;
-  font-size: 11px;
-}
-
-.meta p {
-  margin: 0 0 4px;
-}
-
-.section ul {
-  margin: 0;
-  padding-inline-start: 18px;
-}
-
-.item {
-  border-top: 1px dashed #e5e7eb;
-  padding-top: 8px;
-  margin-top: 8px;
-}
-
-.item:first-of-type {
-  border-top: 0;
-  margin-top: 0;
-  padding-top: 0;
-}
-
-.row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 6px;
-}
-
-.chip {
-  border: 1px solid #d1d5db;
-  background: #f9fafb;
-  border-radius: 999px;
-  padding: 2px 8px;
-  font-size: 10.5px;
+  font-weight: 800;
 }
 
 .pre {
   white-space: pre-wrap;
-  margin: 0 0 6px;
+  word-break: break-word;
 }
 
-.hashtags {
-  margin: 0 0 6px;
-  color: #0f766e;
+/* Premium Header */
+.premium-header {
+  background-color: var(--navy);
+  color: #ffffff;
+  padding: 40px 30px;
+  border-bottom: 4px solid var(--gold);
 }
 
-.muted {
-  color: #6b7280;
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.agency-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.logo {
+  width: 50px;
+  height: 50px;
+  border-radius: 8px;
+  object-fit: contain;
+  background: white;
+  padding: 5px;
+}
+
+.agency-name {
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--gold-light);
+  letter-spacing: 0.5px;
+}
+
+.agency-contact {
+  font-size: 11px;
+  color: #94a3b8;
+  margin: 2px 0 0;
+}
+
+.kit-meta {
+  text-align: left; /* Keep English IDs readable */
+  font-size: 11px;
+}
+
+.meta-item {
+  margin-bottom: 4px;
+}
+
+.meta-label {
+  color: #94a3b8;
+  margin-left: 5px;
+}
+
+.meta-value {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+/* Content Layout */
+.content-container {
+  padding: 30px;
+}
+
+.section {
+  margin-bottom: 35px;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--navy);
+  margin-bottom: 15px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--border-color);
+  display: inline-block;
+  min-width: 150px;
+}
+
+.card {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* Diagnosis Grid */
+.diagnosis-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+}
+
+.diagnosis-card {
+  text-align: center;
+  padding: 15px;
+}
+
+.diagnosis-label {
+  font-size: 12px;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  display: block;
+}
+
+.diagnosis-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--navy);
+  margin: 0;
+}
+
+/* Posts & Designs */
+.posts-list, .designs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.post-card, .design-card {
+  page-break-inside: avoid;
+}
+
+.post-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.badge {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.badge.platform { background: #f1f5f9; color: #475569; }
+.badge.format { background: #fef3c7; color: #92400e; }
+.badge.goal { background: #ecfdf5; color: #065f46; }
+
+.post-caption, .design-caption {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-main);
+  background: #f8fafc;
+  padding: 15px;
+  border-radius: 8px;
+  border-right: 4px solid var(--border-color);
+  margin-bottom: 12px;
+}
+
+.post-hashtags {
+  color: #3b82f6;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.post-hashtags span {
+  margin-left: 8px;
+}
+
+.post-cta {
+  background: var(--navy);
+  color: white;
+  padding: 10px 15px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-block;
+}
+
+.cta-label {
+  color: var(--gold-light);
+  font-weight: 700;
+  margin-left: 5px;
+}
+
+.design-support {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px dashed var(--border-color);
+}
+
+.support-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  display: block;
+  margin-bottom: 5px;
+}
+
+.design-support p {
+  margin: 0;
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+/* Footer */
+.pdf-footer {
+  text-align: center;
+  padding: 20px;
+  font-size: 10px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-color);
+  page-break-before: auto;
 }

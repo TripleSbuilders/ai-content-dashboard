@@ -14,3 +14,5 @@ server/data/
 .env.local
 client/playwright-report/
 client/test-results/
+.vscode/
+server/scratch/

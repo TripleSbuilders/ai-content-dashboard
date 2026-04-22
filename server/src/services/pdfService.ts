@@ -220,16 +220,18 @@ export async function generateKitPdf(kitData: KitPayload): Promise<Buffer> {
 
   try {
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0" });
+    await page.emulateMediaType("screen");
+    await page.setContent(html, { waitUntil: ["load", "networkidle0"] });
     const pdfBytes = await page.pdf({
       format: "A4",
       printBackground: true,
       preferCSSPageSize: true,
+      scale: 1,
       margin: {
-        top: "12mm",
-        right: "10mm",
-        bottom: "12mm",
-        left: "10mm",
+        top: "20px",
+        right: "20px",
+        bottom: "20px",
+        left: "20px",
       },
     });
     await page.close();

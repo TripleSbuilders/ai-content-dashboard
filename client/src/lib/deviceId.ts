@@ -1,5 +1,7 @@
 const DEVICE_ID_KEY = "social_geni_device_id";
 const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365 * 2; // 2 years
+const UUID_V4ISH_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function parseCookie(name: string): string {
   const cookie = typeof document !== "undefined" ? document.cookie : "";
@@ -50,11 +52,15 @@ function newDeviceId(): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
 }
 
+function isValidDeviceId(value: string): boolean {
+  return UUID_V4ISH_REGEX.test(value.trim());
+}
+
 export function getDeviceId(): string {
   const fromStorage = getLocalStorageValue(DEVICE_ID_KEY).trim();
   const fromCookie = parseCookie(DEVICE_ID_KEY).trim();
   const existing = fromStorage || fromCookie;
-  if (existing) {
+  if (existing && isValidDeviceId(existing)) {
     if (!fromStorage) setLocalStorageValue(DEVICE_ID_KEY, existing);
     if (!fromCookie) setCookie(DEVICE_ID_KEY, existing);
     return existing;

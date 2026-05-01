@@ -38,12 +38,12 @@ export default function ReferenceImageUploader(props: ReferenceImageUploaderProp
     if (!file) return;
 
     if (!file.type.startsWith(ACCEPTED_MIME_PREFIX)) {
-      setError("Please upload an image file only.");
+      setError("لو سمحت ارفع ملف صورة بس.");
       return;
     }
 
     if (file.size > MAX_FILE_SIZE_BYTES) {
-      setError(`Image is too large. Maximum allowed size is ${formatFileSize(MAX_FILE_SIZE_BYTES)}.`);
+      setError(`حجم الصورة كبير أوي. أقصى مساحة مسموح بيها هي ${formatFileSize(MAX_FILE_SIZE_BYTES)}.`);
       return;
     }
 
@@ -51,31 +51,33 @@ export default function ReferenceImageUploader(props: ReferenceImageUploaderProp
     reader.onload = () => {
       const result = String(reader.result ?? "");
       if (!result.startsWith("data:image/")) {
-        setError("Failed to process image. Please try another file.");
+        setError("معرفناش نعالج الصورة دي. جرب ترفع ملف تاني.");
         return;
       }
       setError("");
       props.onChange(result);
     };
     reader.onerror = () => {
-      setError("Could not read this file. Please try again.");
+      setError("معرفناش نقرأ الملف ده. جرب تاني.");
     };
     reader.readAsDataURL(file);
   };
 
   return (
-    <div className="space-y-3 rounded-xl border border-outline/30 bg-surface-container-lowest p-3 dark:border-muted/40 dark:bg-earth-darkBg/60">
+    <div
+      dir="rtl"
+      lang="ar"
+      className="space-y-3 rounded-xl border border-outline/30 bg-surface-container-lowest p-3 dark:border-muted/40 dark:bg-earth-darkBg/60"
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs font-semibold text-on-surface">
-          Reference image <span className="text-on-surface-variant">(Optional)</span>
-        </p>
+        <p className="text-xs font-semibold text-on-surface">صورة مرجعية (Reference) - اختياري</p>
         <button
           type="button"
           className="rounded-lg border border-outline/40 bg-surface-container-high px-3 py-1.5 text-xs font-semibold text-on-surface transition hover:bg-surface-container-highest disabled:cursor-not-allowed disabled:opacity-50 dark:border-muted/40 dark:bg-surface-container-high"
           onClick={handleOpenPicker}
           disabled={props.disabled}
         >
-          {hasImage ? "Replace image" : "Upload image"}
+          {hasImage ? "غير الصورة" : "ارفع صورة"}
         </button>
       </div>
 
@@ -90,24 +92,24 @@ export default function ReferenceImageUploader(props: ReferenceImageUploaderProp
 
       {hasImage && (
         <div className="space-y-2">
-          <img src={props.value} alt="Reference preview" className="max-h-52 w-full rounded-lg object-cover" />
+          <img src={props.value} alt="معاينة الصورة" className="max-h-52 w-full rounded-lg object-cover" />
           <button
             type="button"
             className="rounded-lg border border-outline/40 bg-surface-container-high px-3 py-1.5 text-xs font-semibold text-on-surface transition hover:bg-surface-container-highest disabled:cursor-not-allowed disabled:opacity-50 dark:border-muted/40 dark:bg-surface-container-high"
             onClick={handleRemove}
             disabled={props.disabled}
           >
-            Remove image
+            امسح الصورة
           </button>
         </div>
       )}
 
       <p className="text-[11px] text-on-surface-variant">
-        Use this only if you want AI to follow a visual style (colors/look). Max size: {formatFileSize(MAX_FILE_SIZE_BYTES)}.
+        ارفع صورة هنا لو عايز الذكاء الاصطناعي يمشي على ستايل أو ألوان معينة. أقصى مساحة:{" "}
+        {formatFileSize(MAX_FILE_SIZE_BYTES)}.
       </p>
 
       {error && <p className="text-sm text-error">{error}</p>}
     </div>
   );
 }
-

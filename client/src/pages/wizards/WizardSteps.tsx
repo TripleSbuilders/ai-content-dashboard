@@ -456,7 +456,7 @@ export function CreativeStep({ form, showField }: StepProps) {
     <div className="space-y-6">
       {showField("creative", "visual_notes") && (
         <div>
-          <label htmlFor="visual_notes" className={labelCls}>Visual / creative notes</label>
+          <label htmlFor="visual_notes" className={labelCls}>ملاحظات الديزاين والاتجاه الإبداعي</label>
           <div className={fieldShell}><textarea id="visual_notes" className={textareaCls} {...register("visual_notes")} /></div>
           {errors.visual_notes && <p className={errCls}>{errors.visual_notes.message}</p>}
         </div>
@@ -474,14 +474,14 @@ export function CreativeStep({ form, showField }: StepProps) {
         <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
           {showField("creative", "campaign_duration") && (
             <div>
-              <label htmlFor="campaign_duration" className={labelCls}>Campaign duration</label>
+              <label htmlFor="campaign_duration" className={labelCls}>مدة الحملة</label>
               <div className={fieldShell}><input id="campaign_duration" className={inputCls} {...register("campaign_duration")} /></div>
               {errors.campaign_duration && <p className={errCls}>{errors.campaign_duration.message}</p>}
             </div>
           )}
           {showField("creative", "budget_level") && (
             <div>
-              <label htmlFor="budget_level" className={labelCls}>Budget level (1–7)</label>
+              <label htmlFor="budget_level" className={labelCls}>مستوى ميزانية الإعلانات (١-٧)</label>
               <div className={fieldShell}><input id="budget_level" className={inputCls} {...register("budget_level")} /></div>
             </div>
           )}
@@ -493,7 +493,7 @@ export function CreativeStep({ form, showField }: StepProps) {
           control={form.control}
           render={({ field }) => (
             <div>
-              <label htmlFor="best_content_types" className={labelCls}>Best-performing content types</label>
+              <label htmlFor="best_content_types" className={labelCls}>أكتر أنواع محتوى بتجيب نتيجة معاك</label>
               <div className={fieldShell}>
                 <textarea
                   id="best_content_types"
@@ -527,7 +527,7 @@ export function VolumeStep({ form, showField }: StepProps) {
         <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
           {showField("volume", "num_posts") && (
             <div>
-              <label htmlFor="num_posts" className={labelCls}>Number of posts ({BRIEF_LIMITS.num_posts.min}–{BRIEF_LIMITS.num_posts.max})</label>
+              <label htmlFor="num_posts" className={labelCls}>عدد البوستات ({BRIEF_LIMITS.num_posts.min}–{BRIEF_LIMITS.num_posts.max})</label>
               <div className={fieldShell}>
                 <Controller
                   name="num_posts"
@@ -542,7 +542,7 @@ export function VolumeStep({ form, showField }: StepProps) {
           )}
           {showField("volume", "num_image_designs") && (
             <div>
-              <label htmlFor="num_image_designs" className={labelCls}>Image design count ({BRIEF_LIMITS.num_image_designs.min}–{BRIEF_LIMITS.num_image_designs.max})</label>
+              <label htmlFor="num_image_designs" className={labelCls}>عدد أفكار الصور والديزاينات ({BRIEF_LIMITS.num_image_designs.min}–{BRIEF_LIMITS.num_image_designs.max})</label>
               <div className={fieldShell}>
                 <Controller
                   name="num_image_designs"
@@ -559,7 +559,7 @@ export function VolumeStep({ form, showField }: StepProps) {
       )}
       {showField("volume", "num_video_prompts") && (
         <div>
-          <label htmlFor="num_video_prompts" className={labelCls}>Video count ({BRIEF_LIMITS.num_video_prompts.min}–{BRIEF_LIMITS.num_video_prompts.max})</label>
+          <label htmlFor="num_video_prompts" className={labelCls}>عدد سكريبتات الفيديوهات ({BRIEF_LIMITS.num_video_prompts.min}–{BRIEF_LIMITS.num_video_prompts.max})</label>
           <div className={fieldShell}>
             <Controller
               name="num_video_prompts"

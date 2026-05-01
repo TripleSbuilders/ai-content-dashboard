@@ -4,20 +4,20 @@ const STEPS = [
   {
     icon: "assignment_add",
     title: "Submit your brief",
-    titleAr: "أرسل تفاصيل مشروعك",
-    body: "Fill out our smart project brief so we capture your brand, goals, and channels in one structured flow.",
+    titleAr: "ابعتلنا البريف بتاعك",
+    body: "Fill out our smart project brief so we capture your brand, goals, and channels in one seamless flow.",
   },
   {
     icon: "auto_awesome",
     title: "Expert & AI generation",
-    titleAr: "خبراء + ذكاء اصطناعي",
-    body: "Our team and platform craft tailored posts, image prompts, video prompts, and strategy aligned to your brief.",
+    titleAr: "خبرة فريقنا + الذكاء الاصطناعي",
+    body: "Our team and platform craft tailored posts, image prompts, video prompts, and a strategy perfectly aligned to your brief.",
   },
   {
     icon: "package_2",
     title: "Receive premium assets",
-    titleAr: "استلم أصول جاهزة",
-    body: "Get ready-to-publish content plus exports such as PDF and styled Excel when your package includes them.",
+    titleAr: "استلم محتواك الجاهز",
+    body: "Get ready-to-publish content, plus easy exports like PDFs and formatted Excel sheets (if included in your package).",
   },
 ] as const;
 
@@ -58,11 +58,11 @@ export default function ClientOverview() {
             Welcome to your agency workspace
           </h1>
           <p dir="rtl" lang="ar" className="mt-2 text-sm font-medium text-gray-600 dark:text-gray-300 sm:text-base">
-            مرحبًا بك في بوابة الوكالة — محتوى احترافي مدعوم بالذكاء الاصطناعي
+            أهلاً بيك في البوابة بتاعتنا — محتوى احترافي متظبط بالذكاء الاصطناعي
           </p>
           <p className="mt-4 text-base leading-relaxed text-gray-600 dark:text-gray-400 sm:text-lg">
-            Submit one structured brief. We combine human expertise with AI to deliver production-ready kits—posts,
-            visuals, and video prompts—with clear next steps for your team.
+            Submit a single structured brief. We blend human expertise with AI to deliver production-ready content kits—posts,
+            visuals, and video prompts—complete with clear next steps for your team.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
@@ -70,13 +70,13 @@ export default function ClientOverview() {
               className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 px-6 py-3.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-gray-800 active:scale-[0.98] dark:bg-white dark:text-black dark:hover:bg-gray-100 sm:w-auto"
             >
               <span className="material-symbols-outlined text-[20px]">edit_square</span>
-              Start request and get first draft
+              Start your request {'&'} get a first draft
             </Link>
             <Link
               to="/pricing"
               className="inline-flex w-full items-center justify-center rounded-xl border border-gray-200 bg-white px-6 py-3.5 text-sm font-semibold text-gray-800 transition-colors hover:bg-gray-50 dark:border-white/15 dark:bg-transparent dark:text-gray-100 dark:hover:bg-white/5 sm:w-auto"
             >
-              View pricing
+              View plans {'&'} pricing
             </Link>
           </div>
         </div>
@@ -87,7 +87,9 @@ export default function ClientOverview() {
           <h2 id="how-it-works-heading" className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-3xl">
             How it works
           </h2>
-          <p dir="rtl" lang="ar" className="mt-2 text-sm text-gray-500 dark:text-gray-400">كيف نعمل — ثلاث خطوات واضحة</p>
+          <p dir="rtl" lang="ar" className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            خطواتنا إزاي؟ — تلات خطوات واضحة
+          </p>
         </div>
         <div className="grid gap-6 md:grid-cols-3">
           {STEPS.map((step, i) => (
@@ -98,9 +100,13 @@ export default function ClientOverview() {
               <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-gray-900 text-white dark:bg-white dark:text-black">
                 <span className="material-symbols-outlined text-[22px]">{step.icon}</span>
               </div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">Step {i + 1}</p>
+              <p dir="rtl" lang="ar" className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                خطوة {i + 1}
+              </p>
               <h3 className="mt-1 text-lg font-bold text-gray-900 dark:text-white">{step.title}</h3>
-              <p dir="rtl" lang="ar" className="text-sm text-gray-500 dark:text-gray-400">{step.titleAr}</p>
+              <p dir="rtl" lang="ar" className="text-sm text-gray-500 dark:text-gray-400">
+                {step.titleAr}
+              </p>
               <p className="mt-3 flex-1 text-sm leading-relaxed text-gray-600 dark:text-gray-300">{step.body}</p>
             </article>
           ))}
@@ -110,10 +116,10 @@ export default function ClientOverview() {
       <section aria-labelledby="portfolio-heading">
         <div className="mb-8 text-center">
           <h2 id="portfolio-heading" className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-3xl">
-            Our work
+            Recent Projects
           </h2>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Sample engagement types — representative of packages we deliver (illustrative).
+            Sample projects — a quick look at the type of packages we deliver.
           </p>
         </div>
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
@@ -121,18 +127,24 @@ export default function ClientOverview() {
             <div>
               <p className="inline-flex items-center gap-2 rounded-full border border-gray-200 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-gray-600 dark:border-white/10 dark:text-gray-300">
                 <span className="material-symbols-outlined text-sm">verified</span>
-                Featured delivery
+                Featured Project
               </p>
-              <h3 className="mt-4 text-xl font-bold text-gray-900 dark:text-white">Cross-channel launch package</h3>
+              <h3 className="mt-4 text-xl font-bold text-gray-900 dark:text-white">Multi-Channel Launch Package</h3>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-gray-600 dark:text-gray-300">
-                One brief, one aligned system: platform-specific posts, image concepts, short-form video prompts, and a
-                weekly publishing direction your team can execute immediately.
+                One brief, one cohesive system: tailored posts, image concepts, short-form video prompts, and a weekly publishing
+                schedule your team can execute immediately.
               </p>
             </div>
             <div className="mt-5 flex flex-wrap gap-2">
-              <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 dark:bg-white/10 dark:text-gray-200">Bilingual copy</span>
-              <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 dark:bg-white/10 dark:text-gray-200">Export-ready</span>
-              <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 dark:bg-white/10 dark:text-gray-200">Review workflow</span>
+              <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 dark:bg-white/10 dark:text-gray-200">
+                Bilingual copy
+              </span>
+              <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 dark:bg-white/10 dark:text-gray-200">
+                Export-ready
+              </span>
+              <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 dark:bg-white/10 dark:text-gray-200">
+                Review workflow
+              </span>
             </div>
           </article>
 
@@ -158,14 +170,14 @@ export default function ClientOverview() {
       <section className="rounded-2xl border border-gray-200 bg-gray-50 p-8 text-center dark:border-white/10 dark:bg-white/[0.04] sm:p-10">
         <h2 className="text-xl font-bold text-gray-900 dark:text-white sm:text-2xl">Ready to brief your next campaign?</h2>
         <p className="mx-auto mt-2 max-w-xl text-sm text-gray-600 dark:text-gray-400">
-          Open the smart wizard to capture brand, audience, and deliverables. You can save progress and return anytime.
+          Launch our smart wizard to detail your brand, audience, and needs. Save your progress and come back anytime.
         </p>
         <Link
           to="/wizard/social"
           className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-gray-900 px-8 py-3.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-100"
         >
           <span className="material-symbols-outlined text-[20px]">rocket_launch</span>
-          Start request and preview your deliverables
+          Start your request {'&'} preview deliverables
         </Link>
       </section>
     </div>

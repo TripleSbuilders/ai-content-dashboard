@@ -22,18 +22,18 @@ export default function DeepContentWizard() {
     <WizardCore
       formSchema={formSchema}
       draftKey="ai-content-dashboard:wizard-draft:deep:v1"
-      title="Deep Campaign Wizard"
-      subtitle="Designed for depth-first execution: stronger narrative structure, richer creative briefs, and production-ready detail."
+      title="إعداد حملة المحتوى العميق"
+      subtitle="Built for depth-first execution: robust narrative structure, richer creative briefs, and production-ready details."
       routeHint="/kits/:id"
       stepOrder={variantB ? ["diagnosis", "brand", "audience", "creative", "volume"] : ["brand", "audience", "creative", "volume"]}
       stepTitles={{
-        diagnosis: "Quick diagnosis",
-        brand: "Brand & industry",
-        audience: "Audience & goals",
-        creative: "Creative direction",
-        volume: "Output volumes",
-        offer: "Offer & positioning",
-        channels: "Channels & tone",
+        diagnosis: "تشخيص سريع",
+        brand: "البراند والمجال",
+        audience: "الجمهور والأهداف",
+        creative: "الاتجاه الإبداعي (Creative Direction)",
+        volume: "كمية المحتوى",
+        offer: "العرض والتموضع (Positioning)",
+        channels: "القنوات ونبرة الصوت",
       }}
       stepFields={{
         audience: ["target_audience", "main_goal"],
@@ -41,10 +41,9 @@ export default function DeepContentWizard() {
       }}
       defaults={{
         campaign_mode: "deep",
-        main_goal: "Build authority with high-depth content",
-        best_content_types: ["case study", "educational carousel", "deep explainer video"],
+        main_goal: "بناء ثقة ومصداقية (Authority) بمحتوى عميق",
+        best_content_types: ["testimonials", "educational", "product_demo"],
       }}
     />
   );
 }
-

@@ -62,40 +62,48 @@ type WizardCoreProps = {
 };
 
 const LIMITS = BRIEF_LIMITS;
+const FALLBACK_INDUSTRY_DISPLAY: Record<string, string> = {
+  ecommerce: "متاجر إلكترونية (E-commerce)",
+  "real-estate": "عقارات",
+  restaurants: "مطاعم وكافيهات",
+  clinics: "عيادات وطب",
+  education: "تعليم",
+  general: "عام",
+};
 const FALLBACK_INDUSTRY_OPTIONS: { slug: string; name: string }[] = (
   ["ecommerce", "real-estate", "restaurants", "clinics", "education", "general"] as const
-).map((slug) => ({ slug, name: slug.replace(/-/g, " ") }));
+).map((slug) => ({ slug, name: FALLBACK_INDUSTRY_DISPLAY[slug] ?? slug.replace(/-/g, " ") }));
 const WAITING_STAGES = [
   {
-    title: "Analyzing your brand",
-    hint: "Reading your core inputs and campaign intent to build the right direction.",
+    title: "بنحلل البراند بتاعك",
+    hint: "بنراجع الداتا وأهداف حملتك عشان نحدد الاتجاه الاستراتيجي الصح.",
   },
   {
-    title: "Crafting high-converting hooks",
-    hint: "Generating social and messaging angles based on your selected flow.",
+    title: "بنجهز زوايا و (Hooks) بتجيب من الآخر",
+    hint: "بنكتب الزوايا الإعلانية ورسايل السوشيال ميديا اللي تناسب مسارك.",
   },
   {
-    title: "Preparing your visual prompts",
-    hint: "Structuring creative outputs and finalizing your kit delivery payload.",
+    title: "بنحضر أفكار وتوجيهات الديزاين",
+    hint: "بنرتب المحتوى الإبداعي وبنقفل باقة المحتوى بتاعتك عشان تستلمها.",
   },
 ] as const;
 
 const STREAM_STATUS_STEPS: Array<{ key: string; label: string }> = [
-  { key: "starting", label: "Starting" },
-  { key: "generating", label: "Generating" },
-  { key: "hydrating", label: "Hydrating" },
-  { key: "persisting", label: "Finalizing" },
+  { key: "starting", label: "بنبدأ" },
+  { key: "generating", label: "بننشئ المحتوى" },
+  { key: "hydrating", label: "بننسق الدنيا" },
+  { key: "persisting", label: "بنقفل الشغل" },
 ];
 
 const STREAM_SECTION_LABELS: Record<string, string> = {
-  narrative_summary: "Narrative summary",
-  diagnosis_plan: "Diagnosis plan",
-  posts: "Posts",
-  image_designs: "Image designs",
-  video_prompts: "Video prompts",
-  marketing_strategy: "Marketing strategy",
-  sales_system: "Sales system",
-  offer_optimization: "Offer optimization",
+  narrative_summary: "ملخص القصة",
+  diagnosis_plan: "خطة التشخيص",
+  posts: "بوستات",
+  image_designs: "أفكار صور",
+  video_prompts: "سكريبتات فيديوهات",
+  marketing_strategy: "استراتيجية تسويق",
+  sales_system: "سيستم مبيعات",
+  offer_optimization: "تظبيط العرض",
 };
 
 const STEP_FIELDS: Record<StepId, (keyof BriefForm)[]> = {
@@ -444,16 +452,16 @@ export default function WizardCore(props: WizardCoreProps) {
         <h2 className="font-headline text-2xl font-extrabold tracking-tight text-on-surface sm:text-3xl md:text-4xl">{props.title}</h2>
         <p className="mt-2 max-w-3xl text-on-surface-variant">
           {agencyEdition
-            ? "Share your project details and our team will prepare a complete ready-to-execute content plan for you."
+            ? "ادينا تفاصيل مشروعك، وفريقنا هيجهزلك خطة محتوى متكاملة وجاهزة للتنفيذ على طول."
             : props.subtitle}
         </p>
       </div>
 
       {showDraftBanner && (
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-white/10 bg-white/50 dark:bg-[#111]/50 px-5 py-4 text-sm font-medium text-gray-900 dark:text-white shadow-sm backdrop-blur-sm">
-          <span>Restored a saved draft for this path.</span>
+          <span>رجعنالك المسودة اللي كنت حافظها للطلب ده.</span>
           <button type="button" className={btnSecondary + " !py-2 !text-xs"} onClick={clearDraft}>
-            Clear draft
+            امسح المسودة
           </button>
         </div>
       )}
@@ -464,21 +472,23 @@ export default function WizardCore(props: WizardCoreProps) {
             <div className={cn("grid gap-8", agencyEdition && "lg:grid-cols-[260px_minmax(0,1fr)] lg:items-start")}>
               {agencyEdition && (
                 <aside className="rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50/70 dark:bg-[#121214] p-5">
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Service Flow</p>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">خطوات الشغل</p>
                   <ul className="mt-3 space-y-3 text-sm text-gray-700 dark:text-gray-300">
-                    <li>1) Submit your project details</li>
-                    <li>2) Team reviews your strategy context</li>
-                    <li>3) We deliver a polished content package</li>
+                    <li>١) ابعت تفاصيل مشروعك</li>
+                    <li>٢) فريقنا بيراجع استراتيجيتك</li>
+                    <li>٣) بنسلمك باقة محتوى متظبطة وجاهزة</li>
                   </ul>
                   <div className="mt-5 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-black/30 p-3 text-xs text-gray-600 dark:text-gray-400">
-                    Our sales team will contact you after submission to coordinate the delivery timeline.
+                    فريق المبيعات بتاعنا هيكلمك بعد ما تبعت الطلب عشان ننسق ميعاد التسليم.
                   </div>
                 </aside>
               )}
               <div>
             <div className="mb-8 rounded-2xl border border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-[#111] p-4 sm:p-5">
               <div className="mb-3 flex items-center justify-between text-[11px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
-                <span>Step {step + 1} of {maxStep + 1}</span>
+                <span>
+                  خطوة {step + 1} من {maxStep + 1}
+                </span>
                 <span className="text-gray-900 dark:text-white">{props.stepTitles[currentStep]}</span>
               </div>
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-white/10">
@@ -505,7 +515,7 @@ export default function WizardCore(props: WizardCoreProps) {
               blockedSteps={!isPremiumUser && premiumStepIndex >= 0 ? [premiumStepIndex] : []}
               onStepClick={(targetStep) => {
                 if (!isPremiumUser && premiumStepIndex >= 0 && targetStep >= premiumStepIndex) {
-                  setStepBlockError("يجب الدفع أولاً للحصول على الإعدادات المتقدمة");
+                  setStepBlockError("لازم ترقي باقتك عشان تفتح الإعدادات المتقدمة دي");
                   return;
                 }
                 setStep(targetStep);
@@ -516,41 +526,47 @@ export default function WizardCore(props: WizardCoreProps) {
             {variantB && currentStep === "diagnosis" && (
               <div className="space-y-6">
                 <div>
-                  <label htmlFor="diagnostic_role" className={labelCls}>Who are you?</label>
+                  <label htmlFor="diagnostic_role" className={labelCls}>
+                    إنت مين في دول؟
+                  </label>
                   <div className={fieldShell}>
                     <select id="diagnostic_role" className={selectCls} {...register("diagnostic_role")}>
-                      <option value="">Select role…</option>
-                      <option value="entrepreneur-founder">Entrepreneur / Founder</option>
-                      <option value="coach-consultant">Coach or Consultant</option>
-                      <option value="doctor-expert-professional">Doctor / Expert / Professional</option>
-                      <option value="freelancer-creative">Freelancer or Creative</option>
+                      <option value="">اختار دورك...</option>
+                      <option value="entrepreneur-founder">رائد أعمال / مؤسس</option>
+                      <option value="coach-consultant">كوتش أو مستشار</option>
+                      <option value="doctor-expert-professional">دكتور / خبير / محترف</option>
+                      <option value="freelancer-creative">فريلانسر أو مبدع</option>
                     </select>
                   </div>
                   {errors.diagnostic_role && <p className={errCls}>{errors.diagnostic_role.message}</p>}
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label htmlFor="diagnostic_account_stage" className={labelCls}>Account Stage</label>
+                    <label htmlFor="diagnostic_account_stage" className={labelCls}>
+                      مرحلة البيزنس
+                    </label>
                     <div className={fieldShell}>
                       <select id="diagnostic_account_stage" className={selectCls} {...register("diagnostic_account_stage")}>
-                        <option value="">Select stage…</option>
-                        <option value="under-6-months">Just starting — under 6 months</option>
-                        <option value="6-12-months">6 months to 1 year</option>
-                        <option value="1-3-years">1–3 years, inconsistent results</option>
-                        <option value="3-plus-years">3+ years, want to scale</option>
+                        <option value="">اختار المرحلة...</option>
+                        <option value="under-6-months">لسه ببدأ (أقل من ٦ شهور)</option>
+                        <option value="6-12-months">من ٦ شهور لسنة</option>
+                        <option value="1-3-years">من سنة لـ ٣ سنين (النتايج مش ثابتة)</option>
+                        <option value="3-plus-years">أكتر من ٣ سنين (عايز أكسيل وأكبر)</option>
                       </select>
                     </div>
                     {errors.diagnostic_account_stage && <p className={errCls}>{errors.diagnostic_account_stage.message}</p>}
                   </div>
                   <div>
-                    <label htmlFor="diagnostic_followers_band" className={labelCls}>Follower Range</label>
+                    <label htmlFor="diagnostic_followers_band" className={labelCls}>
+                      عدد المتابعين
+                    </label>
                     <div className={fieldShell}>
                       <select id="diagnostic_followers_band" className={selectCls} {...register("diagnostic_followers_band")}>
-                        <option value="">Select range…</option>
-                        <option value="under-1k">Under 1,000</option>
-                        <option value="1k-5k">1,000 – 5,000</option>
-                        <option value="5k-20k">5,000 – 20,000</option>
-                        <option value="20k-plus">20,000+</option>
+                        <option value="">اختار العدد...</option>
+                        <option value="under-1k">أقل من ١,٠٠٠</option>
+                        <option value="1k-5k">من ١,٠٠٠ لـ ٥,٠٠٠</option>
+                        <option value="5k-20k">من ٥,٠٠٠ لـ ٢٠,٠٠٠</option>
+                        <option value="20k-plus">أكتر من ٢٠,٠٠٠</option>
                       </select>
                     </div>
                     {errors.diagnostic_followers_band && <p className={errCls}>{errors.diagnostic_followers_band.message}</p>}
@@ -558,27 +574,31 @@ export default function WizardCore(props: WizardCoreProps) {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label htmlFor="diagnostic_primary_blocker" className={labelCls}>Primary Blocker</label>
+                    <label htmlFor="diagnostic_primary_blocker" className={labelCls}>
+                      أكبر مشكلة بتواجهك
+                    </label>
                     <div className={fieldShell}>
                       <select id="diagnostic_primary_blocker" className={selectCls} {...register("diagnostic_primary_blocker")}>
-                        <option value="">Select blocker…</option>
-                        <option value="low-reach">I post but nobody sees my content</option>
-                        <option value="no-content-system">I don't know what to post consistently</option>
-                        <option value="no-conversion">Followers exist but no sales or clients</option>
-                        <option value="inconsistent-execution">No time — totally inconsistent</option>
+                        <option value="">اختار المشكلة الأساسية...</option>
+                        <option value="low-reach">الريتش واقع (محدش بيشوف بوستاتي)</option>
+                        <option value="no-content-system">مش عارف أنزل إيه باستمرار</option>
+                        <option value="no-conversion">عندي فولورز بس مفيش مبيعات</option>
+                        <option value="inconsistent-execution">معنديش وقت ومش منتظم خالص</option>
                       </select>
                     </div>
                     {errors.diagnostic_primary_blocker && <p className={errCls}>{errors.diagnostic_primary_blocker.message}</p>}
                   </div>
                   <div>
-                    <label htmlFor="diagnostic_revenue_goal" className={labelCls}>Target monthly revenue</label>
+                    <label htmlFor="diagnostic_revenue_goal" className={labelCls}>
+                      التارجت الشهري للمبيعات
+                    </label>
                     <div className={fieldShell}>
                       <select id="diagnostic_revenue_goal" className={selectCls} {...register("diagnostic_revenue_goal")}>
-                        <option value="">Select target…</option>
-                        <option value="500-1000">$500 – $1,000/month</option>
-                        <option value="1000-3000">$1,000 – $3,000/month</option>
-                        <option value="3000-10000">$3,000 – $10,000/month</option>
-                        <option value="10000-plus">$10,000+/month</option>
+                        <option value="">اختار التارجت...</option>
+                        <option value="500-1000">$500 – $1,000 في الشهر</option>
+                        <option value="1000-3000">$1,000 – $3,000 في الشهر</option>
+                        <option value="3000-10000">$3,000 – $10,000 في الشهر</option>
+                        <option value="10000-plus">أكتر من $10,000 في الشهر</option>
                       </select>
                     </div>
                     {errors.diagnostic_revenue_goal && <p className={errCls}>{errors.diagnostic_revenue_goal.message}</p>}
@@ -591,17 +611,23 @@ export default function WizardCore(props: WizardCoreProps) {
               <div className="space-y-4 sm:space-y-6">
                 {agencyEdition && (
                   <div className="rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-[#111] p-4 sm:p-5 space-y-4">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Client contact details</p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      بيانات التواصل
+                    </p>
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div>
-                        <label htmlFor="client_name" className={labelCls}>Full name</label>
+                        <label htmlFor="client_name" className={labelCls}>
+                          الاسم بالكامل
+                        </label>
                         <div className={fieldShell}>
-                          <input id="client_name" className={inputCls} placeholder="Client full name" {...register("client_name")} />
+                          <input id="client_name" className={inputCls} placeholder="الاسم بالكامل" {...register("client_name")} />
                         </div>
                         {errors.client_name && <p className={errCls}>{errors.client_name.message}</p>}
                       </div>
                       <div>
-                        <label htmlFor="client_phone" className={labelCls}>Phone number</label>
+                        <label htmlFor="client_phone" className={labelCls}>
+                          رقم الموبايل (واتساب)
+                        </label>
                         <div className={fieldShell}>
                           <input id="client_phone" className={inputCls} placeholder="+20 ..." {...register("client_phone")} />
                         </div>
@@ -609,7 +635,9 @@ export default function WizardCore(props: WizardCoreProps) {
                       </div>
                     </div>
                     <div>
-                      <label htmlFor="client_email" className={labelCls}>Email address</label>
+                      <label htmlFor="client_email" className={labelCls}>
+                        الإيميل
+                      </label>
                       <div className={fieldShell}>
                         <input id="client_email" type="email" className={inputCls} placeholder="client@email.com" {...register("client_email")} />
                       </div>
@@ -619,12 +647,16 @@ export default function WizardCore(props: WizardCoreProps) {
                 )}
                 <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
                   <div>
-                    <label htmlFor="brand_name" className={labelCls}>Brand name</label>
+                    <label htmlFor="brand_name" className={labelCls}>
+                      اسم البراند
+                    </label>
                     <div className={fieldShell}><input id="brand_name" className={inputCls} {...register("brand_name")} /></div>
                     {errors.brand_name && <p className={errCls}>{errors.brand_name.message}</p>}
                   </div>
                   <div>
-                    <label htmlFor="industry" className={labelCls}>Industry</label>
+                    <label htmlFor="industry" className={labelCls}>
+                      المجال
+                    </label>
                     <div className={fieldShell}>
                       <Controller
                         name="industry"
@@ -645,13 +677,13 @@ export default function WizardCore(props: WizardCoreProps) {
                               field.onChange(v);
                             }}
                           >
-                            <option value="">Select industry…</option>
+                            <option value="">اختار المجال...</option>
                             {industryOptions.map((i) => (
                               <option key={i.slug} value={i.slug}>
                                 {i.name}
                               </option>
                             ))}
-                            <option value="__other__">Other (write manually)</option>
+                            <option value="__other__">مجال تاني (اكتبه بنفسك)</option>
                           </select>
                         )}
                       />
@@ -667,7 +699,7 @@ export default function WizardCore(props: WizardCoreProps) {
                               className={inputCls}
                               value={field.value || ""}
                               onChange={(e) => field.onChange(e.target.value)}
-                              placeholder="Write your industry..."
+                              placeholder="اكتب مجالك هنا..."
                             />
                           )}
                         />
@@ -677,7 +709,9 @@ export default function WizardCore(props: WizardCoreProps) {
                   </div>
                 </div>
                 <div>
-                  <label htmlFor="business_links" className={labelCls}>Business or social media links (optional)</label>
+                  <label htmlFor="business_links" className={labelCls}>
+                    لينكات الويب سايت أو السوشيال ميديا (اختياري)
+                  </label>
                   <div className={fieldShell}>
                     <textarea
                       id="business_links"
@@ -694,7 +728,7 @@ export default function WizardCore(props: WizardCoreProps) {
               <div className="space-y-6">
                 {showField("audience", "target_audience") && (
                   <div>
-                    <label className={labelCls}>Target audience</label>
+                    <label className={labelCls}>الجمهور المستهدف</label>
                     <PillGroup
                       options={TARGET_AUDIENCE_OPTIONS}
                       selectedValues={selectionState.audienceSelected}
@@ -730,7 +764,7 @@ export default function WizardCore(props: WizardCoreProps) {
                           className={inputCls}
                           value={selectionState.audienceOther}
                           onChange={(e) => setSelectionState((prev) => ({ ...prev, audienceOther: e.target.value }))}
-                          placeholder="اكتب جمهورك المستهدف..."
+                          placeholder="وصف عميلك المثالي إيه؟..."
                         />
                       </div>
                     )}
@@ -739,7 +773,7 @@ export default function WizardCore(props: WizardCoreProps) {
                 )}
                 {showField("audience", "main_goal") && (
                   <div>
-                    <label className={labelCls}>Main campaign goal</label>
+                    <label className={labelCls}>الهدف الأساسي للحملة</label>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {MAIN_GOAL_OPTIONS.map((option) => (
                         <SelectableCard
@@ -775,7 +809,7 @@ export default function WizardCore(props: WizardCoreProps) {
                           className={inputCls}
                           value={selectionState.mainGoalOther}
                           onChange={(e) => setSelectionState((prev) => ({ ...prev, mainGoalOther: e.target.value }))}
-                          placeholder="اكتب هدف الحملة..."
+                          placeholder="اكتب هدفك هنا..."
                         />
                       </div>
                     )}
@@ -789,7 +823,7 @@ export default function WizardCore(props: WizardCoreProps) {
               <div className="space-y-6">
                 {showField("channels", "platforms") && (
                   <div>
-                    <label className={labelCls}>Active platforms</label>
+                    <label className={labelCls}>المنصات اللي شغال عليها</label>
                     <PillGroup
                       options={PLATFORM_OPTIONS}
                       selectedValues={selectionState.platformsSelected}
@@ -825,7 +859,7 @@ export default function WizardCore(props: WizardCoreProps) {
                           className={inputCls}
                           value={selectionState.platformsOther}
                           onChange={(e) => setSelectionState((prev) => ({ ...prev, platformsOther: e.target.value }))}
-                          placeholder="اكتب منصة إضافية..."
+                          placeholder="اكتب منصة تانية..."
                         />
                       </div>
                     )}
@@ -836,7 +870,7 @@ export default function WizardCore(props: WizardCoreProps) {
                   <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
                     {showField("channels", "brand_tone") && (
                       <div>
-                        <label className={labelCls}>Brand tone</label>
+                        <label className={labelCls}>نبرة البراند (Tone of Voice)</label>
                         <div className="space-y-3">
                           {BRAND_TONE_OPTIONS.map((option) => (
                             <SelectableCard
@@ -872,7 +906,7 @@ export default function WizardCore(props: WizardCoreProps) {
                               className={inputCls}
                               value={selectionState.brandToneOther}
                               onChange={(e) => setSelectionState((prev) => ({ ...prev, brandToneOther: e.target.value }))}
-                              placeholder="اكتب نبرة البراند..."
+                              placeholder="وصف نبرة البراند بتاعتك..."
                             />
                           </div>
                         )}
@@ -881,7 +915,9 @@ export default function WizardCore(props: WizardCoreProps) {
                     )}
                     {showField("channels", "brand_colors") && (
                       <div>
-                        <label htmlFor="brand_colors" className={labelCls}>Brand colors</label>
+                        <label htmlFor="brand_colors" className={labelCls}>
+                          ألوان البراند
+                        </label>
                         <div className={fieldShell}><input id="brand_colors" className={inputCls} {...register("brand_colors")} /></div>
                       </div>
                     )}
@@ -894,14 +930,18 @@ export default function WizardCore(props: WizardCoreProps) {
               <div className="space-y-6">
                 {showField("offer", "offer") && (
                   <div>
-                    <label htmlFor="offer" className={labelCls}>Offer / core message</label>
+                    <label htmlFor="offer" className={labelCls}>
+                      العرض / الرسالة الأساسية
+                    </label>
                     <div className={fieldShell}><textarea id="offer" className={textareaCls} {...register("offer")} /></div>
                     {errors.offer && <p className={errCls}>{errors.offer.message}</p>}
                   </div>
                 )}
                 {showField("offer", "competitors") && (
                   <div>
-                    <label htmlFor="competitors" className={labelCls}>Competitors</label>
+                    <label htmlFor="competitors" className={labelCls}>
+                      أهم المنافسين
+                    </label>
                     <div className={fieldShell}><textarea id="competitors" className={textareaCls} {...register("competitors")} /></div>
                   </div>
                 )}
@@ -922,13 +962,13 @@ export default function WizardCore(props: WizardCoreProps) {
                     />
                     {referenceImageLocked && (
                       <div className="mt-1 flex items-center gap-2 text-xs text-on-surface-variant">
-                        <span>🔒 Reference image is available on Early Adopter plan.</span>
+                        <span>🔒 إضافة صور كمرجع (References) متاحة بس في باقة الـ Early Adopter.</span>
                         <button
                           type="button"
                           className="font-bold text-primary underline-offset-2 hover:underline"
                           onClick={() => nav("/pricing")}
                         >
-                          Upgrade
+                          رقي باقتك
                         </button>
                       </div>
                     )}
@@ -939,14 +979,18 @@ export default function WizardCore(props: WizardCoreProps) {
                   <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
                     {showField("creative", "campaign_duration") && (
                       <div>
-                        <label htmlFor="campaign_duration" className={labelCls}>Campaign duration</label>
+                        <label htmlFor="campaign_duration" className={labelCls}>
+                          مدة الحملة
+                        </label>
                         <div className={fieldShell}><input id="campaign_duration" className={inputCls} {...register("campaign_duration")} /></div>
                         {errors.campaign_duration && <p className={errCls}>{errors.campaign_duration.message}</p>}
                       </div>
                     )}
                     {showField("creative", "budget_level") && (
                       <div>
-                        <label htmlFor="budget_level" className={labelCls}>Budget level (1–7)</label>
+                        <label htmlFor="budget_level" className={labelCls}>
+                          مستوى ميزانية الإعلانات (١-٧)
+                        </label>
                         <div className={fieldShell}><input id="budget_level" className={inputCls} {...register("budget_level")} /></div>
                       </div>
                     )}
@@ -954,7 +998,7 @@ export default function WizardCore(props: WizardCoreProps) {
                 )}
                 {showField("creative", "best_content_types") && (
                   <div>
-                    <label className={labelCls}>Best-performing content types</label>
+                    <label className={labelCls}>أكتر أنواع محتوى بتجيب نتيجة معاك</label>
                     <PillGroup
                       options={BEST_CONTENT_TYPE_OPTIONS}
                       selectedValues={selectionState.bestContentTypesSelected}
@@ -994,7 +1038,7 @@ export default function WizardCore(props: WizardCoreProps) {
                           onChange={(e) =>
                             setSelectionState((prev) => ({ ...prev, bestContentTypesOther: e.target.value }))
                           }
-                          placeholder="اكتب نوع محتوى إضافي..."
+                          placeholder="اكتب نوع محتوى تاني..."
                         />
                       </div>
                     )}
@@ -1007,16 +1051,20 @@ export default function WizardCore(props: WizardCoreProps) {
             {currentStep === "volume" && (
               <div className="space-y-6">
                 <div className="rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50/40 dark:bg-[#121214] p-4">
-                  <p className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Premium Strategic Brief</p>
-                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">صمّم الاستراتيجية في خطوات سريعة بدل تعبئة نموذج طويل.</p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                    بناء استراتيجية متقدمة (Premium)
+                  </p>
+                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                    ظبط استراتيجيتك في خطوات سريعة من غير ما تملا فورم طويلة ومملة.
+                  </p>
                 </div>
                 <div>
-                  <label className={labelCls}>Content pillars mix</label>
+                  <label className={labelCls}>ميكس أعمدة المحتوى (Content Pillars)</label>
                   <div className="grid gap-3 sm:grid-cols-3">
                     {[
-                      { key: "Direct Sales", label: "بيعي مباشر", icon: "sell" },
+                      { key: "Direct Sales", label: "مبيعات مباشر (Sales)", icon: "sell" },
                       { key: "Educational", label: "تعليمي", icon: "school" },
-                      { key: "Engagement", label: "تفاعلي", icon: "forum" },
+                      { key: "Engagement", label: "تفاعلي (Engagement)", icon: "forum" },
                     ].map((pillar) => (
                       <button
                         key={pillar.key}
@@ -1041,38 +1089,42 @@ export default function WizardCore(props: WizardCoreProps) {
                   </div>
                 </div>
                 <div>
-                  <label className={labelCls}>Platform-specific optimization</label>
+                  <label className={labelCls}>تظبيط المحتوى حسب المنصة</label>
                   <div className="flex flex-wrap gap-2">
-                    {["LinkedIn", "TikTok/Reels", "Instagram"].map((platform) => (
+                    {[
+                      { value: "LinkedIn", label: "لينكد إن" },
+                      { value: "TikTok/Reels", label: "تيك توك / ريلز" },
+                      { value: "Instagram", label: "إنستجرام" },
+                    ].map((platform) => (
                       <button
-                        key={platform}
+                        key={platform.value}
                         type="button"
                         onClick={() =>
                           setSelectionState((prev) => ({
                             ...prev,
-                            platformsSelected: toggleListValue(prev.platformsSelected, platform),
+                            platformsSelected: toggleListValue(prev.platformsSelected, platform.value),
                           }))
                         }
                         className={cn(
                           "rounded-full border px-4 py-2 text-xs font-semibold",
-                          selectionState.platformsSelected.includes(platform)
+                          selectionState.platformsSelected.includes(platform.value)
                             ? "border-gray-900 dark:border-white bg-gray-900 text-white dark:bg-white dark:text-black"
                             : "border-gray-200 dark:border-white/10"
                         )}
                       >
-                        {platform}
+                        {platform.label}
                       </button>
                     ))}
                   </div>
                 </div>
                 <div>
-                  <label className={labelCls}>Micro tone of voice</label>
+                  <label className={labelCls}>تفاصيل نبرة الصوت</label>
                   <div className="grid gap-3 sm:grid-cols-2">
                     {[
-                      { key: "Luxury", label: "Luxury" },
-                      { key: "Street/Slang", label: "Street / Slang" },
-                      { key: "Sarcastic", label: "Sarcastic" },
-                      { key: "Egypt Colloquial Social", label: "Egypt colloquial preset" },
+                      { key: "Luxury", label: "فخم (Luxury)" },
+                      { key: "Street/Slang", label: "لغة الشارع / روش" },
+                      { key: "Sarcastic", label: "ساخر (Sarcastic)" },
+                      { key: "Egypt Colloquial Social", label: "مصري عامي" },
                     ].map((tone) => (
                       <button
                         key={tone.key}
@@ -1097,43 +1149,49 @@ export default function WizardCore(props: WizardCoreProps) {
                   </div>
                 </div>
                 <div>
-                  <label htmlFor="premium_audience_pain" className={labelCls}>Audience deep dive</label>
+                  <label htmlFor="premium_audience_pain" className={labelCls}>
+                    تحليل أعمق للجمهور
+                  </label>
                   <div className={fieldShell}>
                     <textarea
                       id="premium_audience_pain"
                       className={textareaCls}
-                      placeholder="إيه أكتر حاجة بتضايق زبونك؟"
+                      placeholder="إيه أكتر وجع (Pain point) عند زبونك؟"
                       value={watch("audience_pain_point") || ""}
                       onChange={(e) => setValue("audience_pain_point", e.target.value, { shouldDirty: true })}
                     />
                   </div>
                 </div>
                 <div>
-                  <label className={labelCls}>Posting cadence</label>
+                  <label className={labelCls}>معدل النشر</label>
                   <div className="flex flex-wrap gap-2">
-                    {["3 days/week", "5 days/week", "30-day plan"].map((cadence) => (
+                    {[
+                      { value: "3 days/week", label: "٣ أيام في الأسبوع" },
+                      { value: "5 days/week", label: "٥ أيام في الأسبوع" },
+                      { value: "30-day plan", label: "خطة كاملة لـ ٣٠ يوم" },
+                    ].map((cadence) => (
                       <button
-                        key={cadence}
+                        key={cadence.value}
                         type="button"
-                        onClick={() => setValue("campaign_duration", cadence, { shouldDirty: true })}
+                        onClick={() => setValue("campaign_duration", cadence.value, { shouldDirty: true })}
                         className={cn(
                           "rounded-full border px-4 py-2 text-xs font-semibold",
-                          watch("campaign_duration") === cadence
+                          watch("campaign_duration") === cadence.value
                             ? "border-gray-900 dark:border-white bg-gray-900 text-white dark:bg-white dark:text-black"
                             : "border-gray-200 dark:border-white/10"
                         )}
                       >
-                        {cadence}
+                        {cadence.label}
                       </button>
                     ))}
                   </div>
                 </div>
                 {entitlements && (
                   <div className="rounded-xl border border-outline/20 bg-surface-container-low/60 p-4 text-xs text-on-surface-variant dark:border-outline/25 dark:bg-earth-darkCard/40">
-                    <p className="font-semibold text-on-surface">Current plan usage</p>
+                    <p className="font-semibold text-on-surface">استهلاك باقتك</p>
                     <p className="mt-1">
-                      Plan: <strong>{entitlements.plan_code}</strong> · Video prompts used:{" "}
-                      <strong>{entitlements.usage.video_prompts_used}</strong> · Image prompts used:{" "}
+                      الباقة: <strong>{entitlements.plan_code}</strong> · سكريبتات الفيديوهات:{" "}
+                      <strong>{entitlements.usage.video_prompts_used}</strong> · أفكار الصور:{" "}
                       <strong>{entitlements.usage.image_prompts_used}</strong>
                     </p>
                   </div>
@@ -1148,12 +1206,10 @@ export default function WizardCore(props: WizardCoreProps) {
               <div className="mb-5 rounded-xl border border-primary/30 bg-primary/10 p-4 dark:border-brand-primary/40 dark:bg-brand-primary/15">
                 <div className="space-y-2">
                   <p className="text-sm font-semibold text-on-surface">
-                    {variantB ? "Ready to reveal your diagnosis and action plan" : "Ready to generate your kit"}
+                    {variantB ? "جاهز تشوف التشخيص وخطة العمل" : "جاهز نطلعلك باقة المحتوى"}
                   </p>
                   <p className="text-xs text-on-surface-variant">
-                    {variantB
-                      ? "Takes around 10-30 seconds. Your diagnosis snapshot is saved with the kit, and you can edit outputs after generation."
-                      : "Takes around 10-30 seconds. Your draft stays saved, and you can edit after generation."}
+                    الموضوع بياخد من ١٠ لـ ٣٠ ثانية تقريباً...
                   </p>
                 </div>
               </div>
@@ -1162,38 +1218,38 @@ export default function WizardCore(props: WizardCoreProps) {
             {variantB && isFinalStep && !loading && (
               <div className="mb-5 grid gap-3 md:grid-cols-3">
                 <div className="rounded-xl border border-outline/25 bg-surface-container-low p-3">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Role</p>
-                  <p className="mt-1 text-sm font-semibold text-on-surface">{watch("diagnostic_role") || "Not set"}</p>
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">الدور</p>
+                  <p className="mt-1 text-sm font-semibold text-on-surface">{watch("diagnostic_role") || "مش متحدد"}</p>
                 </div>
                 <div className="rounded-xl border border-outline/25 bg-surface-container-low p-3">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Primary Blocker</p>
-                  <p className="mt-1 text-sm font-semibold text-on-surface">{watch("diagnostic_primary_blocker") || "Not set"}</p>
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">المشكلة الأساسية</p>
+                  <p className="mt-1 text-sm font-semibold text-on-surface">{watch("diagnostic_primary_blocker") || "مش متحددة"}</p>
                 </div>
                 <div className="rounded-xl border border-outline/25 bg-surface-container-low p-3">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Revenue target</p>
-                  <p className="mt-1 text-sm font-semibold text-on-surface">{watch("diagnostic_revenue_goal") || "Not set"}</p>
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">تارجت المبيعات</p>
+                  <p className="mt-1 text-sm font-semibold text-on-surface">{watch("diagnostic_revenue_goal") || "مش متحدد"}</p>
                 </div>
               </div>
             )}
 
             {variantB && isFinalStep && !loading && (
               <div className="mb-5 rounded-xl border border-tertiary/25 bg-tertiary/10 p-4">
-                <p className="text-xs font-bold uppercase tracking-wide text-tertiary">Proof and objections</p>
+                <p className="text-xs font-bold uppercase tracking-wide text-tertiary">ليه ده بيجيب نتيجة؟</p>
                 <ul className="mt-2 space-y-1 text-sm text-on-surface-variant">
-                  <li>- Built for repeatable execution, not one-time suggestions.</li>
-                  <li>- You can regenerate, edit, and iterate every output after creation.</li>
-                  <li>- Draft-safe flow: nothing gets lost if you return later.</li>
+                  <li>- مبني عشان يتنفذ بسهولة ولـ Scale كبير...</li>
+                  <li>- تقدر تعيد توليد المحتوى تاني...</li>
+                  <li>- كل حاجة بتتحفظ كمسودة أوتوماتيك...</li>
                 </ul>
               </div>
             )}
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <button type="button" className={btnSecondary + " w-full sm:w-auto"} onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0 || loading}>
-                Back
+                رجوع
               </button>
               {step < effectiveMaxStep ? (
                 <button type="button" className={btnPrimary + " w-full sm:w-auto"} onClick={() => void next()} disabled={loading}>
-                  Next
+                  الخطوة الجاية
                 </button>
               ) : (
                 <button
@@ -1204,13 +1260,13 @@ export default function WizardCore(props: WizardCoreProps) {
                 >
                   {loading
                     ? variantB
-                      ? "Building your diagnosis..."
-                      : "Generating..."
+                      ? "بنجهزلك التشخيص..."
+                      : "بننشئ المحتوى..."
                     : !isPremiumUser
-                      ? "Submit Request (Get Free Test)"
+                      ? "ابعت الطلب (وجرب ببلاش)"
                       : variantB
-                        ? "Show my diagnosis and plan"
-                        : "Generate my kit now"}
+                        ? "وريني التشخيص والخطة"
+                        : "طلعلي باقة المحتوى دلوقتي"}
                 </button>
               )}
             </div>
@@ -1265,15 +1321,15 @@ export default function WizardCore(props: WizardCoreProps) {
               </div>
               <p className="wizard-loading-hint" style={{ marginBottom: "0.4rem" }}>
                 {submission.streamStatus === "persisting"
-                  ? "Persisting final kit..."
+                  ? "بنحفظ باقة المحتوى..."
                   : submission.streamStatus === "hydrating"
-                  ? "Hydrating generated sections..."
-                  : submission.streamStatus === "completed"
-                  ? "Finalizing..."
-                  : "Generating with progressive hydration..."}
+                    ? "بننسق الأقسام اللي طلعت..."
+                    : submission.streamStatus === "completed"
+                      ? "بنقفل الشغل..."
+                      : "بنطلع المحتوى واحدة واحدة..."}
               </p>
               <p className="wizard-loading-hint" style={{ marginBottom: "0.4rem" }}>
-                Progress: {displayProgressPct}%
+                خلصنا: {displayProgressPct}%
               </p>
               <div className="wizard-progress-track" aria-hidden>
                 <div className="wizard-progress-fill" style={{ width: `${Math.max(4, displayProgressPct)}%` }} />
@@ -1285,7 +1341,7 @@ export default function WizardCore(props: WizardCoreProps) {
               ) : null}
               {submission.streamSection ? (
                 <p className="wizard-loading-hint wizard-fade-slide-in" style={{ marginBottom: "0.4rem" }}>
-                  Current section:{" "}
+                  شغالين حالياً على:{" "}
                   <strong>{STREAM_SECTION_LABELS[submission.streamSection] ?? submission.streamSection.replace(/_/g, " ")}</strong>
                 </p>
               ) : null}
@@ -1332,7 +1388,7 @@ export default function WizardCore(props: WizardCoreProps) {
                   }}
                 >
                   <p className="wizard-loading-hint" style={{ marginBottom: "0.35rem", fontSize: "0.72rem", opacity: 0.95 }}>
-                    Live reasoning trace
+                    خطوات الذكاء الاصطناعي (لايف)
                   </p>
                   <div className="space-y-1.5 max-h-36 overflow-y-auto pe-1">
                     {reasoningTraceLines.map((item, idx) => (
@@ -1342,7 +1398,7 @@ export default function WizardCore(props: WizardCoreProps) {
                         style={{ fontSize: "0.74rem", margin: 0 }}
                       >
                         <span style={{ opacity: 0.72 }}>
-                          {(item.section && STREAM_SECTION_LABELS[item.section]) || item.section || "asset"}:
+                          {(item.section && STREAM_SECTION_LABELS[item.section]) || item.section || "أصل / محتوى"}:
                         </span>{" "}
                         {item.line}
                       </p>
@@ -1364,7 +1420,7 @@ export default function WizardCore(props: WizardCoreProps) {
                     border: "1px solid rgba(255,255,255,0.2)",
                   }}
                 >
-                  <strong>Live summary:</strong> {partialSummary}
+                  <strong>ملخص لايف:</strong> {partialSummary}
                 </div>
               ) : null}
             </div>

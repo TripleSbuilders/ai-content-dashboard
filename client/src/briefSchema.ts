@@ -22,7 +22,7 @@ export const briefSchema = z.object({
     .string()
     .trim()
     .refine((v) => v === "" || /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(v), {
-      message: "Invalid client email format",
+      message: "Please enter a valid email address",
     }),
   source_mode: z.enum(["self_serve", "agency"]).default("self_serve"),
   brand_name: z.string().trim().min(1, "Brand name is required"),
@@ -37,28 +37,31 @@ export const briefSchema = z.object({
   competitors: z.string(),
   audience_pain_point: z.string().default(""),
   visual_notes: z.string(),
-  reference_image: z.string().max(3_000_000).optional(),
+  reference_image: z
+    .string()
+    .max(3_000_000, { message: "Reference image exceeds the maximum allowed size." })
+    .optional(),
   campaign_duration: z.string(),
   budget_level: z.string(),
   best_content_types: z.array(z.string().trim().min(1)).default([]),
   num_posts: z.coerce
-    .number({ invalid_type_error: "Enter a valid number" })
+    .number({ invalid_type_error: "Please enter a valid number" })
     .int()
     .min(L.num_posts.min, `Must be between ${L.num_posts.min} and ${L.num_posts.max}`)
     .max(L.num_posts.max, `Must be between ${L.num_posts.min} and ${L.num_posts.max}`),
   num_image_designs: z.coerce
-    .number({ invalid_type_error: "Enter a valid number" })
+    .number({ invalid_type_error: "Please enter a valid number" })
     .int()
     .min(L.num_image_designs.min, `Must be between ${L.num_image_designs.min} and ${L.num_image_designs.max}`)
     .max(L.num_image_designs.max, `Must be between ${L.num_image_designs.min} and ${L.num_image_designs.max}`),
   num_video_prompts: z.coerce
-    .number({ invalid_type_error: "Enter a valid number" })
+    .number({ invalid_type_error: "Please enter a valid number" })
     .int()
     .min(L.num_video_prompts.min, `Must be between ${L.num_video_prompts.min} and ${L.num_video_prompts.max}`)
     .max(L.num_video_prompts.max, `Must be between ${L.num_video_prompts.min} and ${L.num_video_prompts.max}`),
   include_content_package: z.boolean().default(false),
   content_package_idea_count: z.coerce
-    .number({ invalid_type_error: "Enter a valid number" })
+    .number({ invalid_type_error: "Please enter a valid number" })
     .int()
     .min(
       L.content_package_idea_count.min,
@@ -81,65 +84,65 @@ export type BriefSchema = z.infer<typeof briefSchema>;
 const requiredStr = (message: string) => z.string().trim().min(1, { message });
 const requiredClientContactShape = {
   client_name: requiredStr("Client name is required"),
-  client_phone: requiredStr("Client phone is required"),
+  client_phone: requiredStr("Client phone number is required"),
   client_email: z
     .string()
     .trim()
     .min(1, "Client email is required")
     .refine((v) => /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(v), {
-      message: "Invalid client email format",
+      message: "Please enter a valid email address",
     }),
 } as const;
 
 /** Social path: minimum viable brief for reach/engagement prompts. */
 export const socialBriefSchema = briefSchema.extend({
-  industry: requiredStr("Select an industry"),
-  target_audience: z.array(z.string().trim().min(1)).min(1, "Select at least one audience"),
-  main_goal: requiredStr("Select a main campaign goal"),
-  platforms: z.array(z.string().trim().min(1)).min(1, "Select at least one active platform"),
-  brand_tone: requiredStr("Select brand tone"),
+  industry: requiredStr("Please select an industry"),
+  target_audience: z.array(z.string().trim().min(1)).min(1, "Please select at least one target audience"),
+  main_goal: requiredStr("Please select a main campaign goal"),
+  platforms: z.array(z.string().trim().min(1)).min(1, "Please select at least one active platform"),
+  brand_tone: requiredStr("Please select a brand tone"),
 });
 
 /** Offer path: conversion-focused minimum. */
 export const offerBriefSchema = briefSchema.extend({
-  industry: requiredStr("Select an industry"),
-  offer: requiredStr("Describe your offer"),
-  target_audience: z.array(z.string().trim().min(1)).min(1, "Select at least one audience"),
-  main_goal: requiredStr("Select a main goal"),
+  industry: requiredStr("Please select an industry"),
+  offer: requiredStr("Please describe your core offer"),
+  target_audience: z.array(z.string().trim().min(1)).min(1, "Please select at least one target audience"),
+  main_goal: requiredStr("Please select a main goal"),
 });
 
 /** Deep path: authority content minimum. */
 export const deepBriefSchema = briefSchema.extend({
-  industry: requiredStr("Select an industry"),
-  target_audience: z.array(z.string().trim().min(1)).min(1, "Select at least one audience"),
-  main_goal: requiredStr("Select a main goal"),
-  visual_notes: requiredStr("Add creative direction"),
-  campaign_duration: requiredStr("Add timing or duration"),
-  best_content_types: z.array(z.string().trim().min(1)).min(1, "Select at least one content type"),
+  industry: requiredStr("Please select an industry"),
+  target_audience: z.array(z.string().trim().min(1)).min(1, "Please select at least one target audience"),
+  main_goal: requiredStr("Please select a main goal"),
+  visual_notes: requiredStr("Please add a creative direction"),
+  campaign_duration: requiredStr("Please specify the campaign duration"),
+  best_content_types: z.array(z.string().trim().min(1)).min(1, "Please select at least one content format"),
 });
 
 export const socialBriefSchemaWithDiagnosis = socialBriefSchema.extend({
-  diagnostic_role: requiredStr("Select your role"),
-  diagnostic_account_stage: requiredStr("Select your stage"),
-  diagnostic_followers_band: requiredStr("Select followers range"),
-  diagnostic_primary_blocker: requiredStr("Select your primary blocker"),
-  diagnostic_revenue_goal: requiredStr("Select a target revenue range"),
+  diagnostic_role: requiredStr("Please select your role"),
+  diagnostic_account_stage: requiredStr("Please select your business stage"),
+  diagnostic_followers_band: requiredStr("Please select your follower range"),
+  diagnostic_primary_blocker: requiredStr("Please select your primary challenge"),
+  diagnostic_revenue_goal: requiredStr("Please select a target revenue range"),
 });
 
 export const offerBriefSchemaWithDiagnosis = offerBriefSchema.extend({
-  diagnostic_role: requiredStr("Select your role"),
-  diagnostic_account_stage: requiredStr("Select your stage"),
-  diagnostic_followers_band: requiredStr("Select followers range"),
-  diagnostic_primary_blocker: requiredStr("Select your primary blocker"),
-  diagnostic_revenue_goal: requiredStr("Select a target revenue range"),
+  diagnostic_role: requiredStr("Please select your role"),
+  diagnostic_account_stage: requiredStr("Please select your business stage"),
+  diagnostic_followers_band: requiredStr("Please select your follower range"),
+  diagnostic_primary_blocker: requiredStr("Please select your primary challenge"),
+  diagnostic_revenue_goal: requiredStr("Please select a target revenue range"),
 });
 
 export const deepBriefSchemaWithDiagnosis = deepBriefSchema.extend({
-  diagnostic_role: requiredStr("Select your role"),
-  diagnostic_account_stage: requiredStr("Select your stage"),
-  diagnostic_followers_band: requiredStr("Select followers range"),
-  diagnostic_primary_blocker: requiredStr("Select your primary blocker"),
-  diagnostic_revenue_goal: requiredStr("Select a target revenue range"),
+  diagnostic_role: requiredStr("Please select your role"),
+  diagnostic_account_stage: requiredStr("Please select your business stage"),
+  diagnostic_followers_band: requiredStr("Please select your follower range"),
+  diagnostic_primary_blocker: requiredStr("Please select your primary challenge"),
+  diagnostic_revenue_goal: requiredStr("Please select a target revenue range"),
 });
 
 export const socialBriefSchemaAgency = socialBriefSchema.extend(requiredClientContactShape);

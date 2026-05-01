@@ -107,7 +107,7 @@ function toBrandCards(kits: KitSummary[]): BrandCard[] {
     const card: BrandCard = {
       id: key,
       brandName,
-      tone: brief.brand_tone || "Not specified",
+      tone: brief.brand_tone || "مش متحدد",
       targetAudience: brief.target_audience,
       industry: brief.industry,
       platforms: brief.platforms,
@@ -138,7 +138,7 @@ export default function MyBrandsPage() {
       })
       .catch((loadError) => {
         logger.error(loadError);
-        setError("Couldn't load your saved brands right now.");
+        setError("معرفناش نحمل البراندات بتاعتك دلوقتي. جرب تاني.");
         setKits([]);
       });
   }, []);
@@ -167,15 +167,15 @@ export default function MyBrandsPage() {
   return (
     <section>
       <header className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">My Brands | علاماتي التجارية</h1>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">My Brands | البراندات بتاعتي</h1>
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-          Reuse your saved brand setup and start a new request in one click.
+          استخدم إعدادات البراند اللي حفظتها قبل كده وابدأ طلب جديد بضغطة واحدة.
         </p>
       </header>
 
       {kits === null ? (
         <div className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-500 dark:border-white/10 dark:bg-black/30 dark:text-gray-400">
-          Loading your brands...
+          بنحمل البراندات بتاعتك...
         </div>
       ) : null}
 
@@ -188,7 +188,7 @@ export default function MyBrandsPage() {
       {kits !== null && brands.length === 0 ? (
         <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-white/10 dark:bg-black/30">
           <p className="text-sm text-gray-600 dark:text-gray-300">
-            No saved brands yet. Submit your first request and your brand profile will appear here.
+            لسه مفيش براندات متسجلة. اعمل أول طلب ليك وبروفايل البراند هيظهر هنا.
           </p>
         </div>
       ) : null}
@@ -200,16 +200,16 @@ export default function MyBrandsPage() {
               key={brand.id}
               className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-black/30"
             >
-              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Brand</p>
+              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">البراند</p>
               <h2 className="mt-1 text-lg font-semibold">{brand.brandName}</h2>
 
               <div className="mt-4 space-y-2 text-sm">
                 <p>
-                  <span className="text-gray-500 dark:text-gray-400">Tone:</span> {brand.tone}
+                  <span className="text-gray-500 dark:text-gray-400">نبرة الصوت (Tone):</span> {brand.tone}
                 </p>
                 <p>
-                  <span className="text-gray-500 dark:text-gray-400">Target Audience:</span>{" "}
-                  {brand.targetAudience.length ? brand.targetAudience.join(", ") : "Not specified"}
+                  <span className="text-gray-500 dark:text-gray-400">الجمهور المستهدف:</span>{" "}
+                  {brand.targetAudience.length ? brand.targetAudience.join(", ") : "مش متحدد"}
                 </p>
               </div>
 
@@ -234,7 +234,7 @@ export default function MyBrandsPage() {
                 onClick={() => handleCreateAgain(brand)}
                 className="mt-5 inline-flex w-full items-center justify-center rounded-lg bg-gray-900 px-3 py-2 text-sm font-semibold text-white dark:bg-white dark:text-black"
               >
-                Create Again | طلب محتوى جديد لهذا البراند
+                اطلب للبراند ده تاني
               </button>
             </article>
           ))}

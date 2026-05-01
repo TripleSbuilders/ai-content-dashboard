@@ -15,7 +15,8 @@ export function splitSelectionString(raw: unknown): string[] {
 
 function optionMatches(token: string, option: SelectionOption): boolean {
   const t = token.toLowerCase();
-  return t === option.value.toLowerCase() || t === option.labelAr.toLowerCase();
+  if (t === option.value.toLowerCase() || t === option.labelAr.toLowerCase()) return true;
+  return option.legacyLabelAr?.some((legacy) => legacy.toLowerCase() === t) ?? false;
 }
 
 export function decodeSingleSelection(raw: unknown, options: readonly SelectionOption[]) {

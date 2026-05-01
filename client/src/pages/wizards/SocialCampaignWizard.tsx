@@ -22,18 +22,18 @@ export default function SocialCampaignWizard() {
     <WizardCore
       formSchema={formSchema}
       draftKey="ai-content-dashboard:wizard-draft:social:v1"
-      title="Social Campaign Wizard"
-      subtitle="Designed for social-first execution: clear audience intent, sharp channel mix, and strong posting output."
+      title="إعداد حملة السوشيال ميديا"
+      subtitle="Designed for a social-first approach: pinpoint audience intent, an optimal channel mix, and high-impact posts."
       routeHint="/kits/:id"
       stepOrder={variantB ? ["diagnosis", "brand", "audience", "channels", "creative", "volume"] : ["brand", "audience", "channels", "creative", "volume"]}
       stepTitles={{
-        diagnosis: "Quick diagnosis",
-        brand: "Brand & industry",
-        audience: "Audience & goals",
-        channels: "Channels & tone",
-        creative: "Creative direction",
-        volume: "Output volumes",
-        offer: "Offer & competitors",
+        diagnosis: "تشخيص سريع",
+        brand: "البراند والمجال",
+        audience: "الجمهور والأهداف",
+        channels: "القنوات ونبرة الصوت",
+        creative: "الاتجاه الإبداعي (Creative Direction)",
+        volume: "كمية المحتوى",
+        offer: "العرض والمنافسين",
       }}
       stepFields={{
         audience: ["target_audience", "main_goal"],
@@ -42,10 +42,9 @@ export default function SocialCampaignWizard() {
       }}
       defaults={{
         campaign_mode: "social",
-        main_goal: "Grow social reach and engagement",
+        main_goal: "زيادة التفاعل (Engagement)",
         platforms: ["instagram", "tiktok", "facebook"],
       }}
     />
   );
 }
-

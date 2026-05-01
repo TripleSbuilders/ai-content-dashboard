@@ -7,10 +7,10 @@ import { Skeleton } from "../components/Skeleton";
 type NavItem = { to: string; label: string; icon: string; end?: boolean };
 
 const NAV_ITEMS: NavItem[] = [
-  { to: "/", label: "Overview | نظرة عامة", icon: "dashboard", end: true },
-  { to: "/my-brands", label: "My Brands | علاماتي التجارية", icon: "storefront" },
-  { to: "/wizard/social", label: "Request Content | طلب محتوى جديد", icon: "edit_square" },
-  { to: "/pricing", label: "Pricing | باقات الأسعار", icon: "sell" },
+  { to: "/", label: "Overview | الرئيسية / نظرة عامة", icon: "dashboard", end: true },
+  { to: "/my-brands", label: "My Brands | البراندات بتاعتي", icon: "storefront" },
+  { to: "/wizard/social", label: "Request Content | اطلب محتوى جديد", icon: "edit_square" },
+  { to: "/pricing", label: "Plans & Pricing | الأسعار والباقات", icon: "sell" },
 ];
 
 function navLinkClass(isActive: boolean) {
@@ -24,7 +24,7 @@ function navLinkClass(isActive: boolean) {
 
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <nav className="space-y-1" aria-label="Client portal navigation">
+    <nav className="space-y-1" aria-label="قايمة بوابة العملاء">
       {NAV_ITEMS.map((item) => (
         <NavLink
           key={item.to}
@@ -87,7 +87,7 @@ export default function UserLayout({ demoBanner }: { demoBanner?: ReactNode }) {
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-gray-900 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white dark:focus:bg-white dark:focus:text-black"
       >
-        Skip to main content
+        تخطى للمحتوى الأساسي
       </a>
       <div className="mx-auto flex max-w-[88rem] gap-4 px-3 py-3 sm:px-6">
         <aside className="sticky top-3 hidden h-[calc(100vh-1.5rem)] w-80 shrink-0 flex-col rounded-3xl border border-gray-200/80 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#0f0f10] lg:flex">
@@ -97,14 +97,14 @@ export default function UserLayout({ demoBanner }: { demoBanner?: ReactNode }) {
             </div>
             <div>
               <p className="text-base font-semibold leading-tight">SocialGeni Client Portal</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Agency Experience</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">تجربة وكالات الإعلانات</p>
             </div>
           </Link>
 
           <SidebarNav />
 
           <div className="mt-6 rounded-2xl border border-gray-200 bg-gray-50 p-3 dark:border-white/10 dark:bg-black/40">
-            <p className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">Current Plan</p>
+            <p className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">الباقة الحالية</p>
             <p className="mt-1 text-sm font-semibold">{entitlements?.plan_code ?? "starter"}</p>
           </div>
 
@@ -118,20 +118,20 @@ export default function UserLayout({ demoBanner }: { demoBanner?: ReactNode }) {
                 <span className="material-symbols-outlined text-[18px]">
                   {themeMode === "dark" ? "light_mode" : "dark_mode"}
                 </span>
-                Theme
+                الثيم / المظهر
               </span>
-              <span className="text-xs text-gray-500 dark:text-gray-400">{themeMode === "dark" ? "Dark" : "Light"}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">{themeMode === "dark" ? "غامق" : "فاتح"}</span>
             </button>
 
             {session ? (
               <div className="rounded-2xl border border-gray-200 p-3 dark:border-white/10">
-                <p className="truncate text-sm font-semibold">{session.user?.email ?? "Studio user"}</p>
+                <p className="truncate text-sm font-semibold">{session.user?.email ?? "مستخدم الاستوديو"}</p>
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <Link to="/profile" className="rounded-lg bg-gray-100 px-2 py-1.5 text-xs text-center dark:bg-white/10">
-                    Profile
+                    البروفايل
                   </Link>
                   <Link to="/help" className="rounded-lg bg-gray-100 px-2 py-1.5 text-xs text-center dark:bg-white/10">
-                    Help
+                    مساعدة
                   </Link>
                 </div>
                 <button
@@ -139,7 +139,7 @@ export default function UserLayout({ demoBanner }: { demoBanner?: ReactNode }) {
                   onClick={() => void signOut()}
                   className="mt-2 w-full rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-600 dark:bg-red-500/10 dark:text-red-300"
                 >
-                  Sign out
+                  تسجيل خروج
                 </button>
               </div>
             ) : (
@@ -148,7 +148,7 @@ export default function UserLayout({ demoBanner }: { demoBanner?: ReactNode }) {
                 onClick={() => void signInWithGoogle()}
                 className="w-full rounded-xl bg-gray-900 px-3 py-2.5 text-sm font-semibold text-white dark:bg-white dark:text-black"
               >
-                Sign in with Google
+                سجل دخول بجوجل
               </button>
             )}
           </div>
@@ -160,18 +160,18 @@ export default function UserLayout({ demoBanner }: { demoBanner?: ReactNode }) {
               type="button"
               onClick={() => setMobileOpen(true)}
               className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 dark:border-white/15"
-              aria-label="Open navigation menu"
+              aria-label="افتح المنيو"
             >
               <span className="material-symbols-outlined text-[20px]">menu</span>
             </button>
-            <p className="text-sm font-semibold">Client Portal</p>
+            <p className="text-sm font-semibold">بوابة العملاء</p>
             {session ? (
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-xs font-semibold dark:bg-white/10">
                 {initials}
               </div>
             ) : (
               <button type="button" onClick={() => void signInWithGoogle()} className="text-xs font-semibold">
-                Sign in
+                تسجيل الدخول
               </button>
             )}
           </header>
@@ -182,11 +182,11 @@ export default function UserLayout({ demoBanner }: { demoBanner?: ReactNode }) {
                 type="button"
                 onClick={() => setMobileOpen(false)}
                 className="absolute inset-0 bg-black/50"
-                aria-label="Close navigation menu"
+                aria-label="اقفل المنيو"
               />
               <div className="absolute left-0 top-0 h-full w-[85%] max-w-xs border-r border-gray-200 bg-white p-4 shadow-xl dark:border-white/10 dark:bg-[#0f0f10]">
                 <div className="mb-4 flex items-center justify-between">
-                  <p className="text-sm font-semibold">Navigation</p>
+                  <p className="text-sm font-semibold">القايمة</p>
                   <button type="button" onClick={() => setMobileOpen(false)} className="rounded p-1">
                     <span className="material-symbols-outlined text-[20px]">close</span>
                   </button>

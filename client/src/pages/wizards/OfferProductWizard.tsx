@@ -22,18 +22,18 @@ export default function OfferProductWizard() {
     <WizardCore
       formSchema={formSchema}
       draftKey="ai-content-dashboard:wizard-draft:offer:v1"
-      title="Offer Campaign Wizard"
-      subtitle="Designed for commercial execution: focused offer framing, clear buyer intent, and stronger conversion outcomes."
+      title="إعداد حملة العروض والمنتجات"
+      subtitle="Built for commercial success: focused offer framing, clear buyer intent, and higher conversion rates."
       routeHint="/kits/:id"
       stepOrder={variantB ? ["diagnosis", "brand", "offer", "audience", "volume"] : ["brand", "offer", "audience", "volume"]}
       stepTitles={{
-        diagnosis: "Quick diagnosis",
-        brand: "Brand & industry",
-        offer: "Offer & positioning",
-        audience: "Audience & goals",
-        volume: "Output volumes",
-        channels: "Channels & tone",
-        creative: "Creative direction",
+        diagnosis: "تشخيص سريع",
+        brand: "البراند والمجال",
+        offer: "العرض والمنافسين",
+        audience: "الجمهور والأهداف",
+        volume: "كمية المحتوى",
+        channels: "القنوات ونبرة الصوت",
+        creative: "الاتجاه الإبداعي (Creative Direction)",
       }}
       stepFields={{
         offer: ["offer", "competitors"],
@@ -42,10 +42,9 @@ export default function OfferProductWizard() {
       }}
       defaults={{
         campaign_mode: "offer",
-        main_goal: "Increase qualified leads and purchases",
-        offer: "Highlight value proposition, guarantee, and CTA",
+        main_goal: "زيادة المبيعات (Sales)",
+        offer: "إبراز قيمة العرض، الضمان، والـ CTA",
       }}
     />
   );
 }
-
